@@ -1,0 +1,25 @@
+# Local build and editor output
+/build/
+/out/
+/.vs/
+CMakeUserPresets.json
+
+# Native build products
+*.dll
+*.exp
+*.ilk
+*.lib
+*.obj
+*.pdb
+
+# Logs and crash data
+*.dmp
+*.log
+
+# Personal media
+*.m4v
+*.mkv
+*.mov
+*.mp4
+*.webm
+
