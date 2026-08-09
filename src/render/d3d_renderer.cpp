@@ -60,11 +60,28 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
     }
 
     IDirect3DDevice9* device = FindDevice();
-    if (!ValidateDevice(device) || !EnsureResources(device) || !Draw(device, ui_rect)) {
+    if (!ValidateDevice(device) || !EnsureResources(device)) {
         if (error_count_++ < 8u) {
-            PBVP_LOG_WARN("D3D frame skipped after validation, resource, or draw failure");
+            PBVP_LOG_WARN("D3D frame skipped after validation or resource failure");
         }
         return;
+    }
+
+    LARGE_INTEGER started{};
+    LARGE_INTEGER finished{};
+    QueryPerformanceCounter(&started);
+    const bool drew = Draw(device, ui_rect);
+    QueryPerformanceCounter(&finished);
+    if (!drew) {
+        if (error_count_++ < 8u) {
+            PBVP_LOG_WARN("D3D frame skipped after draw failure");
+        }
+        return;
+    }
+    RecordDrawTiming(finished.QuadPart - started.QuadPart);
+    if (!first_draw_logged_) {
+        PBVP_LOG_INFO("First Pip-Boy checkerboard draw succeeded");
+        first_draw_logged_ = true;
     }
     ++frame_count_;
 }
@@ -75,7 +92,8 @@ void D3dRenderer::BeforeDeviceRecreate(void* renderer) noexcept {
         ReleaseResources();
     }
     device_lost_ = true;
-    PBVP_LOG_INFO("D3D default-pool resources released before engine recreation");
+    ++reset_count_;
+    PBVP_LOG_INFO("D3D default-pool resources released before engine recreation %u", reset_count_);
 }
 
 void D3dRenderer::AfterDeviceRecreate(void* renderer, const std::uint32_t result) noexcept {
@@ -117,7 +135,7 @@ bool D3dRenderer::ValidateDevice(IDirect3DDevice9* device) noexcept {
     if (device_ != device) {
         ReleaseResources();
         device_ = device;
-        PBVP_LOG_INFO("D3D device validated");
+        LogDeviceProfile(device);
     }
     return true;
 }
@@ -144,6 +162,9 @@ bool D3dRenderer::EnsureResources(IDirect3DDevice9* device) noexcept {
 }
 
 bool D3dRenderer::UploadCheckerboard() noexcept {
+    LARGE_INTEGER started{};
+    LARGE_INTEGER finished{};
+    QueryPerformanceCounter(&started);
     D3DLOCKED_RECT locked{};
     const HRESULT result = texture_->LockRect(0u, &locked, nullptr, D3DLOCK_DISCARD);
     if (FAILED(result) || locked.pBits == nullptr || locked.Pitch < static_cast<INT>(kTextureWidth * 4u)) {
@@ -159,7 +180,15 @@ bool D3dRenderer::UploadCheckerboard() noexcept {
         }
         row += locked.Pitch;
     }
-    return SUCCEEDED(texture_->UnlockRect(0u));
+    const bool succeeded = SUCCEEDED(texture_->UnlockRect(0u));
+    QueryPerformanceCounter(&finished);
+    LARGE_INTEGER frequency{};
+    if (succeeded && QueryPerformanceFrequency(&frequency) && frequency.QuadPart > 0) {
+        const double microseconds = static_cast<double>(finished.QuadPart - started.QuadPart) *
+                                    1000000.0 / static_cast<double>(frequency.QuadPart);
+        PBVP_LOG_INFO("Generated texture upload took %.2f microseconds", microseconds);
+    }
+    return succeeded;
 }
 
 bool D3dRenderer::Draw(IDirect3DDevice9* device, const UiRectSnapshot& ui_rect) noexcept {
@@ -185,7 +214,10 @@ bool D3dRenderer::Draw(IDirect3DDevice9* device, const UiRectSnapshot& ui_rect) 
         state->Release();
         return false;
     }
-    device->GetRenderTarget(0u, &render_target);
+    if (FAILED(device->GetRenderTarget(0u, &render_target)) || render_target == nullptr) {
+        state->Release();
+        return false;
+    }
     device->GetDepthStencilSurface(&depth_surface);
 
     const std::array<Vertex, 4> vertices{{
@@ -218,17 +250,86 @@ bool D3dRenderer::Draw(IDirect3DDevice9* device, const UiRectSnapshot& ui_rect) 
     const HRESULT draw_result = device->DrawPrimitiveUP(
         D3DPT_TRIANGLESTRIP, 2u, vertices.data(), sizeof(Vertex));
 
-    state->Apply();
-    if (render_target != nullptr) {
-        device->SetRenderTarget(0u, render_target);
-        render_target->Release();
-    }
+    const HRESULT apply_result = state->Apply();
+    const HRESULT render_target_result = device->SetRenderTarget(0u, render_target);
+    render_target->Release();
+    HRESULT depth_result = D3D_OK;
     if (depth_surface != nullptr) {
-        device->SetDepthStencilSurface(depth_surface);
+        depth_result = device->SetDepthStencilSurface(depth_surface);
         depth_surface->Release();
     }
     state->Release();
-    return SUCCEEDED(draw_result);
+    return SUCCEEDED(draw_result) && SUCCEEDED(apply_result) &&
+           SUCCEEDED(render_target_result) && SUCCEEDED(depth_result);
+}
+
+void D3dRenderer::LogDeviceProfile(IDirect3DDevice9* device) noexcept {
+    D3DDEVICE_CREATION_PARAMETERS creation{};
+    D3DPRESENT_PARAMETERS presentation{};
+    D3DADAPTER_IDENTIFIER9 adapter{};
+    const char* description = "unknown";
+    const char* driver = "unknown";
+    const char* mode = "unknown";
+
+    if (SUCCEEDED(device->GetCreationParameters(&creation))) {
+        IDirect3D9* d3d = nullptr;
+        if (SUCCEEDED(device->GetDirect3D(&d3d)) && d3d != nullptr) {
+            if (SUCCEEDED(d3d->GetAdapterIdentifier(creation.AdapterOrdinal, 0u, &adapter))) {
+                description = adapter.Description;
+                driver = adapter.Driver;
+            }
+            d3d->Release();
+        }
+    }
+
+    IDirect3DSwapChain9* swap_chain = nullptr;
+    if (SUCCEEDED(device->GetSwapChain(0u, &swap_chain)) && swap_chain != nullptr) {
+        if (SUCCEEDED(swap_chain->GetPresentParameters(&presentation))) {
+            mode = presentation.Windowed ? "windowed" : "fullscreen";
+        }
+        swap_chain->Release();
+    }
+
+    PBVP_LOG_INFO(
+        "D3D device validated: adapter=%s driver=%s mode=%s backbuffer=%ux%u format=%u interval=0x%08X",
+        description, driver, mode, presentation.BackBufferWidth, presentation.BackBufferHeight,
+        static_cast<unsigned>(presentation.BackBufferFormat),
+        static_cast<unsigned>(presentation.PresentationInterval));
+}
+
+void D3dRenderer::RecordDrawTiming(const std::int64_t elapsed_ticks) noexcept {
+    if (elapsed_ticks < 0) {
+        return;
+    }
+    if (performance_frequency_ == 0) {
+        LARGE_INTEGER frequency{};
+        if (!QueryPerformanceFrequency(&frequency) || frequency.QuadPart <= 0) {
+            performance_frequency_ = -1;
+            return;
+        }
+        performance_frequency_ = frequency.QuadPart;
+    }
+    if (performance_frequency_ < 0) {
+        return;
+    }
+
+    timing_total_ticks_ += elapsed_ticks;
+    if (elapsed_ticks > timing_max_ticks_) {
+        timing_max_ticks_ = elapsed_ticks;
+    }
+    if (++timing_samples_ >= 300u) {
+        const double average_microseconds = static_cast<double>(timing_total_ticks_) * 1000000.0 /
+                                            static_cast<double>(performance_frequency_) /
+                                            static_cast<double>(timing_samples_);
+        const double maximum_microseconds = static_cast<double>(timing_max_ticks_) * 1000000.0 /
+                                            static_cast<double>(performance_frequency_);
+        PBVP_LOG_INFO(
+            "D3D draw timing over %u frames: average=%.2f microseconds maximum=%.2f microseconds",
+            timing_samples_, average_microseconds, maximum_microseconds);
+        timing_samples_ = 0u;
+        timing_total_ticks_ = 0;
+        timing_max_ticks_ = 0;
+    }
 }
 
 void D3dRenderer::ReleaseResources() noexcept {

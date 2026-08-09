@@ -26,14 +26,22 @@ private:
     bool EnsureResources(IDirect3DDevice9* device) noexcept;
     bool UploadCheckerboard() noexcept;
     bool Draw(IDirect3DDevice9* device, const UiRectSnapshot& ui_rect) noexcept;
+    void LogDeviceProfile(IDirect3DDevice9* device) noexcept;
+    void RecordDrawTiming(std::int64_t elapsed_ticks) noexcept;
     void ReleaseResources() noexcept;
 
     IDirect3DDevice9* device_{};
     IDirect3DTexture9* texture_{};
     std::uint32_t frame_count_{};
     std::uint32_t error_count_{};
+    std::uint32_t reset_count_{};
+    std::uint32_t timing_samples_{};
+    std::int64_t performance_frequency_{};
+    std::int64_t timing_total_ticks_{};
+    std::int64_t timing_max_ticks_{};
     bool shutdown_requested_{};
     bool device_lost_{};
+    bool first_draw_logged_{};
 };
 
 } // namespace pbvp
