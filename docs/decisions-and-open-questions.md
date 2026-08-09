@@ -106,7 +106,7 @@ Rejected alternative: rebinding the original surfaces and then manually restorin
 
 Consequence: the Alt+Tab and state-isolation tests will use the corrected path. The first 300-frame timing remains a baseline for the older redundant sequence and will be measured again.
 
-### xNVSE frame-present boundary
+### xNVSE frame-present boundary, superseded
 
 Date: August 9, 2026
 
@@ -129,6 +129,8 @@ Evidence: the test prefab placed a black image and the text `PBVP UI LAYER` insi
 Rejected alternative: drawing the playback controls in Direct3D would duplicate the UIO control layer and make input, fonts, scaling, and UI compatibility harder. The project will first test credible engine render locations before considering that design.
 
 Consequence: the visible checkerboard proves device access and coordinate conversion only. It does not prove a usable presentation path. FFmpeg integration remains blocked on a render point where UIO controls can appear above the video.
+
+Candidate under test: replace the normal-frame relative call at `0x00870403` only when its live target is the reviewed `0x00709B40` routine. The replacement draws first and then calls the original routine. This is not a final render-point decision until the black strip and `PBVP UI LAYER` text appear above the checkerboard in game.
 
 ### Verified reset hook only
 

@@ -56,7 +56,7 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
         return;
     }
     if (!frame_callback_logged_) {
-        PBVP_LOG_INFO("Non-loading xNVSE frame-present callback active");
+        PBVP_LOG_INFO("Verified pre-UI render boundary active");
         frame_callback_logged_ = true;
     }
     if (device_lost_) {
@@ -121,6 +121,7 @@ void D3dRenderer::AfterDeviceRecreate(void* renderer, const std::uint32_t result
 
 void D3dRenderer::RequestShutdown() noexcept {
     shutdown_requested_ = true;
+    ReleaseResources();
 }
 
 IDirect3DDevice9* D3dRenderer::FindDevice() noexcept {

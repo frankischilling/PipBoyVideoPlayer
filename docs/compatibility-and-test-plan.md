@@ -72,6 +72,20 @@ The test prefab placed a black strip and the text `PBVP UI LAYER` inside the che
 
 This run rejects `kMessage_OnFramePresent` as the final playback draw location because it runs after the visible menu UI. It does not reject the native Direct3D texture path or the UIO rectangle. Phase 1 must test a verified engine-owned render point before the menu UI is drawn.
 
+### Pre-UI layer-order candidate
+
+Status: awaiting an in-game run
+
+The candidate build checks the five-byte relative call at `0x00870403` and accepts it only when it still targets `0x00709B40`. Its replacement draws the checkerboard and then calls the original engine routine. The frame-present callback remains active for diagnostics but does not draw.
+
+Open the Pip-Boy Data tab and wait at least ten seconds. A useful result must report all three visual layers separately:
+
+- whether the checkerboard appears inside the intended screen rectangle;
+- whether the black strip appears over the checkerboard;
+- whether `PBVP UI LAYER` appears on the strip.
+
+Also report whether the ordinary Pip-Boy frame and controls remain usable. The candidate passes layer order only if the checkerboard appears below both UIO probe elements without covering the rest of the Pip-Boy.
+
 ## Required profiles
 
 | Profile | Purpose |

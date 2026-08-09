@@ -27,4 +27,29 @@ void RunHookProbeTests() {
 
     const std::array<std::uint8_t, 4> short_input{};
     PBVP_CHECK(ClassifyHookTarget(short_input, signatures) == HookProbeResult::unreadable);
+
+    constexpr std::uintptr_t call_site = 0x00870403u;
+    constexpr std::uintptr_t original_target = 0x00709B40u;
+    RelativeCallBytes call{};
+    PBVP_CHECK(EncodeRelativeCall(call_site, original_target, call));
+    PBVP_CHECK(call[0] == 0xE8u);
+    std::uintptr_t decoded_target = 0;
+    PBVP_CHECK(DecodeRelativeCallTarget(call_site, call, decoded_target));
+    PBVP_CHECK(decoded_target == original_target);
+    PBVP_CHECK(
+        ClassifyRelativeCallSite(call_site, call, original_target) == HookProbeResult::supported);
+
+    RelativeCallBytes redirected_call{};
+    PBVP_CHECK(EncodeRelativeCall(call_site, 0x00600000u, redirected_call));
+    PBVP_CHECK(
+        ClassifyRelativeCallSite(call_site, redirected_call, original_target) ==
+        HookProbeResult::occupied);
+
+    RelativeCallBytes non_call{};
+    non_call.fill(0x90u);
+    PBVP_CHECK(
+        ClassifyRelativeCallSite(call_site, non_call, original_target) == HookProbeResult::unknown);
+    PBVP_CHECK(
+        ClassifyRelativeCallSite(call_site, short_input, original_target) ==
+        HookProbeResult::unreadable);
 }

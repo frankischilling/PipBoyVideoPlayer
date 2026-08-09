@@ -2,7 +2,7 @@
 
 ## Runtime boundary
 
-The project is one x86 xNVSE plugin plus data files installed under `Data`. It does not use a `d3d9.dll` proxy and does not require an ESP. The plugin locates the game renderer after xNVSE load. It draws from xNVSE's frame-present notification and uses one verified engine recreation hook for default-pool resource teardown. It disables its work during shutdown.
+The project is one x86 xNVSE plugin plus data files installed under `Data`. It does not use a `d3d9.dll` proxy and does not require an ESP. The plugin locates the game renderer after xNVSE load. The Phase 1 candidate draws from a checked normal-frame call immediately before the engine UI routine at `0x00709B40`. A verified engine recreation hook handles default-pool resource teardown. The plugin restores the original call and disables its work during shutdown.
 
 The implementation must target FalloutNV 1.4.0.525 and reject unknown executables. It should use verified relocations or signatures rather than naked absolute addresses. Steam, GOG, and patched Epic executables need separate verification records if their code layouts differ.
 
@@ -97,15 +97,16 @@ The plugin log records component, state, error code, media basename, and timesta
 
 ## Hook policy
 
-xNVSE 6.4.5's `kMessage_OnFramePresent` notification is the selected presentation boundary. The callback ignores loading-screen frames. The plugin does not patch `Present`, `EndScene`, or a Direct3D device vtable.
+xNVSE 6.4.5's `kMessage_OnFramePresent` notification remains enabled for diagnostics, but it no longer draws video. Testing showed that it runs after the visible menu UI. The plugin does not patch `Present`, `EndScene`, or a Direct3D device vtable.
 
-The only Phase 1 detour is the engine's `NiDX9Renderer::Recreate` function. Its address is valid only for the supported Fallout NV 1.4.0.525 runtime. Before installing MinHook, the plugin compares the live function entry with a reviewed signature table and rejects common jump stubs and unknown bytes. An unknown or occupied entry disables rendering for the session instead of attempting to chain through another hook.
+The Phase 1 candidate replaces the five-byte relative call at `0x00870403`, which targets the engine routine at `0x00709B40` in Fallout NV 1.4.0.525. The replacement draws the video rectangle and then calls the original routine. Before writing the call, the plugin decodes the live target and accepts only the reviewed original address. A changed opcode or target disables rendering for the session. The original bytes are restored during orderly shutdown only if the site still contains this plugin's replacement.
+
+The engine's `NiDX9Renderer::Recreate` function remains the only MinHook detour. Before installing it, the plugin compares the live function entry with a reviewed signature table and rejects common jump stubs and unknown bytes. If either hook check fails, the plugin leaves the pre-UI call untouched and disables rendering.
 
 The selected boundaries still need:
 
-- a stable discovery method;
-- a known render-thread guarantee;
-- a documented position relative to menu drawing;
+- in-game confirmation that the candidate runs on the render thread;
+- in-game confirmation that the candidate sits above the Pip-Boy screen and below UIO controls;
 - safe refusal when another plugin has already patched the reset target;
 - Reset or lost-device coverage;
 - conflict detection and a safe refusal path;

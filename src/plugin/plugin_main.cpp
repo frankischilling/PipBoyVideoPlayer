@@ -39,14 +39,14 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
             }
             break;
         case NVSEMessagingInterface::kMessage_OnFramePresent: {
+            static bool present_boundary_logged = false;
             bool loading_screen = true;
             if (message->data != nullptr && message->dataLen == sizeof(int)) {
                 loading_screen = *static_cast<const int*>(message->data) != 0;
             }
-            if (!loading_screen && pbvp::hooks::IsReady() &&
-                !g_shutdown.load(std::memory_order_acquire)) {
-                pbvp::D3dRenderer::Instance().OnFrame(
-                    pbvp::UiBridge::Instance().ReadForRenderThread());
+            if (!loading_screen && !present_boundary_logged) {
+                PBVP_LOG_INFO("xNVSE frame-present callback active; drawing is disabled at this boundary");
+                present_boundary_logged = true;
             }
             break;
         }
