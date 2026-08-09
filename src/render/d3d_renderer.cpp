@@ -219,20 +219,9 @@ bool D3dRenderer::Draw(IDirect3DDevice9* device, const UiRectSnapshot& ui_rect) 
     }
 
     IDirect3DStateBlock9* state = nullptr;
-    IDirect3DSurface9* render_target = nullptr;
-    IDirect3DSurface9* depth_surface = nullptr;
     if (FAILED(device->CreateStateBlock(D3DSBT_ALL, &state)) || state == nullptr) {
         return false;
     }
-    if (FAILED(state->Capture())) {
-        state->Release();
-        return false;
-    }
-    if (FAILED(device->GetRenderTarget(0u, &render_target)) || render_target == nullptr) {
-        state->Release();
-        return false;
-    }
-    device->GetDepthStencilSurface(&depth_surface);
 
     const std::array<Vertex, 4> vertices{{
         {pixels.left - 0.5f, pixels.top - 0.5f, 0.0f, 1.0f, 0xFFFFFFFFu, 0.0f, 0.0f},
@@ -265,16 +254,8 @@ bool D3dRenderer::Draw(IDirect3DDevice9* device, const UiRectSnapshot& ui_rect) 
         D3DPT_TRIANGLESTRIP, 2u, vertices.data(), sizeof(Vertex));
 
     const HRESULT apply_result = state->Apply();
-    const HRESULT render_target_result = device->SetRenderTarget(0u, render_target);
-    render_target->Release();
-    HRESULT depth_result = D3D_OK;
-    if (depth_surface != nullptr) {
-        depth_result = device->SetDepthStencilSurface(depth_surface);
-        depth_surface->Release();
-    }
     state->Release();
-    return SUCCEEDED(draw_result) && SUCCEEDED(apply_result) &&
-           SUCCEEDED(render_target_result) && SUCCEEDED(depth_result);
+    return SUCCEEDED(draw_result) && SUCCEEDED(apply_result);
 }
 
 void D3dRenderer::LogDeviceProfile(IDirect3DDevice9* device) noexcept {

@@ -72,6 +72,18 @@ Reason: the legacy XML image system has no planned interface for a live FFmpeg t
 
 The first fullscreen 1920x1080 VNV Extended test verified a visible draw and coordinate conversion. This decision remains provisional until layer order, state isolation, device recovery, and the remaining compatibility matrix pass.
 
+### Leave render targets untouched
+
+Date: August 9, 2026
+
+Decision: the screen-space draw must not rebind the current render target or depth surface because it never changes either object. Restore only the pipeline state changed by the plugin through a one-use `D3DSBT_ALL` state block.
+
+Evidence: Microsoft documents that `SetRenderTarget` resets the viewport to the full size of the target. Rebinding the unchanged target after `state->Apply()` could overwrite the viewport that the state block had just restored. Microsoft also documents that `CreateStateBlock` captures the selected state immediately.
+
+Rejected alternative: rebinding the original surfaces and then manually restoring the viewport adds calls and still risks missing another coupled state. If a future path changes render targets, it will need a separate reviewed restoration sequence.
+
+Consequence: the Alt+Tab and state-isolation tests will use the corrected path. The first 300-frame timing remains a baseline for the older redundant sequence and will be measured again.
+
 ### xNVSE frame-present boundary
 
 Date: August 9, 2026

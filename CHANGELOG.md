@@ -11,6 +11,7 @@
 - Added one-time diagnostics for game-thread UI polling, MapMenu lookup, frame presentation, and D3D device discovery.
 - Corrected the native height and width trait IDs and now source them from the official xNVSE `Tile` definitions.
 - Resolved the logical UI canvas from the bounded MapMenu ancestor chain instead of assuming the menu root has screen dimensions.
+- Removed untouched render-target and depth-surface rebinds that could reset the restored Direct3D viewport.
 - Added a reset-hook probe that rejects occupied or unknown function entries before MinHook can patch them.
 - Added checked dependency downloads for xNVSE 6.4.5 and MinHook 1.3.4.
 - Added host tests, Win32 tests, DLL export checks, and PE architecture checks.
