@@ -2,6 +2,8 @@
 
 #include "pbvp/log.hpp"
 
+#include "nvse/GameTiles.h"
+
 #include <Windows.h>
 
 #include <array>
@@ -16,11 +18,11 @@ constexpr std::uintptr_t kTileMenuArrayPointer = 0x011F350Cu;
 constexpr std::uintptr_t kMenuVisibilityArray = 0x011F308Fu;
 constexpr std::uint32_t kMenuTypeMin = 0x3E9u;
 constexpr std::uint32_t kMapMenuType = 0x3FFu;
-constexpr std::uint32_t kValueX = 0x0FA1u;
-constexpr std::uint32_t kValueY = 0x0FA2u;
-constexpr std::uint32_t kValueVisible = 0x0FA3u;
-constexpr std::uint32_t kValueHeight = 0x0FAFu;
-constexpr std::uint32_t kValueWidth = 0x0FB0u;
+constexpr std::uint32_t kValueX = ::Tile::kTileValue_x;
+constexpr std::uint32_t kValueY = ::Tile::kTileValue_y;
+constexpr std::uint32_t kValueVisible = ::Tile::kTileValue_visible;
+constexpr std::uint32_t kValueHeight = ::Tile::kTileValue_height;
+constexpr std::uint32_t kValueWidth = ::Tile::kTileValue_width;
 constexpr std::size_t kMaxTileValues = 4096;
 constexpr std::size_t kMaxTilesVisited = 512;
 constexpr std::size_t kMaxParentDepth = 64;

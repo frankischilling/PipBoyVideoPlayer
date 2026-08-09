@@ -32,6 +32,8 @@ The installed Pip-Boy UI Tweaks registrations and UIO's bundled author instructi
 
 The second VNV Extended run confirmed the correction. UIO logged both `Adding to 'Main\map_menu.xml' @ MM_MainRect` and `Injecting 'PipBoyVideoPlayer\Player.xml' @ MM_MainRect`. No checkerboard appeared, and the plugin logged no resolved rectangle or Direct3D activity. UIO composition is therefore working, while the native tile bridge or its upstream frame callbacks still need diagnosis.
 
+The diagnostic run confirmed that game-thread polling, non-loading frame presentation, native Direct3D 9 device discovery, MapMenu visibility, and `PBVP_VideoRect` lookup all work. Rectangle resolution stopped at the height and width traits. The copied trait constants were one slot early because Fallout's standard trait enumeration skips `0xFA5`. The bridge now uses `Tile::kTileValue_height` and `Tile::kTileValue_width` from the official xNVSE 6.4.5 headers instead of local numeric copies.
+
 ## FFmpeg
 
 The [FFmpeg library documentation](https://www.ffmpeg.org/doxygen/trunk/index.html) assigns container I/O and demuxing to `libavformat`, decoding to `libavcodec`, scaling and pixel conversion to `libswscale`, and audio conversion to `libswresample`. Library major versions may include incompatible API changes, so the build must pin and validate a specific set.

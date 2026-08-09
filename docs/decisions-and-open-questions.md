@@ -42,6 +42,16 @@ Consequence: a missing UIO add or inject entry is a failed acceptance check, eve
 
 Verification: the next VNV Extended run logged both the add and inject operations for `Player.xml` at `MM_MainRect`. The prefab still did not reach a visible native draw, so this closes only the registration-format defect.
 
+### Official UI trait identifiers
+
+Date: August 9, 2026
+
+Decision: source standard UI trait identifiers from xNVSE's `Tile` definitions. Do not copy their numeric values into the bridge.
+
+Evidence: a diagnostic run found `PBVP_VideoRect` but reported that its height or width trait was unavailable. The local constants were one position early because the game enumeration skips `0xFA5`. This made the bridge query `target` and `height` instead of `height` and `width`.
+
+Consequence: the corrected build still needs a visible draw test. Custom trait names, when introduced, will be resolved through the game trait registry instead of assigned guessed identifiers.
+
 ### Native screen-space draw
 
 Decision: let XML define the rectangle, then let the native renderer draw the decoded texture into that screen-space region.
