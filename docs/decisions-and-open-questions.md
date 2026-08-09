@@ -12,9 +12,9 @@ Cost: a decoder and graphics hook inside a 32-bit game increase crash and licens
 
 ### Documentation before implementation
 
-Decision: keep this repository documentation-only until the phase-one work is approved.
+Decision: the documentation-only period ended on August 9, 2026. Phase 1 implementation may proceed from the recorded VNV inspection and source research.
 
-Reason: the render location, UI bridge, device-reset behavior, and VNV conflicts decide whether the design is viable. Decoder code would not answer those questions.
+Reason: the render location, UI bridge, device-reset behavior, and VNV conflicts still decide whether the design is viable. The repository now has enough evidence to build and test that spike before decoder work.
 
 ### Data-page entry
 
@@ -35,6 +35,40 @@ Decision: let XML define the rectangle, then let the native renderer draw the de
 Reason: the legacy XML image system has no planned interface for a live FFmpeg texture. Keeping coordinates in XML preserves layout flexibility.
 
 This decision is provisional until phase one proves render ordering and coordinate conversion.
+
+### xNVSE frame-present boundary
+
+Date: August 9, 2026
+
+Decision: draw from xNVSE 6.4.5's `kMessage_OnFramePresent` notification and ignore notifications marked as loading screens.
+
+Evidence: xNVSE dispatches the notification immediately before the engine presentation call from its main-loop and loading-screen patches. The callback therefore runs at a known render-thread boundary without another patch at `Present` or `EndScene`.
+
+Rejected alternatives: a root `d3d9.dll` proxy would conflict with common wrappers. Rewriting the live device vtable is unsafe when another graphics plugin owns it. An independent `Present` detour would duplicate a boundary that xNVSE already provides.
+
+Consequence: Phase 1 needs no presentation hook. It still needs measured proof that this boundary has the required Pip-Boy draw order under native Direct3D 9 and any claimed DXVK configuration.
+
+### Verified reset hook only
+
+Date: August 9, 2026
+
+Decision: use a pinned MinHook 1.3.4 detour on `NiDX9Renderer::Recreate` only after an exact runtime signature check accepts the original function entry. Refuse rendering for the session if the entry is already redirected or its bytes are unknown.
+
+Evidence: maintained Fallout NV graphics code identifies `NiDX9Renderer::Recreate` as the engine boundary for device recreation. Direct3D requires default-pool resources to be released before `Reset`, so detecting loss after presentation is not sufficient.
+
+Rejected alternatives: hooking the Direct3D device `Reset` vtable entry has the same live-vtable ownership problem as a `Present` hook. Guessing through an occupied entry point cannot provide a safe chain order.
+
+Consequence: the first diagnostic build will record the local prologue and keep the reset hook disabled until that prologue is added to the supported signature table. Unknown or occupied entries fail closed.
+
+### Private development licensing
+
+Date: August 9, 2026
+
+Decision: original work remains all rights reserved during private development. The repository and release candidate remain private. No public binary or public source release will be made until the owner selects a project license and the exact FFmpeg build receives a distribution review.
+
+Reason: this permits the requested private implementation and testing without making a license choice on the owner's behalf.
+
+Consequence: dependency notices and build records will be complete in the private candidate, but publication remains an explicit approval gate.
 
 ### Audio as master clock
 
@@ -62,13 +96,12 @@ Reason: the player should be safe to add or remove and should not leave missing 
 
 ## Open questions before phase one
 
-1. Which game render function provides the correct order relative to Pip-Boy menu drawing?
-2. Can an existing maintained hook framework chain safely at that location, or does the project need a small local hook layer?
-3. How will the plugin obtain and verify the Direct3D device without a root proxy DLL?
-4. What coordinate transforms are required between UI tile space and the backbuffer for each aspect ratio?
-5. Does DXVK preserve the selected D3D9 behavior and Reset path?
-6. Which Pip-Boy replacers retain the same menu coordinate contract?
-7. Can the UI provide a clean Data entry without editing scripts or requiring an ESP?
+1. Does the xNVSE frame-present boundary place the draw at the correct depth relative to every required Pip-Boy layout?
+2. What is the verified local prologue for `NiDX9Renderer::Recreate`?
+3. What coordinate transforms are required between UI tile space and the backbuffer for each aspect ratio?
+4. Does DXVK preserve the selected D3D9 behavior and Reset path?
+5. Which Pip-Boy replacers retain the same menu coordinate contract?
+6. Can the UI provide a clean Data entry without editing scripts or requiring an ESP?
 
 ## Open questions before phase two
 

@@ -4,8 +4,8 @@ This register tracks failures that can change the architecture, support promise,
 
 | Risk | Probability | Impact | Current response | Trigger or evidence | Phase owner |
 | --- | --- | --- | --- | --- | --- |
-| No safe Pip-Boy render point exists | Medium | Project-blocking | Run the render and UIO spike before decoder work | State leaks, wrong layer, unstable signature, or an unchainable hook | Phase 1 |
-| Direct3D device reset conflicts with another plugin | Medium | High | Own reset lifecycle, release default-pool resources, test hook occupation and chaining | Failed Reset, black texture after Alt+Tab, or crash in another hook | Phase 1 |
+| No safe Pip-Boy render point exists | Low to medium | Project-blocking | Test xNVSE's frame-present notification before decoder work | State leaks, wrong layer, or a draw behind the Pip-Boy screen | Phase 1 |
+| Direct3D device reset conflicts with another plugin | Medium | High | Verify the engine recreation prologue, fail closed if occupied, and release default-pool resources before recreation | Unknown bytes, an occupied entry point, failed Reset, black texture after Alt+Tab, or a crash in another hook | Phase 1 |
 | DXVK behaves differently from native D3D9 | Medium | High | Treat it as a separate graphics target and keep the upload path replaceable | Different device lifetime, texture lock failure, or state restoration bug | Phase 1 |
 | UI rectangle is not portable across Pip-Boy layouts | High | High | Keep coordinates in UIO XML and limit the supported replacer list | Missing traits, incorrect clipping, or controls outside the screen | Phases 1 and 5 |
 | FFmpeg consumes too much 32-bit address space | Medium | High | Cap dimensions, keep queues small, disable unused features, and measure virtual memory | Private bytes or address space grows past the agreed budget | Phase 2 |
@@ -15,7 +15,7 @@ This register tracks failures that can change the architecture, support promise,
 | Media files are invisible through MO2 custom I/O | Low to medium | High | Test Win32 file handles through the active USVFS session before locking the path contract | Catalog sees files but FFmpeg bridge cannot open them | Phase 2 |
 | Private FFmpeg DLLs collide with other mod DLLs | Low | High | Use absolute paths, restricted DLL search, version checks, and a private directory | Wrong module path or mismatched library major version at runtime | Phases 2 and 6 |
 | H.264 or AAC distribution terms block the planned package | Unknown | High | Review the exact build and intended distribution before public binaries | Counsel, host policy, or license review rejects the package | Phase 6 |
-| Project license conflicts with contributions or FFmpeg use | Medium | High | Select the project license before implementation contributions | A contribution arrives before rights and terms are clear | Before Phase 1 |
+| Project license conflicts with contributions or FFmpeg use | Medium | High | Keep private original work all rights reserved until the owner selects a license | A third-party contribution or public release is proposed before rights and terms are clear | Before publication |
 | Game updates or patchers change the executable layout | Low | High | Verify runtime identity and fail closed on unknown builds | Signature mismatch or new executable hash | Every release |
 | Rendering overhead harms large VNV lists | Medium | Medium | Keep conversion off the render thread and enforce the upload budget | Upload or state preservation exceeds the 95th-percentile target | Phases 1 and 4 |
 | Logs reveal private media information | Medium | Medium | Log basenames only, omit metadata comments and absolute paths by default | A normal log contains a user directory or embedded comment | Phases 4 and 6 |
