@@ -58,7 +58,7 @@ Evidence: maintained Fallout NV graphics code identifies `NiDX9Renderer::Recreat
 
 Rejected alternatives: hooking the Direct3D device `Reset` vtable entry has the same live-vtable ownership problem as a `Present` hook. Guessing through an occupied entry point cannot provide a safe chain order.
 
-Consequence: the first diagnostic build will record the local prologue and keep the reset hook disabled until that prologue is added to the supported signature table. Unknown or occupied entries fail closed.
+Consequence: the plugin accepts one relocation-free signature recovered from an independent Ghidra audit. It logs the live decrypted entry and installs the hook only after an exact match. Unknown or occupied entries fail closed.
 
 ### Private development licensing
 
@@ -97,7 +97,7 @@ Reason: the player should be safe to add or remove and should not leave missing 
 ## Open questions before phase one
 
 1. Does the xNVSE frame-present boundary place the draw at the correct depth relative to every required Pip-Boy layout?
-2. What is the verified local prologue for `NiDX9Renderer::Recreate`?
+2. Does the patched local executable expose the reviewed `NiDX9Renderer::Recreate` prologue after runtime decryption?
 3. What coordinate transforms are required between UI tile space and the backbuffer for each aspect ratio?
 4. Does DXVK preserve the selected D3D9 behavior and Reset path?
 5. Which Pip-Boy replacers retain the same menu coordinate contract?

@@ -17,9 +17,13 @@ namespace {
 
 constexpr std::uintptr_t kRendererRecreateAddress = 0x00E73EB0u;
 
-// Runtime code in the Steam executable is decrypted after process startup.
-// Add a signature here only after an in-process diagnostic capture is reviewed.
-constexpr std::array<HookBytes, 0> kSupportedRecreateSignatures{};
+// This relocation-free entry was independently recovered from the supported
+// 1.4.0.525 runtime. Runtime code is decrypted before DeferredInit, so the
+// live bytes must still match exactly before MinHook receives the target.
+constexpr std::array<HookBytes, 1> kSupportedRecreateSignatures{{
+    {0x83u, 0xECu, 0x38u, 0x56u, 0x57u, 0x8Bu, 0xF9u, 0x8Bu,
+     0x8Fu, 0x84u, 0x08u, 0x00u, 0x00u, 0x8Bu, 0x01u, 0x8Bu},
+}};
 
 using RecreateFunction = std::uint32_t(__thiscall*)(void*, std::uint32_t, std::uint32_t);
 RecreateFunction g_original_recreate = nullptr;

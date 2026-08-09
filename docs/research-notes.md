@@ -52,6 +52,8 @@ The xNVSE 6.4.5 source dispatches `kMessage_OnFramePresent` on the render thread
 
 The maintained [Psycho source](https://github.com/WallSoGB/psycho) identifies `NiDX9Renderer::DisplayScene` at `0x00E75000`, `NiDX9Renderer::Recreate` at `0x00E73EB0`, and the Direct3D device at renderer offset `0x288` for Fallout NV 1.4.0.525. Its comments warn against rewriting a live device vtable. These addresses are evidence for the supported Steam runtime, not permission to patch blindly. The plugin must verify the live bytes and device interface before use.
 
+Psycho's checked-in Ghidra audit records the `NiDX9Renderer::Recreate` entry as `SUB ESP,0x38; PUSH ESI; PUSH EDI; MOV EDI,ECX; MOV ECX,[EDI+0x884]; MOV EAX,[ECX]`. The corresponding relocation-free bytes are `83 EC 38 56 57 8B F9 8B 8F 84 08 00 00 8B 01 8B`. Its call-site audit also shows the two request values left on the stack before the call, which agrees with the maintained two-argument hook declaration. This exact 16-byte sequence is the first supported reset-hook signature. The plugin still logs and compares the decrypted live entry before installing MinHook.
+
 [MinHook 1.3.4](https://github.com/TsudaKageyu/minhook/releases/tag/v1.3.4), commit `c3fcafdc10146beb5919319d0683e44e3c30d537`, is the selected reset-hook dependency for the Phase 1 spike. It supports x86, has a small API surface, and uses the BSD 2-Clause license. The plugin will use it only after its own signature and conflict checks accept the original `NiDX9Renderer::Recreate` entry point.
 
 The current xNVSE source was inspected at commit `625db7e60007fbcceab755650ed479b5c337717c`. The installed 6.4.5 release corresponds to commit `fa1ab4d0d49516ebcc7a69e5d6e075976acca061`. The current Fallout Shader Loader source was inspected at commit `12fdf8d84a8f54763625091f37d538e0bbca988f`, and Psycho was inspected at commit `22b0030cd48d190a0cd9a0b4a945ebc2585b338e`.
@@ -73,7 +75,7 @@ Inference to test: media enumeration and the custom FFmpeg I/O bridge see files 
 ## Research still needed
 
 - the exact Pip-Boy menu draw order and tile-to-backbuffer transform;
-- the live `NiDX9Renderer::Recreate` prologue in the patched local executable;
+- confirmation that the patched local executable exposes the reviewed `NiDX9Renderer::Recreate` prologue after runtime decryption;
 - native Direct3D 9 and DXVK reset behavior at the selected frame boundary;
 - XAudio2 version behavior on the minimum Windows target;
 - a reproducible minimal FFmpeg x86 build;
