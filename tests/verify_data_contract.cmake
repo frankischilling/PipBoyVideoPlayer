@@ -15,9 +15,18 @@ if(NOT registration_text STREQUAL expected_registration)
 endif()
 
 file(READ "${prefab}" prefab_text)
-foreach(required_name IN ITEMS PBVP_Root PBVP_VideoRect)
+foreach(required_name IN ITEMS
+        PBVP_Root
+        PBVP_VideoRect
+        PBVP_LayerProbeBackground
+        PBVP_LayerProbe)
     string(FIND "${prefab_text}" "name=\"${required_name}\"" match_offset)
     if(match_offset EQUAL -1)
         message(FATAL_ERROR "UI prefab is missing ${required_name}")
     endif()
 endforeach()
+
+string(FIND "${prefab_text}" "PBVP UI LAYER" layer_probe_offset)
+if(layer_probe_offset EQUAL -1)
+    message(FATAL_ERROR "UI prefab is missing the visible layer-probe text")
+endif()

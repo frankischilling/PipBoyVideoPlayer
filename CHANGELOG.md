@@ -6,7 +6,8 @@
 - Added xNVSE lifecycle logging and a render-thread callback through `kMessage_OnFramePresent`.
 - Added a UIO prefab with a named video rectangle and a game-thread bridge that publishes rectangle snapshots.
 - Added the unconditional UIO registration condition required to inject the prefab.
-- Added a Direct3D 9 checkerboard renderer with full state capture and explicit render-target restoration.
+- Added a Direct3D 9 checkerboard renderer with full state capture and bounded default-pool resource ownership.
+- Added an overlapping UIO label for testing whether XML controls render above the native video draw.
 - Added device-profile, texture-upload, draw-cost, and device-recreation diagnostics for compatibility testing.
 - Added one-time diagnostics for game-thread UI polling, MapMenu lookup, frame presentation, and D3D device discovery.
 - Corrected the native height and width trait IDs and now source them from the official xNVSE `Tile` definitions.
