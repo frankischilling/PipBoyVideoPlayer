@@ -1,1 +1,2 @@
 PipBoyVideoPlayer\Player.xml::MapMenu::MM_MainRect
+true

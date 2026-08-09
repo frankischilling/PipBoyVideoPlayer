@@ -28,6 +28,18 @@ Decision: inject a prefab through UIO and do not overwrite a complete menu XML f
 
 Reason: UIO exists to compose UI extensions and is already in the VNV baseline.
 
+### Corrected UIO registration record
+
+Date: August 9, 2026
+
+Decision: retain the `MapMenu::MM_MainRect` target for the Phase 1 prefab and add the required `true` condition line. Keep the UIO composition design.
+
+Evidence: the first in-game test showed that UIO found the registration and prefab but did not add them to the map menu. UIO's bundled author instructions define each public entry as a target line followed by a condition line and recommend `true` for an unconditional entry. The working Mojave Radio Captions registration follows that format. The plugin log consequently contained no rectangle or Direct3D activity.
+
+Rejected alternatives: adding another path component does not match UIO's three-part public entry format. Replacing the complete map menu would bypass UIO but violate the compatibility design.
+
+Consequence: the corrected registration still needs verification with the Extended and base UI stacks. A missing UIO add or inject entry is now a failed acceptance check, even if the plugin DLL loads normally.
+
 ### Native screen-space draw
 
 Decision: let XML define the rectangle, then let the native renderer draw the decoded texture into that screen-space region.

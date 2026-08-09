@@ -78,6 +78,12 @@ if(PBVP_BUILD_PLUGIN)
 endif()
 
 if(PBVP_BUILD_TESTS)
+    add_test(
+        NAME pbvp_data_contract_test
+        COMMAND ${CMAKE_COMMAND}
+            -DPBVP_SOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -P ${CMAKE_SOURCE_DIR}/tests/verify_data_contract.cmake)
+
     add_executable(pbvp_tests
         tests/hook_probe_tests.cpp
         tests/rect_math_tests.cpp

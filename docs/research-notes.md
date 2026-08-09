@@ -28,7 +28,7 @@ The [UIO documentation](https://www.nexusmods.com/newvegas/mods/57174) says it r
 
 Inference to test: a prefab can expose a stable rectangle and controls inside the Pip-Boy Data flow across the required UI variants. UIO solves XML composition, but it does not by itself solve native texture placement or draw order.
 
-The installed Pip-Boy UI Tweaks registration files confirm UIO's target syntax. A line such as `PipBoyVideoPlayer\Player.xml::MapMenu::MM_MainRect` injects the prefab below the named tile without replacing the complete menu. The injected prefab will expose `PBVP_Root` and `PBVP_VideoRect` for native lookup.
+The installed Pip-Boy UI Tweaks registrations and UIO's bundled author instructions confirm the public registration format. The first Phase 1 test used the correct target line, `PipBoyVideoPlayer\Player.xml::MapMenu::MM_MainRect`, but omitted the required condition line below it. UIO found the registration and prefab but did not add them. Its log contained a check entry without a matching add or inject entry, and `PBVP_Root` was absent from generated menu XML. The corrected record retains the target and adds `true` on the second line. A new in-game run must confirm the correction before the injection is treated as portable.
 
 ## FFmpeg
 
