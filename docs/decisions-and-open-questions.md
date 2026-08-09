@@ -144,6 +144,18 @@ Rejected alternative: continue trying frame-wide calls between `Main::Render` an
 
 Consequence: Phase 1 will use the named UIO image as the presentation owner. The next spike must validate the maintained `TileImage` to `NiTexture` to `NiDX9TextureData` chain, prove thread identity, and update only a private texture. The direct checkerboard renderer remains useful as measured evidence but is no longer a release path.
 
+### Deferred private image load
+
+Date: August 9, 2026
+
+Decision: keep the UIO-owned image, but refresh its private filename once through the reviewed `Tile::SetStringValue` function after the live MapMenu is available. If the tile already contains the expected filename, the bridge clears and restores that trait so the engine sees a real value change. Both calls run on the game thread. The render callback remains read-only toward game objects.
+
+Evidence: the first engine-image run showed `PBVP UI LAYER`, the normal Pip-Boy frame, and usable controls. The plugin found `PBVP_VideoSurface`, verified it as a `TileImage`, and confirmed that the game and Direct3D callbacks share one operating-system thread. Its texture reference at offset `0x3C` remained null across repeated Pip-Boy openings. A separate 32-bit `D3DXGetImageInfoFromFileInMemory` check accepted the packaged DDS as a 256x256, one-level `A8R8G8B8` texture, so the file is not rejected by the game version's DirectX image parser.
+
+Rejected alternatives: the plugin will not write an engine reference-counted field, reuse a shared UI texture, or call the less-understood `TileImage::SetTexture` routine. Changing the DDS header without evidence would not address the verified DirectX result.
+
+Consequence: the next build will verify the filename trait, issue one bounded refresh per live surface, and compare the private image with a known UIO probe image when loading still fails. If the engine still leaves the reference null, the log will distinguish a filename propagation failure from a wrong native field interpretation.
+
 ### Verified reset hook only
 
 Date: August 9, 2026

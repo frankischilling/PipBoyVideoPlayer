@@ -84,7 +84,7 @@ The plugin recorded successful draws and ten 300-frame timing samples. Average c
 
 ### Engine-owned UIO surface candidate
 
-Status: awaiting in-game test
+First run: filename declared, texture reference unavailable
 
 The candidate package adds a private 256x256 BGRA DDS as `PBVP_VideoSurface`. Gamebryo owns and draws this image in the prefab layer order. The plugin follows the reviewed `TileImage` texture chain, takes a temporary Direct3D reference, verifies the device and surface description, updates the pixels, and releases the reference before returning. It no longer draws a primitive or patches the rejected normal-frame call.
 
@@ -96,6 +96,10 @@ The first test has four distinct outcomes:
 - The normal Pip-Boy frame and controls should remain visible and usable.
 
 This run must also confirm that the plugin reports matching game and Direct3D callback thread IDs. It is only a layer-order and texture-chain test. It does not complete the reset, resolution, base-profile, or DXVK matrix.
+
+The first run displayed `PBVP UI LAYER` near the upper-left of the Pip-Boy. The normal frame and controls stayed visible and usable. Neither the private surface nor the green checkerboard appeared. The plugin found the named `TileImage`, confirmed matching game and Direct3D callback thread IDs, and then reported `TileImage texture unavailable` across repeated openings.
+
+The packaged DDS passed the 32-bit DirectX 9 image-info call used by this game build. The next candidate clears and restores the same private filename through `Tile::SetStringValue` after MapMenu becomes live. It will also report whether a known probe image has a non-null field at the reviewed texture offset.
 
 ## Required profiles
 

@@ -90,6 +90,14 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
         const auto status = static_cast<std::uint32_t>(surface.status) + 1u;
         if (last_surface_status_ != status && error_count_++ < 8u) {
             PBVP_LOG_WARN("Pip-Boy engine texture unavailable: %s", UiSurfaceStatusName(surface.status));
+            if (surface.status == UiSurfaceStatus::texture_unavailable) {
+                PBVP_LOG_INFO(
+                    "UI image field check at upload: target[3C]=0x%08X target[40]=0x%08X reference[3C]=0x%08X reference[40]=0x%08X",
+                    static_cast<unsigned>(surface.surface_texture_member),
+                    static_cast<unsigned>(surface.surface_shader_member),
+                    static_cast<unsigned>(surface.reference_texture_member),
+                    static_cast<unsigned>(surface.reference_shader_member));
+            }
         }
         last_surface_status_ = status;
         last_surface_ = 0u;

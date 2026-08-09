@@ -56,7 +56,7 @@ The player owns its XAudio2 engine and voices unless an implementation spike fin
 
 ### Renderer
 
-The renderer receives BGRA frames and uploads them on the game render thread. UIO loads a private, uncompressed DDS into `PBVP_VideoSurface`. The bridge validates the `TileImage`, `NiTexture`, `NiDX9TextureData`, and `IDirect3DTexture9` chain before each new surface is used. It also verifies dimensions, format, pool, device identity, and the shared game and render thread identity.
+The renderer receives BGRA frames and uploads them on the game render thread. UIO declares a private, uncompressed DDS for `PBVP_VideoSurface`. After the live MapMenu is available, the game-thread bridge verifies the filename trait and performs one bounded clear-and-restore through the reviewed `Tile::SetStringValue` function if the image still has no texture. The bridge then validates the `TileImage`, `NiTexture`, `NiDX9TextureData`, and `IDirect3DTexture9` chain before each new surface is used. It also verifies dimensions, format, pool, device identity, and the shared game and render thread identity.
 
 The renderer locks the engine-owned texture, copies rows using the returned Direct3D pitch, and releases its temporary COM reference before returning. It does not bind the texture or issue a primitive draw, so Gamebryo retains its normal UI render state and draws the surface in XML order. An upload at the final frame callback becomes visible on the next rendered frame. Frame selection must include that one-frame presentation offset.
 
@@ -66,7 +66,7 @@ The plugin does not retain ownership of the UI texture across callbacks. The eng
 
 UIO injects a prefab into the selected Pip-Boy menu. The prefab owns the video rectangle, engine image, focus region, labels, control prompts, and state traits. The engine image places video between the Pip-Boy screen and the controls without requiring a frame-wide overlay.
 
-The native bridge resolves the named image and follows the reviewed engine texture layout to its Direct3D resource. Gamebryo owns the texture and draws it. The plugin only updates its pixels while the image is live.
+The native bridge resolves the named image and follows the reviewed engine texture layout to its Direct3D resource. It may set the private filename through the standard tile string setter on the game thread, but it does not write the image's reference-counted fields. Gamebryo owns the texture and draws it. The plugin only updates its pixels while the image is live.
 
 The bridge must prove three things before decoder work begins:
 

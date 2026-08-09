@@ -26,9 +26,12 @@ constexpr std::uint32_t kValueY = ::Tile::kTileValue_y;
 constexpr std::uint32_t kValueVisible = ::Tile::kTileValue_visible;
 constexpr std::uint32_t kValueHeight = ::Tile::kTileValue_height;
 constexpr std::uint32_t kValueWidth = ::Tile::kTileValue_width;
+constexpr std::uint32_t kValueFilename = ::Tile::kTileValue_filename;
 constexpr std::size_t kMaxTileValues = 4096;
 constexpr std::size_t kMaxTilesVisited = 512;
 constexpr std::size_t kMaxParentDepth = 64;
+constexpr std::uint32_t kMaxSurfaceRefreshes = 8u;
+constexpr char kSurfaceFilename[] = "Interface\\PipBoyVideoPlayer\\Surface.dds";
 
 enum class ResolveStatus : std::uint32_t {
     kMapHidden = 1u,
@@ -146,6 +149,9 @@ bool TileHasName(const Tile* tile, const char* expected) noexcept {
 }
 
 Tile* FindDescendant(Tile* root, const char* name) noexcept {
+    if (root == nullptr || name == nullptr) {
+        return nullptr;
+    }
     std::array<Tile*, kMaxTilesVisited> pending{};
     std::size_t pending_count = 0;
     pending[pending_count++] = root;
@@ -168,6 +174,52 @@ Tile* FindDescendant(Tile* root, const char* name) noexcept {
         }
     }
     return nullptr;
+}
+
+TileImage* FindFirstTexturedImage(Tile* root, const Tile* excluded) noexcept {
+    if (root == nullptr) {
+        return nullptr;
+    }
+    std::array<Tile*, kMaxTilesVisited> pending{};
+    std::size_t pending_count = 0;
+    pending[pending_count++] = root;
+    std::size_t visited = 0;
+
+    while (pending_count > 0 && visited++ < kMaxTilesVisited) {
+        Tile* current = pending[--pending_count];
+        if (current != excluded &&
+            reinterpret_cast<std::uintptr_t>(current->vtable) == kTileImageVtable) {
+            auto* image = reinterpret_cast<TileImage*>(current);
+            if (image->texture != nullptr) {
+                return image;
+            }
+        }
+
+        ListNode* list_node = &current->children;
+        std::size_t sibling_guard = 0;
+        while (list_node != nullptr && sibling_guard++ < kMaxTilesVisited) {
+            auto* child_node = static_cast<ChildNode*>(list_node->data);
+            if (child_node != nullptr && child_node->child != nullptr &&
+                pending_count < pending.size()) {
+                pending[pending_count++] = child_node->child;
+            }
+            list_node = list_node->next;
+        }
+    }
+    return nullptr;
+}
+
+bool StringValueEquals(const TileValue* value, const char* expected) noexcept {
+    if (value == nullptr || value->string == nullptr || expected == nullptr) {
+        return false;
+    }
+    const std::size_t expected_length = std::strlen(expected);
+    for (std::size_t index = 0; index <= expected_length; ++index) {
+        if (value->string[index] != expected[index]) {
+            return false;
+        }
+    }
+    return true;
 }
 
 const char* ResolveStatusName(const ResolveStatus status) noexcept {
@@ -331,6 +383,7 @@ void UiBridge::UpdateOnGameThread() noexcept {
                 snapshot.ui_extent.width, snapshot.ui_extent.height);
             found_logged_ = true;
         }
+        RefreshSurfaceTextureOnGameThread();
     } else {
         snapshot.visible = false;
         if (status != ResolveStatus::kMapHidden) {
@@ -346,6 +399,66 @@ void UiBridge::UpdateOnGameThread() noexcept {
         }
     }
     Publish(snapshot);
+}
+
+void UiBridge::RefreshSurfaceTextureOnGameThread() noexcept {
+    __try {
+        auto*** menu_array_pointer = reinterpret_cast<Tile***>(kTileMenuArrayPointer);
+        if (menu_array_pointer == nullptr || *menu_array_pointer == nullptr) {
+            return;
+        }
+        Tile* menu_root = (*menu_array_pointer)[kMapMenuType - kMenuTypeMin];
+        if (menu_root == nullptr) {
+            return;
+        }
+        Tile* surface = FindDescendant(menu_root, "PBVP_VideoSurface");
+        if (surface == nullptr ||
+            reinterpret_cast<std::uintptr_t>(surface->vtable) != kTileImageVtable) {
+            return;
+        }
+        auto* image = reinterpret_cast<TileImage*>(surface);
+        if (image->texture != nullptr ||
+            last_refreshed_surface_ == reinterpret_cast<std::uintptr_t>(surface)) {
+            return;
+        }
+        if (surface_refresh_count_ >= kMaxSurfaceRefreshes) {
+            if (!surface_refresh_limit_logged_) {
+                PBVP_LOG_WARN("Private UI surface filename refresh limit reached");
+                surface_refresh_limit_logged_ = true;
+            }
+            return;
+        }
+
+        TileValue* filename = FindValue(surface, kValueFilename);
+        if (filename == nullptr) {
+            PBVP_LOG_WARN("PBVP_VideoSurface has no filename trait to refresh");
+            last_refreshed_surface_ = reinterpret_cast<std::uintptr_t>(surface);
+            return;
+        }
+        const bool filename_matches = StringValueEquals(filename, kSurfaceFilename);
+        TileImage* reference = FindFirstTexturedImage(menu_root, surface);
+        PBVP_LOG_INFO(
+            "UI image field check before filename refresh: target[3C]=0x%08X target[40]=0x%08X reference[3C]=0x%08X reference[40]=0x%08X",
+            static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(image->texture)),
+            static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(image->shader_property)),
+            static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(
+                reference != nullptr ? reference->texture : nullptr)),
+            static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(
+                reference != nullptr ? reference->shader_property : nullptr)));
+
+        last_refreshed_surface_ = reinterpret_cast<std::uintptr_t>(surface);
+        ++surface_refresh_count_;
+        auto* game_tile = reinterpret_cast<::Tile*>(surface);
+        if (filename_matches) {
+            CALL_MEMBER_FN(game_tile, SetStringValue)(kValueFilename, "", true);
+        }
+        CALL_MEMBER_FN(game_tile, SetStringValue)(kValueFilename, kSurfaceFilename, true);
+        PBVP_LOG_INFO(
+            "Private UI surface filename refreshed on the game thread; prior filename=%s request=%u",
+            filename_matches ? "expected" : "different", surface_refresh_count_);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        PBVP_LOG_ERROR("Guarded private UI surface filename refresh failed");
+    }
 }
 
 UiSurfaceSnapshot UiBridge::ResolveSurfaceOnSharedThread(
@@ -382,8 +495,17 @@ UiSurfaceSnapshot UiBridge::ResolveSurfaceOnSharedThread(
             return output;
         }
         auto* image = reinterpret_cast<TileImage*>(surface);
+        output.surface_texture_member = reinterpret_cast<std::uintptr_t>(image->texture);
+        output.surface_shader_member = reinterpret_cast<std::uintptr_t>(image->shader_property);
         auto* texture = static_cast<NiTextureLayout*>(image->texture);
         if (texture == nullptr) {
+            TileImage* reference = FindFirstTexturedImage(menu_root, surface);
+            if (reference != nullptr) {
+                output.reference_texture_member =
+                    reinterpret_cast<std::uintptr_t>(reference->texture);
+                output.reference_shader_member =
+                    reinterpret_cast<std::uintptr_t>(reference->shader_property);
+            }
             output.status = UiSurfaceStatus::texture_unavailable;
             return output;
         }
@@ -445,6 +567,7 @@ void UiBridge::Clear() noexcept {
     found_logged_ = false;
     map_visible_logged_ = false;
     last_failure_ = 0u;
+    last_refreshed_surface_ = 0u;
 }
 
 void UiBridge::Publish(const UiRectSnapshot& snapshot) noexcept {

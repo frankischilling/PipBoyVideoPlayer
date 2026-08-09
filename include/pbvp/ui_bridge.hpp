@@ -32,6 +32,10 @@ enum class UiSurfaceStatus : std::uint32_t {
 
 struct UiSurfaceSnapshot {
     std::uintptr_t d3d_texture{};
+    std::uintptr_t surface_texture_member{};
+    std::uintptr_t surface_shader_member{};
+    std::uintptr_t reference_texture_member{};
+    std::uintptr_t reference_shader_member{};
     UiSurfaceStatus status{UiSurfaceStatus::image_unavailable};
 };
 
@@ -48,6 +52,7 @@ public:
 
 private:
     UiBridge() = default;
+    void RefreshSurfaceTextureOnGameThread() noexcept;
     void Publish(const UiRectSnapshot& snapshot) noexcept;
 
     std::atomic<std::uint32_t> sequence_{0};
@@ -64,6 +69,9 @@ private:
     bool map_visible_logged_{};
     std::uint32_t last_failure_{};
     bool found_logged_{};
+    std::uintptr_t last_refreshed_surface_{};
+    std::uint32_t surface_refresh_count_{};
+    bool surface_refresh_limit_logged_{};
 };
 
 } // namespace pbvp
