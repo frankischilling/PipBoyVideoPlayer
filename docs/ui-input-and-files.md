@@ -4,10 +4,16 @@
 
 The preferred layout adds `VIDEOS` to the Data section instead of adding a fourth top-level Pip-Boy tab. A Data entry is less likely to collide with replacers that assume the Stats, Items, and Data tabs are fixed.
 
-Selecting `VIDEOS` opens a two-part page:
+Selecting `VIDEOS` opens a scrollable catalog. Starting a video replaces the
+catalog with a playback stage that fills the usable Pip-Boy glass. The physical
+Pip-Boy frame remains visible. Title, time, state, and control prompts appear as
+a small overlay while paused or after input, then clear from the picture.
 
-- a scrollable file list;
-- a player area with the video rectangle, title, time, state, and control prompts.
+This playback layout follows the useful visual cue from Pip-Flicks 3000: the
+picture belongs on the Pip-Boy display, not in a small permanent side panel.
+Pip-Flicks remains a design and compatibility reference rather than a runtime
+dependency. Pip-Boy Video Player keeps its ESP-less UIO entry and native media
+pipeline.
 
 The exact injection target must be verified against vanilla UI, Vanilla UI Plus, Clean Vanilla HUD, and Pip-Boy UI Tweaks. UIO registration owns the prefab insertion. The package must not overwrite a full menu XML file.
 
@@ -27,6 +33,12 @@ The injected prefab exposes named traits for the native plugin:
 Names and numeric state values become a versioned bridge between XML and the DLL. Changing them after release needs a bridge version bump and a compatibility check at startup.
 
 The native plugin treats missing or malformed traits as a disabled UI. It logs the missing name and shows one short message through a safe existing menu path. It does not guess screen coordinates.
+
+The playback stage defines the largest safe rectangle inside the active
+Pip-Boy glass. Aspect fit may leave bars inside that rectangle. Aspect fill may
+crop the source, but it must never draw over the physical Pip-Boy frame. UI
+variants and handheld replacers may supply different named bounds through their
+prefabs.
 
 ## Controls
 
@@ -49,7 +61,10 @@ Controller prompts must come from the active input method. Mouse movement should
 
 ## Focus and menu behavior
 
-The list owns focus while idle. Starting playback moves focus to the player controls. Stop returns focus to the selected catalog entry. Back from the catalog returns to the Data page.
+The list owns focus while idle. Starting playback moves focus to the playback
+stage and remembers the selected catalog entry. Stop returns to that entry.
+Controls fade when they are not needed, but focus stays with the playback stage
+until playback stops. Back from the catalog returns to the Data page.
 
 Closing the Pip-Boy always stops playback. Switching to another Pip-Boy page also stops it. Modal confirmation dialogs pause playback and restore focus when dismissed.
 

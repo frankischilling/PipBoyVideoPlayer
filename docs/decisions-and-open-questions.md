@@ -72,6 +72,28 @@ Reason: the legacy XML image system has no planned interface for a live FFmpeg t
 
 The first fullscreen 1920x1080 VNV Extended test verified a visible draw and coordinate conversion. This decision remains provisional until layer order, state isolation, device recovery, and the remaining compatibility matrix pass.
 
+### Full-glass playback stage
+
+Date: August 9, 2026
+
+Decision: use the largest safe named rectangle inside the active Pip-Boy glass
+for playback. Show the catalog before playback and keep controls in a temporary
+overlay instead of reserving a permanent side panel.
+
+Evidence: the Pip-Flicks 3000 author screenshot places the picture across the
+usable screen while preserving the physical device frame. The first native draw
+also proved that UIO can provide a named rectangle without replacing a complete
+menu file.
+
+Rejected alternative: a catalog and video panel shown side by side would reduce
+the already small playback area. Copying Pip-Flicks' Apparel item and ESP flow
+would conflict with the recorded ESP-less design.
+
+Consequence: the Phase 1 prefab will test full-glass bounds, clipping, and layer
+order across the UI matrix. Pip-Flicks is a design and compatibility reference,
+not a runtime dependency. Its implementation or assets will not be copied unless
+the author permission clearly covers that use.
+
 ### Leave render targets untouched
 
 Date: August 9, 2026

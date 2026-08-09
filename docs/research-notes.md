@@ -6,7 +6,29 @@ These notes separate facts used by the plan from design inferences that still ne
 
 ## Prior art
 
-[Pip-Flicks 3000](https://www.nexusmods.com/newvegas/mods/59173) proves that a Pip-Boy page can present moving pictures. It swaps DDS images several times per second and plays separately extracted audio. Its page documents a 60 FPS synchronization requirement and a manual MP4-to-frames workflow. This project does not plan to reuse its scripts or assets. It addresses a different technical path: native decoding with an audio clock.
+[Pip-Flicks 3000](https://www.nexusmods.com/newvegas/mods/59173) proves that the
+usable Pip-Boy glass can present moving pictures while the physical device frame
+stays visible. Its author screenshot uses the Items screen as a full playback
+surface rather than placing the picture in a permanent side panel. Its player
+is selected by equipping an Apparel item, swaps 320x240 DDS frames, and plays a
+separately extracted audio track. The documented design requires a steady 60
+FPS and cannot stop the audio when the visual playback closes.
+
+The project owner directed Pip-Boy Video Player to use Pip-Flicks 3000 as a
+design, interaction, and technical reference wherever useful. The new player
+will carry forward the full-glass playback idea, straightforward catalog
+selection, support for replacer layouts, and immediate stop on Pip-Boy or page
+closure. It will not carry forward the ESP requirement, frame extraction,
+frame-rate clock, or audio lifecycle defect.
+
+The [Pip-Flicks Modder's Resource article](https://www.nexusmods.com/newvegas/articles/54735)
+permits quest mods to call its player and manage shown or hidden video entries.
+That is a narrow integration permission, not a general source or asset license.
+No maintained source repository or broader author permission was found. The
+4 KB main package is listed on Nexus Mods but requires an authenticated download
+before its ESP and scripts can be inspected locally. Until broader permission is
+verified, this project may study behavior and interfaces but will not copy or
+redistribute Pip-Flicks code, XML, scripts, assets, or media.
 
 ## xNVSE and VNV
 
@@ -37,6 +59,12 @@ The diagnostic run confirmed that game-thread polling, non-loading frame present
 The next run resolved the video tile dimensions and stopped because `MapMenu` has no positive width and height pair. The active Vanilla UI Plus globals describe `screen` as the logical UI canvas and derive the physical screen dimensions from its width, height, and resolution converter. The native bridge now searches the bounded ancestor chain from `MapMenu` for the first positive width and height pair. It does not substitute the physical client size, which would mix backbuffer pixels with logical UI coordinates.
 
 The following VNV Extended run produced the first visible checkerboard on the Pip-Boy Data tab at fullscreen 1920x1080 under native Direct3D 9. The native bridge resolved a 1706.67x960 logical canvas and video bounds of 110,108 through 670,423. The generated 256x256 upload took 149.10 microseconds. State preservation and drawing averaged 91.72 microseconds over 300 frames, with a recorded maximum of 647.70 microseconds. Layer order, state isolation, device recreation, and the remaining compatibility matrix are still open.
+
+After the viewport restoration correction, the checkerboard stayed visible and
+looked correct through five user-run Alt+Tab cycles. The reset detour did not log
+a recreation during those switches. The result is evidence for presentation
+persistence only. It does not yet prove the pre-Reset release and post-Reset
+resource path.
 
 ## FFmpeg
 

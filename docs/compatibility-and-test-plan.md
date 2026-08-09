@@ -46,6 +46,22 @@ The generated 256x256 texture upload took 149.10 microseconds. A 300-frame sampl
 
 This run verifies one visible presentation path and its first cost sample. It does not yet verify clipping, layer order against controls, state isolation, device recreation, other resolutions, other display modes, the base profile, or DXVK.
 
+### Native D3D9 Alt+Tab persistence
+
+Date: August 9, 2026
+
+Profile: Viva New Vegas Extended, native Direct3D 9, fullscreen 1920x1080
+
+After the viewport restoration correction, the user completed five Alt+Tab
+cycles while checking the Pip-Boy. The checkerboard remained visible and looked
+correct after every switch. The run produced no device-recreation entries in
+the plugin log, so it verifies visual persistence across those five switches,
+not release and recreation of default-pool resources.
+
+An explicit display-mode or resolution transition is still required to exercise
+the verified `NiDX9Renderer::Recreate` detour. The full 50-cycle acceptance test
+also remains open.
+
 ## Required profiles
 
 | Profile | Purpose |
