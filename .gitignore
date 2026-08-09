@@ -1,7 +1,11 @@
-# Local build and editor output
-/build/
-/out/
-/.vs/
+# Local build, dependency, and editor output
+.cache/
+build*/
+dist/
+external/
+/PBVP-deps/
+stage/
+.vs/
 CMakeUserPresets.json
 
 # Native build products
@@ -11,6 +15,7 @@ CMakeUserPresets.json
 *.lib
 *.obj
 *.pdb
+*.zip
 
 # Logs and crash data
 *.dmp
@@ -22,4 +27,3 @@ CMakeUserPresets.json
 *.mov
 *.mp4
 *.webm
-

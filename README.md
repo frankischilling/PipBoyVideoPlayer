@@ -1,14 +1,37 @@
 # Pip-Boy Video Player
 
-Pip-Boy Video Player is a planned native xNVSE plugin for Fallout: New Vegas. It will decode local MP4 files during play and display them inside the Pip-Boy with synchronized audio.
+Pip-Boy Video Player is a native xNVSE plugin for Fallout: New Vegas. The first release is intended to decode local MP4 files and play them inside the Pip-Boy with synchronized audio.
 
-This repository contains planning and technical documentation only. It does not contain a plugin, build system, UI files, bundled FFmpeg binaries, or playable media.
+The repository contains the implementation, automated tests, UIO files, build scripts, and technical documentation. It does not contain FFmpeg binaries or playable media.
 
 ## Project status
 
-Status: pre-implementation design
+Status: Phase 1 render and UI feasibility
 
-The design targets a Viva New Vegas installation managed by Mod Organizer 2. The first technical milestone is a Direct3D 9 rendering experiment. Development should continue only if that experiment can draw a disposable test texture in the Pip-Boy, survive device resets, and coexist with the VNV graphics stack.
+The current diagnostic build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, installs a UIO prefab, and probes the engine's Direct3D recreation function. It refuses to render until the live function entry matches a reviewed signature. This allows the first in-game run to collect the required evidence without patching unknown code.
+
+The host and Win32 automated tests pass. In-game render order, device recreation, resolution coverage, and DXVK support are not verified yet.
+
+## Build
+
+The repository follows the same local layout and script conventions as RadioCaptions. Downloaded sources stay under the ignored `external` directory, generated projects stay under `build-vs` or `build-host`, staging uses `stage`, and archives use `dist`.
+
+Required tools are CMake, Visual Studio with the x86 C++ workload, PowerShell, and 7-Zip. Run these commands from a PowerShell prompt:
+
+```powershell
+.\scripts\fetch-dependencies.ps1
+.\scripts\configure.ps1 -Target plugin
+.\scripts\build.ps1 -Configuration Debug
+.\scripts\test.ps1 -Configuration Debug
+```
+
+The dependency script downloads the official xNVSE 6.4.5 and MinHook 1.3.4 source archives and verifies their SHA-256 hashes before extraction. The plugin build uses a Win32 Visual Studio generator. A separate host build can run the portable tests without building the plugin:
+
+```powershell
+.\scripts\configure.ps1 -Target host
+cmake --build build-host --parallel
+ctest --test-dir build-host --output-on-failure
+```
 
 ## Intended user experience
 
@@ -27,7 +50,7 @@ The planned player supports:
 
 The mod will not stream from websites, bypass DRM, scan arbitrary folders, or ship copyrighted video packs.
 
-## Planned runtime pieces
+## Runtime pieces
 
 The design has four runtime parts:
 
@@ -36,7 +59,7 @@ The design has four runtime parts:
 3. A Direct3D 9 renderer uploads decoded frames on the game render thread and draws them over a UIO-injected Pip-Boy placeholder.
 4. An XAudio2 stream plays decoded PCM. Its sample cursor is the master playback clock when audio exists.
 
-The plugin is planned as ESP-less. xNVSE and UIO are required. JIP LN, JohnnyGuitar, and ShowOff are part of the VNV baseline but should not become hard dependencies unless an implementation spike proves that one is necessary.
+The plugin remains ESP-less. xNVSE and UIO are required. JIP LN, JohnnyGuitar, and ShowOff are part of the VNV baseline but are not hard dependencies.
 
 ## Documentation map
 
@@ -58,7 +81,7 @@ Fallout: New Vegas is a 32-bit process. Video queues must stay bounded, source d
 
 VNV compatibility is a release gate, not a best-effort claim. Each release candidate must pass against the documented VNV profiles and UI variants before publication.
 
-The project can still fail during the rendering spike. That is an expected planning outcome, not a reason to hide the uncertainty. The [risk register](docs/risk-register.md) lists the conditions that should stop or redirect implementation.
+The project can still fail during the rendering spike. The [risk register](docs/risk-register.md) lists the conditions that would block or redirect the design.
 
 ## Naming
 

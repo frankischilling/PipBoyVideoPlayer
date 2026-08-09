@@ -1,0 +1,4 @@
+LIBRARY PipBoyVideoPlayer
+EXPORTS
+    NVSEPlugin_Query
+    NVSEPlugin_Load

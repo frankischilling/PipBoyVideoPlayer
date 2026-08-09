@@ -1,0 +1,15 @@
+<rect name="PBVP_Root">
+    <x> 0 </x>
+    <y> 0 </y>
+    <width> <copy src="parent()" trait="width" /> </width>
+    <height> <copy src="parent()" trait="height" /> </height>
+    <visible> 1 </visible>
+
+    <rect name="PBVP_VideoRect">
+        <x> 80 </x>
+        <y> 65 </y>
+        <width> 560 </width>
+        <height> 315 </height>
+        <visible> <copy src="parent()" trait="visible" /> </visible>
+    </rect>
+</rect>

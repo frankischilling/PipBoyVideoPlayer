@@ -1,6 +1,6 @@
 # Contributing
 
-The project is in a planning phase. Contributions should improve the design, record verified engine behavior, or reduce uncertainty around the first implementation spikes. Source implementation should wait until the phase-one exit criteria in the roadmap are accepted.
+The project is under active implementation. Contributions should stay within the current roadmap phase, include relevant tests, and distinguish verified engine behavior from assumptions.
 
 ## Working agreement
 
@@ -12,7 +12,7 @@ The project is in a planning phase. Contributions should improve the design, rec
 - Do not commit personal MP4 files, game assets, generated crash dumps, or local VNV paths.
 - Do not put `agent` in a branch name.
 
-Suggested branch prefixes are `feature/`, `fix/`, `docs/`, `test/`, and `release/`. The repository currently uses `main`; a branch is not required for small local planning edits.
+Suggested branch prefixes are `feature/`, `fix/`, `docs/`, `test/`, and `release/`. Use a focused branch for implementation work and keep `main` releasable.
 
 ## Documentation style
 
@@ -40,7 +40,7 @@ Commit messages should say what the repository contains after the commit. Keep a
 
 ## Pull request checklist
 
-- The change stays within the current planning phase.
+- The change stays within the current roadmap phase.
 - Technical claims have a source or a clearly labeled verification task.
 - New dependencies have ownership, license, update, and packaging notes.
 - New hooks include an uninstall or shutdown path and a conflict test.
