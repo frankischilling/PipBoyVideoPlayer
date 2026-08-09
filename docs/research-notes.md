@@ -34,6 +34,8 @@ The second VNV Extended run confirmed the correction. UIO logged both `Adding to
 
 The diagnostic run confirmed that game-thread polling, non-loading frame presentation, native Direct3D 9 device discovery, MapMenu visibility, and `PBVP_VideoRect` lookup all work. Rectangle resolution stopped at the height and width traits. The copied trait constants were one slot early because Fallout's standard trait enumeration skips `0xFA5`. The bridge now uses `Tile::kTileValue_height` and `Tile::kTileValue_width` from the official xNVSE 6.4.5 headers instead of local numeric copies.
 
+The next run resolved the video tile dimensions and stopped because `MapMenu` has no positive width and height pair. The active Vanilla UI Plus globals describe `screen` as the logical UI canvas and derive the physical screen dimensions from its width, height, and resolution converter. The native bridge now searches the bounded ancestor chain from `MapMenu` for the first positive width and height pair. It does not substitute the physical client size, which would mix backbuffer pixels with logical UI coordinates.
+
 ## FFmpeg
 
 The [FFmpeg library documentation](https://www.ffmpeg.org/doxygen/trunk/index.html) assigns container I/O and demuxing to `libavformat`, decoding to `libavcodec`, scaling and pixel conversion to `libswscale`, and audio conversion to `libswresample`. Library major versions may include incompatible API changes, so the build must pin and validate a specific set.

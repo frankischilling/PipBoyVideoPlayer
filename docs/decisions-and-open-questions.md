@@ -52,6 +52,18 @@ Evidence: a diagnostic run found `PBVP_VideoRect` but reported that its height o
 
 Consequence: the corrected build still needs a visible draw test. Custom trait names, when introduced, will be resolved through the game trait registry instead of assigned guessed identifiers.
 
+### Logical UI canvas
+
+Date: August 9, 2026
+
+Decision: resolve the logical canvas from the bounded ancestor chain above `MapMenu`. Use the first tile with a positive standard width and height pair.
+
+Evidence: the native bridge found the video rectangle and its dimensions, but `MapMenu` did not expose width and height. The active Vanilla UI Plus globals use the shared `screen` tile as the logical coordinate canvas and apply `resolutionconverter` when deriving physical dimensions.
+
+Rejected alternative: using the Win32 client size would treat logical XML coordinates as physical pixels and produce incorrect placement when UI scaling or aspect ratio changes.
+
+Consequence: the next in-game run must verify the resolved logical extent and the pixel conversion at 1920 by 1080 before other resolutions are tested.
+
 ### Native screen-space draw
 
 Decision: let XML define the rectangle, then let the native renderer draw the decoded texture into that screen-space region.

@@ -33,7 +33,7 @@ enum class ResolveStatus : std::uint32_t {
     kMenuRootUnavailable,
     kVideoRectUnavailable,
     kVideoSizeUnavailable,
-    kMenuExtentUnavailable,
+    kCanvasExtentUnavailable,
     kParentChainInvalid,
     kGeometryInvalid,
     kAccessViolation,
@@ -155,8 +155,8 @@ const char* ResolveStatusName(const ResolveStatus status) noexcept {
             return "PBVP_VideoRect unavailable";
         case ResolveStatus::kVideoSizeUnavailable:
             return "video width or height trait unavailable";
-        case ResolveStatus::kMenuExtentUnavailable:
-            return "MapMenu width or height trait unavailable";
+        case ResolveStatus::kCanvasExtentUnavailable:
+            return "logical UI canvas width or height unavailable";
         case ResolveStatus::kParentChainInvalid:
             return "video rectangle parent chain invalid or hidden";
         case ResolveStatus::kGeometryInvalid:
@@ -196,10 +196,24 @@ ResolveStatus ReadResolvedRect(UiRectSnapshot& output) noexcept {
         if (width == nullptr || height == nullptr) {
             return ResolveStatus::kVideoSizeUnavailable;
         }
-        TileValue* root_width = FindValue(menu_root, kValueWidth);
-        TileValue* root_height = FindValue(menu_root, kValueHeight);
-        if (root_width == nullptr || root_height == nullptr) {
-            return ResolveStatus::kMenuExtentUnavailable;
+        TileValue* canvas_width = nullptr;
+        TileValue* canvas_height = nullptr;
+        Tile* canvas = menu_root;
+        std::size_t canvas_depth = 0;
+        while (canvas != nullptr && canvas_depth++ < kMaxParentDepth) {
+            TileValue* candidate_width = FindValue(canvas, kValueWidth);
+            TileValue* candidate_height = FindValue(canvas, kValueHeight);
+            if (candidate_width != nullptr && candidate_height != nullptr &&
+                std::isfinite(candidate_width->number) && std::isfinite(candidate_height->number) &&
+                candidate_width->number > 0.0f && candidate_height->number > 0.0f) {
+                canvas_width = candidate_width;
+                canvas_height = candidate_height;
+                break;
+            }
+            canvas = canvas->parent;
+        }
+        if (canvas_width == nullptr || canvas_height == nullptr) {
+            return ResolveStatus::kCanvasExtentUnavailable;
         }
 
         float x = 0.0f;
@@ -228,10 +242,10 @@ ResolveStatus ReadResolvedRect(UiRectSnapshot& output) noexcept {
         }
 
         output.rect = {x, y, x + width->number, y + height->number};
-        output.ui_extent = {root_width->number, root_height->number};
+        output.ui_extent = {canvas_width->number, canvas_height->number};
         output.visible = std::isfinite(x) && std::isfinite(y) &&
                          width->number > 0.0f && height->number > 0.0f &&
-                         root_width->number > 0.0f && root_height->number > 0.0f;
+                         canvas_width->number > 0.0f && canvas_height->number > 0.0f;
         return output.visible ? ResolveStatus::kResolved : ResolveStatus::kGeometryInvalid;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return ResolveStatus::kAccessViolation;
