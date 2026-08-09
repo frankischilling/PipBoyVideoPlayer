@@ -1,16 +1,13 @@
 #include "pbvp/d3d_renderer.hpp"
 
 #include "pbvp/log.hpp"
-#include "pbvp/rect_math.hpp"
 #include "pbvp/ui_bridge.hpp"
 
 #include <Windows.h>
 #include <d3d9.h>
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 
 namespace pbvp {
 namespace {
@@ -19,17 +16,6 @@ constexpr std::uintptr_t kRendererSingletonPointer = 0x011C73B4u;
 constexpr std::size_t kRendererDeviceOffset = 0x288u;
 constexpr UINT kTextureWidth = 256u;
 constexpr UINT kTextureHeight = 256u;
-constexpr DWORD kVertexFvf = D3DFVF_XYZRHW | D3DFVF_DIFFUSE | D3DFVF_TEX1;
-
-struct Vertex {
-    float x;
-    float y;
-    float z;
-    float reciprocal_w;
-    D3DCOLOR color;
-    float u;
-    float v;
-};
 
 IDirect3DDevice9* DeviceFromRenderer(void* renderer) noexcept {
     if (renderer == nullptr) {
@@ -41,6 +27,22 @@ IDirect3DDevice9* DeviceFromRenderer(void* renderer) noexcept {
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return nullptr;
     }
+}
+
+IDirect3DTexture9* AcquireTexture(const std::uintptr_t surface) noexcept {
+    if (surface == 0u) {
+        return nullptr;
+    }
+    void* queried = nullptr;
+    __try {
+        auto* base_texture = reinterpret_cast<IDirect3DBaseTexture9*>(surface);
+        if (FAILED(base_texture->QueryInterface(__uuidof(IDirect3DTexture9), &queried))) {
+            return nullptr;
+        }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return nullptr;
+    }
+    return static_cast<IDirect3DTexture9*>(queried);
 }
 
 } // namespace
@@ -56,57 +58,72 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
         return;
     }
     if (!frame_callback_logged_) {
-        PBVP_LOG_INFO("Verified pre-UI render boundary active");
+        PBVP_LOG_INFO("xNVSE frame-present texture upload boundary active");
         frame_callback_logged_ = true;
     }
     if (device_lost_) {
         return;
     }
+    if (!ui_rect.visible) {
+        last_surface_ = 0u;
+        last_surface_status_ = 0u;
+        return;
+    }
+
+    const std::uint32_t current_thread = GetCurrentThreadId();
+    if (ui_rect.game_thread_id == 0u || current_thread != ui_rect.game_thread_id) {
+        if (error_count_++ < 8u) {
+            PBVP_LOG_ERROR(
+                "Texture upload refused because game thread %u and render thread %u differ",
+                ui_rect.game_thread_id, current_thread);
+        }
+        return;
+    }
+    if (!thread_identity_logged_) {
+        PBVP_LOG_INFO("Game and Direct3D callbacks share thread %u", current_thread);
+        thread_identity_logged_ = true;
+    }
+
+    const UiSurfaceSnapshot surface =
+        UiBridge::Instance().ResolveSurfaceOnSharedThread(ui_rect.game_thread_id);
+    if (surface.status != UiSurfaceStatus::available) {
+        const auto status = static_cast<std::uint32_t>(surface.status) + 1u;
+        if (last_surface_status_ != status && error_count_++ < 8u) {
+            PBVP_LOG_WARN("Pip-Boy engine texture unavailable: %s", UiSurfaceStatusName(surface.status));
+        }
+        last_surface_status_ = status;
+        last_surface_ = 0u;
+        return;
+    }
+    last_surface_status_ = 0u;
 
     IDirect3DDevice9* device = FindDevice();
     if (!ValidateDevice(device)) {
         if (error_count_++ < 8u) {
-            PBVP_LOG_WARN("D3D frame skipped after device validation failure");
+            PBVP_LOG_WARN("Texture upload skipped after device validation failure");
         }
         return;
     }
-    if (!ui_rect.visible) {
+    if (surface.d3d_texture == last_surface_) {
         return;
     }
-    if (!EnsureResources(device)) {
+    if (!UploadCheckerboard(device, surface.d3d_texture)) {
         if (error_count_++ < 8u) {
-            PBVP_LOG_WARN("D3D frame skipped after resource creation failure");
+            PBVP_LOG_WARN("Generated checkerboard upload to the engine image failed");
         }
         return;
     }
-
-    LARGE_INTEGER started{};
-    LARGE_INTEGER finished{};
-    QueryPerformanceCounter(&started);
-    const bool drew = Draw(device, ui_rect);
-    QueryPerformanceCounter(&finished);
-    if (!drew) {
-        if (error_count_++ < 8u) {
-            PBVP_LOG_WARN("D3D frame skipped after draw failure");
-        }
-        return;
-    }
-    RecordDrawTiming(finished.QuadPart - started.QuadPart);
-    if (!first_draw_logged_) {
-        PBVP_LOG_INFO("First Pip-Boy checkerboard draw succeeded");
-        first_draw_logged_ = true;
-    }
-    ++frame_count_;
+    last_surface_ = surface.d3d_texture;
+    PBVP_LOG_INFO("Generated checkerboard uploaded to PBVP_VideoSurface");
 }
 
 void D3dRenderer::BeforeDeviceRecreate(void* renderer) noexcept {
-    IDirect3DDevice9* incoming = DeviceFromRenderer(renderer);
-    if (incoming == nullptr || device_ == nullptr || incoming == device_) {
-        ReleaseResources();
-    }
+    static_cast<void>(renderer);
+    ReleaseResources();
     device_lost_ = true;
     ++reset_count_;
-    PBVP_LOG_INFO("D3D default-pool resources released before engine recreation %u", reset_count_);
+    PBVP_LOG_INFO(
+        "Transient engine-surface state cleared before engine recreation %u", reset_count_);
 }
 
 void D3dRenderer::AfterDeviceRecreate(void* renderer, const std::uint32_t result) noexcept {
@@ -155,37 +172,59 @@ bool D3dRenderer::ValidateDevice(IDirect3DDevice9* device) noexcept {
     return true;
 }
 
-bool D3dRenderer::EnsureResources(IDirect3DDevice9* device) noexcept {
-    if (texture_ != nullptr) {
-        return true;
-    }
-    const HRESULT result = device->CreateTexture(
-        kTextureWidth, kTextureHeight, 1u, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8,
-        D3DPOOL_DEFAULT, &texture_, nullptr);
-    if (FAILED(result)) {
-        texture_ = nullptr;
-        PBVP_LOG_ERROR("CreateTexture failed with HRESULT 0x%08X", static_cast<unsigned>(result));
+bool D3dRenderer::UploadCheckerboard(
+    IDirect3DDevice9* device,
+    const std::uintptr_t surface) noexcept {
+    IDirect3DTexture9* texture = AcquireTexture(surface);
+    if (texture == nullptr) {
+        PBVP_LOG_ERROR("PBVP_VideoSurface is not an IDirect3DTexture9 resource");
         return false;
     }
-    if (!UploadCheckerboard()) {
-        texture_->Release();
-        texture_ = nullptr;
-        return false;
-    }
-    PBVP_LOG_INFO("Generated 256x256 D3D checkerboard texture created");
-    return true;
-}
 
-bool D3dRenderer::UploadCheckerboard() noexcept {
+    IDirect3DDevice9* texture_device = nullptr;
+    const HRESULT device_result = texture->GetDevice(&texture_device);
+    const bool device_matches =
+        SUCCEEDED(device_result) && texture_device != nullptr && texture_device == device;
+    if (texture_device != nullptr) {
+        texture_device->Release();
+    }
+    if (!device_matches) {
+        texture->Release();
+        PBVP_LOG_ERROR("PBVP_VideoSurface belongs to an unexpected Direct3D device");
+        return false;
+    }
+
+    D3DSURFACE_DESC description{};
+    if (FAILED(texture->GetLevelDesc(0u, &description))) {
+        texture->Release();
+        PBVP_LOG_ERROR("PBVP_VideoSurface level description is unavailable");
+        return false;
+    }
+    PBVP_LOG_INFO(
+        "PBVP_VideoSurface profile: size=%ux%u format=%u pool=%u usage=0x%08X",
+        description.Width, description.Height, static_cast<unsigned>(description.Format),
+        static_cast<unsigned>(description.Pool), static_cast<unsigned>(description.Usage));
+    if (description.Width != kTextureWidth || description.Height != kTextureHeight ||
+        (description.Format != D3DFMT_A8R8G8B8 && description.Format != D3DFMT_X8R8G8B8)) {
+        texture->Release();
+        PBVP_LOG_ERROR("PBVP_VideoSurface has an unsupported size or format");
+        return false;
+    }
+
     LARGE_INTEGER started{};
     LARGE_INTEGER finished{};
     QueryPerformanceCounter(&started);
     D3DLOCKED_RECT locked{};
-    const HRESULT result = texture_->LockRect(0u, &locked, nullptr, D3DLOCK_DISCARD);
-    if (FAILED(result) || locked.pBits == nullptr || locked.Pitch < static_cast<INT>(kTextureWidth * 4u)) {
-        PBVP_LOG_ERROR("Texture LockRect failed with HRESULT 0x%08X", static_cast<unsigned>(result));
+    const HRESULT lock_result = texture->LockRect(0u, &locked, nullptr, 0u);
+    if (FAILED(lock_result) || locked.pBits == nullptr ||
+        locked.Pitch < static_cast<INT>(kTextureWidth * 4u)) {
+        texture->Release();
+        PBVP_LOG_ERROR(
+            "PBVP_VideoSurface LockRect failed with HRESULT 0x%08X",
+            static_cast<unsigned>(lock_result));
         return false;
     }
+
     auto* row = static_cast<std::uint8_t*>(locked.pBits);
     for (UINT y = 0; y < kTextureHeight; ++y) {
         auto* pixels = reinterpret_cast<std::uint32_t*>(row);
@@ -195,68 +234,23 @@ bool D3dRenderer::UploadCheckerboard() noexcept {
         }
         row += locked.Pitch;
     }
-    const bool succeeded = SUCCEEDED(texture_->UnlockRect(0u));
+    const HRESULT unlock_result = texture->UnlockRect(0u);
+    texture->Release();
     QueryPerformanceCounter(&finished);
+    if (FAILED(unlock_result)) {
+        PBVP_LOG_ERROR(
+            "PBVP_VideoSurface UnlockRect failed with HRESULT 0x%08X",
+            static_cast<unsigned>(unlock_result));
+        return false;
+    }
+
     LARGE_INTEGER frequency{};
-    if (succeeded && QueryPerformanceFrequency(&frequency) && frequency.QuadPart > 0) {
+    if (QueryPerformanceFrequency(&frequency) && frequency.QuadPart > 0) {
         const double microseconds = static_cast<double>(finished.QuadPart - started.QuadPart) *
                                     1000000.0 / static_cast<double>(frequency.QuadPart);
-        PBVP_LOG_INFO("Generated texture upload took %.2f microseconds", microseconds);
+        PBVP_LOG_INFO("Engine texture checkerboard upload took %.2f microseconds", microseconds);
     }
-    return succeeded;
-}
-
-bool D3dRenderer::Draw(IDirect3DDevice9* device, const UiRectSnapshot& ui_rect) noexcept {
-    D3DVIEWPORT9 viewport{};
-    if (FAILED(device->GetViewport(&viewport)) || viewport.Width == 0u || viewport.Height == 0u) {
-        return false;
-    }
-
-    FloatRect pixels{};
-    if (!ConvertUiRectToPixels(
-            ui_rect.rect, ui_rect.ui_extent,
-            {static_cast<float>(viewport.Width), static_cast<float>(viewport.Height)}, pixels)) {
-        return false;
-    }
-
-    IDirect3DStateBlock9* state = nullptr;
-    if (FAILED(device->CreateStateBlock(D3DSBT_ALL, &state)) || state == nullptr) {
-        return false;
-    }
-
-    const std::array<Vertex, 4> vertices{{
-        {pixels.left - 0.5f, pixels.top - 0.5f, 0.0f, 1.0f, 0xFFFFFFFFu, 0.0f, 0.0f},
-        {pixels.right - 0.5f, pixels.top - 0.5f, 0.0f, 1.0f, 0xFFFFFFFFu, 1.0f, 0.0f},
-        {pixels.left - 0.5f, pixels.bottom - 0.5f, 0.0f, 1.0f, 0xFFFFFFFFu, 0.0f, 1.0f},
-        {pixels.right - 0.5f, pixels.bottom - 0.5f, 0.0f, 1.0f, 0xFFFFFFFFu, 1.0f, 1.0f},
-    }};
-
-    device->SetVertexShader(nullptr);
-    device->SetPixelShader(nullptr);
-    device->SetVertexDeclaration(nullptr);
-    device->SetFVF(kVertexFvf);
-    device->SetTexture(0u, texture_);
-    device->SetRenderState(D3DRS_ZENABLE, D3DZB_FALSE);
-    device->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
-    device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-    device->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-    device->SetRenderState(D3DRS_LIGHTING, FALSE);
-    device->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
-    device->SetRenderState(D3DRS_COLORWRITEENABLE, 0x0Fu);
-    device->SetSamplerState(0u, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
-    device->SetSamplerState(0u, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-    device->SetSamplerState(0u, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
-    device->SetTextureStageState(0u, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-    device->SetTextureStageState(0u, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-    device->SetTextureStageState(0u, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-    device->SetTextureStageState(0u, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-    device->SetTextureStageState(1u, D3DTSS_COLOROP, D3DTOP_DISABLE);
-    const HRESULT draw_result = device->DrawPrimitiveUP(
-        D3DPT_TRIANGLESTRIP, 2u, vertices.data(), sizeof(Vertex));
-
-    const HRESULT apply_result = state->Apply();
-    state->Release();
-    return SUCCEEDED(draw_result) && SUCCEEDED(apply_result);
+    return true;
 }
 
 void D3dRenderer::LogDeviceProfile(IDirect3DDevice9* device) noexcept {
@@ -293,47 +287,10 @@ void D3dRenderer::LogDeviceProfile(IDirect3DDevice9* device) noexcept {
         static_cast<unsigned>(presentation.PresentationInterval));
 }
 
-void D3dRenderer::RecordDrawTiming(const std::int64_t elapsed_ticks) noexcept {
-    if (elapsed_ticks < 0) {
-        return;
-    }
-    if (performance_frequency_ == 0) {
-        LARGE_INTEGER frequency{};
-        if (!QueryPerformanceFrequency(&frequency) || frequency.QuadPart <= 0) {
-            performance_frequency_ = -1;
-            return;
-        }
-        performance_frequency_ = frequency.QuadPart;
-    }
-    if (performance_frequency_ < 0) {
-        return;
-    }
-
-    timing_total_ticks_ += elapsed_ticks;
-    if (elapsed_ticks > timing_max_ticks_) {
-        timing_max_ticks_ = elapsed_ticks;
-    }
-    if (++timing_samples_ >= 300u) {
-        const double average_microseconds = static_cast<double>(timing_total_ticks_) * 1000000.0 /
-                                            static_cast<double>(performance_frequency_) /
-                                            static_cast<double>(timing_samples_);
-        const double maximum_microseconds = static_cast<double>(timing_max_ticks_) * 1000000.0 /
-                                            static_cast<double>(performance_frequency_);
-        PBVP_LOG_INFO(
-            "D3D draw timing over %u frames: average=%.2f microseconds maximum=%.2f microseconds",
-            timing_samples_, average_microseconds, maximum_microseconds);
-        timing_samples_ = 0u;
-        timing_total_ticks_ = 0;
-        timing_max_ticks_ = 0;
-    }
-}
-
 void D3dRenderer::ReleaseResources() noexcept {
-    if (texture_ != nullptr) {
-        texture_->Release();
-        texture_ = nullptr;
-    }
     device_ = nullptr;
+    last_surface_ = 0u;
+    last_surface_status_ = 0u;
 }
 
 } // namespace pbvp

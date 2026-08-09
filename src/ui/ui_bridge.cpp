@@ -16,6 +16,9 @@ namespace {
 
 constexpr std::uintptr_t kTileMenuArrayPointer = 0x011F350Cu;
 constexpr std::uintptr_t kMenuVisibilityArray = 0x011F308Fu;
+constexpr std::uintptr_t kTileImageVtable = 0x0106F01Cu;
+constexpr std::uintptr_t kNiSourceTextureVtable = 0x0109B9ECu;
+constexpr std::uintptr_t kNiDx9SourceTextureDataVtable = 0x010ED37Cu;
 constexpr std::uint32_t kMenuTypeMin = 0x3E9u;
 constexpr std::uint32_t kMapMenuType = 0x3FFu;
 constexpr std::uint32_t kValueX = ::Tile::kTileValue_x;
@@ -82,10 +85,32 @@ struct Tile {
     std::uint8_t unknown_34[4];
 };
 
+struct TileImage {
+    Tile tile;
+    float unknown_38;
+    void* texture;
+    void* shader_property;
+    std::uint8_t unknown_44[4];
+};
+
+struct NiTextureLayout {
+    std::uint8_t unknown_00[0x24];
+    void* renderer_data;
+};
+
+struct NiDx9TextureDataLayout {
+    std::uint8_t unknown_00[0x64];
+    void* d3d_base_texture;
+};
+
 static_assert(sizeof(Tile) == 0x38);
 static_assert(offsetof(Tile, values) == 0x14);
 static_assert(offsetof(Tile, name) == 0x20);
 static_assert(offsetof(Tile, parent) == 0x28);
+static_assert(sizeof(TileImage) == 0x48);
+static_assert(offsetof(TileImage, texture) == 0x3C);
+static_assert(offsetof(NiTextureLayout, renderer_data) == 0x24);
+static_assert(offsetof(NiDx9TextureDataLayout, d3d_base_texture) == 0x64);
 
 TileValue* FindValue(Tile* tile, const std::uint32_t id) noexcept {
     if (tile == nullptr || tile->values == nullptr || tile->value_count > kMaxTileValues) {
@@ -254,6 +279,36 @@ ResolveStatus ReadResolvedRect(UiRectSnapshot& output) noexcept {
 
 } // namespace
 
+const char* UiSurfaceStatusName(const UiSurfaceStatus status) noexcept {
+    switch (status) {
+        case UiSurfaceStatus::available:
+            return "available";
+        case UiSurfaceStatus::wrong_thread:
+            return "game and render callbacks use different threads";
+        case UiSurfaceStatus::map_hidden:
+            return "MapMenu hidden";
+        case UiSurfaceStatus::menu_unavailable:
+            return "MapMenu root unavailable";
+        case UiSurfaceStatus::image_unavailable:
+            return "PBVP_VideoSurface unavailable";
+        case UiSurfaceStatus::wrong_tile_type:
+            return "PBVP_VideoSurface is not a reviewed TileImage";
+        case UiSurfaceStatus::texture_unavailable:
+            return "TileImage texture unavailable";
+        case UiSurfaceStatus::wrong_texture_type:
+            return "TileImage texture is not a reviewed NiSourceTexture";
+        case UiSurfaceStatus::renderer_data_unavailable:
+            return "NiTexture renderer data unavailable";
+        case UiSurfaceStatus::wrong_renderer_data_type:
+            return "texture renderer data has an unknown type";
+        case UiSurfaceStatus::d3d_texture_unavailable:
+            return "Direct3D base texture unavailable";
+        case UiSurfaceStatus::access_violation:
+            return "guarded UI texture access failed";
+    }
+    return "unknown UI surface failure";
+}
+
 UiBridge& UiBridge::Instance() noexcept {
     static UiBridge bridge;
     return bridge;
@@ -265,6 +320,7 @@ void UiBridge::UpdateOnGameThread() noexcept {
         polling_logged_ = true;
     }
     UiRectSnapshot snapshot{};
+    snapshot.game_thread_id = GetCurrentThreadId();
     const ResolveStatus status = ReadResolvedRect(snapshot);
     if (status == ResolveStatus::kResolved) {
         snapshot.generation = generation_.load(std::memory_order_relaxed) + 1u;
@@ -292,6 +348,72 @@ void UiBridge::UpdateOnGameThread() noexcept {
     Publish(snapshot);
 }
 
+UiSurfaceSnapshot UiBridge::ResolveSurfaceOnSharedThread(
+    const std::uint32_t game_thread_id) const noexcept {
+    UiSurfaceSnapshot output{};
+    if (game_thread_id == 0u || GetCurrentThreadId() != game_thread_id) {
+        output.status = UiSurfaceStatus::wrong_thread;
+        return output;
+    }
+
+    __try {
+        const auto* visible = reinterpret_cast<const std::uint8_t*>(kMenuVisibilityArray);
+        if (visible[kMapMenuType] == 0u) {
+            output.status = UiSurfaceStatus::map_hidden;
+            return output;
+        }
+        auto*** menu_array_pointer = reinterpret_cast<Tile***>(kTileMenuArrayPointer);
+        if (menu_array_pointer == nullptr || *menu_array_pointer == nullptr) {
+            output.status = UiSurfaceStatus::menu_unavailable;
+            return output;
+        }
+        Tile* menu_root = (*menu_array_pointer)[kMapMenuType - kMenuTypeMin];
+        if (menu_root == nullptr) {
+            output.status = UiSurfaceStatus::menu_unavailable;
+            return output;
+        }
+        Tile* surface = FindDescendant(menu_root, "PBVP_VideoSurface");
+        if (surface == nullptr) {
+            output.status = UiSurfaceStatus::image_unavailable;
+            return output;
+        }
+        if (reinterpret_cast<std::uintptr_t>(surface->vtable) != kTileImageVtable) {
+            output.status = UiSurfaceStatus::wrong_tile_type;
+            return output;
+        }
+        auto* image = reinterpret_cast<TileImage*>(surface);
+        auto* texture = static_cast<NiTextureLayout*>(image->texture);
+        if (texture == nullptr) {
+            output.status = UiSurfaceStatus::texture_unavailable;
+            return output;
+        }
+        if (*reinterpret_cast<const std::uintptr_t*>(texture) != kNiSourceTextureVtable) {
+            output.status = UiSurfaceStatus::wrong_texture_type;
+            return output;
+        }
+        auto* renderer_data = static_cast<NiDx9TextureDataLayout*>(texture->renderer_data);
+        if (renderer_data == nullptr) {
+            output.status = UiSurfaceStatus::renderer_data_unavailable;
+            return output;
+        }
+        if (*reinterpret_cast<const std::uintptr_t*>(renderer_data) !=
+            kNiDx9SourceTextureDataVtable) {
+            output.status = UiSurfaceStatus::wrong_renderer_data_type;
+            return output;
+        }
+        if (renderer_data->d3d_base_texture == nullptr) {
+            output.status = UiSurfaceStatus::d3d_texture_unavailable;
+            return output;
+        }
+        output.d3d_texture = reinterpret_cast<std::uintptr_t>(renderer_data->d3d_base_texture);
+        output.status = UiSurfaceStatus::available;
+        return output;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        output.status = UiSurfaceStatus::access_violation;
+        return output;
+    }
+}
+
 UiRectSnapshot UiBridge::ReadForRenderThread() const noexcept {
     UiRectSnapshot snapshot{};
     for (int attempt = 0; attempt < 4; ++attempt) {
@@ -307,6 +429,7 @@ UiRectSnapshot UiBridge::ReadForRenderThread() const noexcept {
         snapshot.ui_extent.height = ui_height_.load(std::memory_order_relaxed);
         snapshot.visible = visible_.load(std::memory_order_relaxed);
         snapshot.generation = generation_.load(std::memory_order_relaxed);
+        snapshot.game_thread_id = game_thread_id_.load(std::memory_order_relaxed);
         const std::uint32_t after = sequence_.load(std::memory_order_acquire);
         if (before == after) {
             return snapshot;
@@ -334,6 +457,7 @@ void UiBridge::Publish(const UiRectSnapshot& snapshot) noexcept {
     ui_height_.store(snapshot.ui_extent.height, std::memory_order_relaxed);
     visible_.store(snapshot.visible, std::memory_order_relaxed);
     generation_.store(snapshot.generation, std::memory_order_relaxed);
+    game_thread_id_.store(snapshot.game_thread_id, std::memory_order_relaxed);
     sequence_.fetch_add(1u, std::memory_order_release);
 }
 

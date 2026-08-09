@@ -18,6 +18,7 @@ file(READ "${prefab}" prefab_text)
 foreach(required_name IN ITEMS
         PBVP_Root
         PBVP_VideoRect
+        PBVP_VideoSurface
         PBVP_LayerProbeBackground
         PBVP_LayerProbe)
     string(FIND "${prefab_text}" "name=\"${required_name}\"" match_offset)
@@ -25,6 +26,17 @@ foreach(required_name IN ITEMS
         message(FATAL_ERROR "UI prefab is missing ${required_name}")
     endif()
 endforeach()
+
+string(FIND "${prefab_text}" "Interface\\PipBoyVideoPlayer\\Surface.dds" surface_path_offset)
+if(surface_path_offset EQUAL -1)
+    message(FATAL_ERROR "UI prefab does not use the private generated surface texture")
+endif()
+
+file(READ "${PBVP_SOURCE_DIR}/scripts/package.ps1" package_text)
+string(FIND "${package_text}" "Write-PbvpSurfaceDds" generator_offset)
+if(generator_offset EQUAL -1)
+    message(FATAL_ERROR "Package script does not generate the private surface texture")
+endif()
 
 string(FIND "${prefab_text}" "PBVP UI LAYER" layer_probe_offset)
 if(layer_probe_offset EQUAL -1)

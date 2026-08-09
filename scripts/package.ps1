@@ -5,6 +5,48 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+function Write-PbvpSurfaceDds {
+    param([Parameter(Mandatory)][string]$Path)
+
+    $width = 256
+    $height = 256
+    $directory = Split-Path -Parent $Path
+    [IO.Directory]::CreateDirectory($directory) | Out-Null
+    $stream = [IO.File]::Open($Path, [IO.FileMode]::Create, [IO.FileAccess]::Write, [IO.FileShare]::None)
+    $writer = [IO.BinaryWriter]::new($stream)
+    try {
+        $writer.Write([UInt32]0x20534444)
+        $writer.Write([UInt32]124)
+        $writer.Write([UInt32]0x0000100F)
+        $writer.Write([UInt32]$height)
+        $writer.Write([UInt32]$width)
+        $writer.Write([UInt32]($width * 4))
+        $writer.Write([UInt32]0)
+        $writer.Write([UInt32]0)
+        for ($index = 0; $index -lt 11; $index++) { $writer.Write([UInt32]0) }
+        $writer.Write([UInt32]32)
+        $writer.Write([UInt32]0x41)
+        $writer.Write([UInt32]0)
+        $writer.Write([UInt32]32)
+        $writer.Write([UInt32]0x00FF0000)
+        $writer.Write([UInt32]0x0000FF00)
+        $writer.Write([UInt32]0x000000FF)
+        $writer.Write([UInt32]0xFF000000L)
+        $writer.Write([UInt32]0x1000)
+        $writer.Write([UInt32]0)
+        $writer.Write([UInt32]0)
+        $writer.Write([UInt32]0)
+        $writer.Write([UInt32]0)
+        for ($pixel = 0; $pixel -lt ($width * $height); $pixel++) {
+            $writer.Write([UInt32]0xFF300030L)
+        }
+    } finally {
+        $writer.Dispose()
+        $stream.Dispose()
+    }
+}
+
 $root = Split-Path -Parent $PSScriptRoot
 $binary = Join-Path $root "build-vs\$Configuration\PipBoyVideoPlayer.dll"
 $pdb = Join-Path $root "build-vs\$Configuration\PipBoyVideoPlayer.pdb"
@@ -26,6 +68,8 @@ foreach ($candidate in @($stage, $symbols)) {
 }
 
 Copy-Item -Path (Join-Path $root 'data\*') -Destination $stage -Recurse -Force
+$surfacePath = Join-Path $stage 'textures\Interface\PipBoyVideoPlayer\Surface.dds'
+Write-PbvpSurfaceDds -Path $surfacePath
 $pluginDirectory = Join-Path $stage 'NVSE\Plugins'
 [IO.Directory]::CreateDirectory($pluginDirectory) | Out-Null
 Copy-Item -LiteralPath $binary -Destination (Join-Path $pluginDirectory 'PipBoyVideoPlayer.dll')

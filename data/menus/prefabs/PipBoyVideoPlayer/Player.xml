@@ -12,6 +12,22 @@
         <height> 315 </height>
         <visible> <copy src="parent()" trait="visible" /> </visible>
 
+        <image name="PBVP_VideoSurface">
+            <visible> 1 </visible>
+            <alpha> 255 </alpha>
+            <depth> -2 </depth>
+            <x> 0 </x>
+            <y> 0 </y>
+            <width> <copy src="parent()" trait="width" /> </width>
+            <height> <copy src="parent()" trait="height" /> </height>
+            <zoom> &scale; </zoom>
+            <systemcolor> 0 </systemcolor>
+            <red> 255 </red>
+            <green> 255 </green>
+            <blue> 255 </blue>
+            <filename> Interface\PipBoyVideoPlayer\Surface.dds </filename>
+        </image>
+
         <image name="PBVP_LayerProbeBackground">
             <visible> 1 </visible>
             <alpha> 220 </alpha>

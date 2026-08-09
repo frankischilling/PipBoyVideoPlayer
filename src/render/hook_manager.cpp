@@ -3,7 +3,6 @@
 #include "pbvp/d3d_renderer.hpp"
 #include "pbvp/hook_probe.hpp"
 #include "pbvp/log.hpp"
-#include "pbvp/ui_bridge.hpp"
 
 #include <Windows.h>
 #include <MinHook.h>
@@ -11,15 +10,12 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
-#include <cstring>
 #include <span>
 
 namespace pbvp::hooks {
 namespace {
 
 constexpr std::uintptr_t kRendererRecreateAddress = 0x00E73EB0u;
-constexpr std::uintptr_t kPreUiCallSite = 0x00870403u;
-constexpr std::uintptr_t kPreUiOriginalTarget = 0x00709B40u;
 
 // This relocation-free entry was independently recovered from the supported
 // 1.4.0.525 runtime. Runtime code is decrypted before DeferredInit, so the
@@ -31,22 +27,11 @@ constexpr std::array<HookBytes, 1> kSupportedRecreateSignatures{{
 
 using RecreateFunction = std::uint32_t(__thiscall*)(void*, std::uint32_t, std::uint32_t);
 RecreateFunction g_original_recreate = nullptr;
-using PreUiFunction = void(__cdecl*)();
-RelativeCallBytes g_original_pre_ui_call{};
-RelativeCallBytes g_installed_pre_ui_call{};
 std::atomic<bool> g_ready{false};
 std::atomic<bool> g_shutting_down{false};
 bool g_minhook_initialized = false;
 bool g_reset_hook_created = false;
 bool g_reset_hook_enabled = false;
-bool g_pre_ui_call_installed = false;
-
-void __cdecl PreUiDetour() noexcept {
-    if (!g_shutting_down.load(std::memory_order_acquire)) {
-        D3dRenderer::Instance().OnFrame(UiBridge::Instance().ReadForRenderThread());
-    }
-    reinterpret_cast<PreUiFunction>(kPreUiOriginalTarget)();
-}
 
 std::uint32_t __fastcall RecreateDetour(
     void* renderer, void*, const std::uint32_t request_a, const std::uint32_t request_b) noexcept {
@@ -83,28 +68,6 @@ bool ReadBytes(const std::uintptr_t address, std::array<std::uint8_t, Size>& out
     }
 }
 
-template <std::size_t Size>
-bool WriteBytes(
-    const std::uintptr_t address,
-    const std::array<std::uint8_t, Size>& bytes) noexcept {
-    DWORD old_protection = 0;
-    auto* target = reinterpret_cast<void*>(address);
-    if (!VirtualProtect(target, Size, PAGE_EXECUTE_READWRITE, &old_protection)) {
-        return false;
-    }
-    bool copied = false;
-    __try {
-        std::memcpy(target, bytes.data(), Size);
-        copied = true;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        copied = false;
-    }
-    FlushInstructionCache(GetCurrentProcess(), target, Size);
-    DWORD ignored = 0;
-    const bool restored = VirtualProtect(target, Size, old_protection, &ignored) != FALSE;
-    return copied && restored;
-}
-
 void LogBytes(const HookBytes& bytes) noexcept {
     PBVP_LOG_INFO(
         "NiDX9Renderer::Recreate live bytes: %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
@@ -128,24 +91,6 @@ void RemoveResetHook() noexcept {
     }
 }
 
-bool RestorePreUiCall() noexcept {
-    if (!g_pre_ui_call_installed) {
-        return true;
-    }
-    RelativeCallBytes current{};
-    if (!ReadBytes(kPreUiCallSite, current) || current != g_installed_pre_ui_call) {
-        PBVP_LOG_WARN("Pre-UI call site changed after installation; original bytes were not restored");
-        g_pre_ui_call_installed = false;
-        return false;
-    }
-    if (!WriteBytes(kPreUiCallSite, g_original_pre_ui_call)) {
-        PBVP_LOG_WARN("Pre-UI call site could not be restored during shutdown");
-        return false;
-    }
-    g_pre_ui_call_installed = false;
-    return true;
-}
-
 } // namespace
 
 bool ProbeAndInstall() noexcept {
@@ -162,35 +107,6 @@ bool ProbeAndInstall() noexcept {
     }
     if (probe != HookProbeResult::supported) {
         PBVP_LOG_WARN("Reset hook target has no reviewed signature; diagnostic rendering is disabled");
-        return false;
-    }
-
-    RelativeCallBytes pre_ui_bytes{};
-    if (!ReadBytes(kPreUiCallSite, pre_ui_bytes)) {
-        PBVP_LOG_ERROR("Pre-UI render call site is unreadable; rendering is disabled");
-        return false;
-    }
-    std::uintptr_t pre_ui_target = 0;
-    const bool decoded = DecodeRelativeCallTarget(kPreUiCallSite, pre_ui_bytes, pre_ui_target);
-    PBVP_LOG_INFO(
-        "Pre-UI call live bytes: %02X %02X %02X %02X %02X target=0x%08X",
-        pre_ui_bytes[0], pre_ui_bytes[1], pre_ui_bytes[2], pre_ui_bytes[3], pre_ui_bytes[4],
-        static_cast<unsigned>(decoded ? pre_ui_target : 0u));
-    const HookProbeResult pre_ui_probe =
-        ClassifyRelativeCallSite(kPreUiCallSite, pre_ui_bytes, kPreUiOriginalTarget);
-    if (pre_ui_probe == HookProbeResult::occupied) {
-        PBVP_LOG_ERROR("Pre-UI render call site is already redirected; rendering is disabled");
-        return false;
-    }
-    if (pre_ui_probe != HookProbeResult::supported) {
-        PBVP_LOG_WARN("Pre-UI render call site has no reviewed signature; rendering is disabled");
-        return false;
-    }
-
-    RelativeCallBytes detour_call{};
-    if (!EncodeRelativeCall(
-            kPreUiCallSite, reinterpret_cast<std::uintptr_t>(&PreUiDetour), detour_call)) {
-        PBVP_LOG_ERROR("Pre-UI render detour is outside x86 relative-call range; rendering is disabled");
         return false;
     }
 
@@ -221,25 +137,14 @@ bool ProbeAndInstall() noexcept {
     }
     g_reset_hook_enabled = true;
 
-    g_original_pre_ui_call = pre_ui_bytes;
-    g_installed_pre_ui_call = detour_call;
-    g_pre_ui_call_installed = true;
-    if (!WriteBytes(kPreUiCallSite, detour_call)) {
-        PBVP_LOG_ERROR("Pre-UI render call installation failed; rendering is disabled");
-        RestorePreUiCall();
-        RemoveResetHook();
-        return false;
-    }
     g_ready.store(true, std::memory_order_release);
     PBVP_LOG_INFO("Verified NiDX9Renderer::Recreate hook installed");
-    PBVP_LOG_INFO("Verified pre-UI render call installed");
     return true;
 }
 
 void MarkShutdown() noexcept {
     g_shutting_down.store(true, std::memory_order_release);
     g_ready.store(false, std::memory_order_release);
-    RestorePreUiCall();
     RemoveResetHook();
 }
 

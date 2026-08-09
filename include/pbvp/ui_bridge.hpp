@@ -12,7 +12,30 @@ struct UiRectSnapshot {
     PixelExtent ui_extent{};
     bool visible{};
     std::uint32_t generation{};
+    std::uint32_t game_thread_id{};
 };
+
+enum class UiSurfaceStatus : std::uint32_t {
+    available,
+    wrong_thread,
+    map_hidden,
+    menu_unavailable,
+    image_unavailable,
+    wrong_tile_type,
+    texture_unavailable,
+    wrong_texture_type,
+    renderer_data_unavailable,
+    wrong_renderer_data_type,
+    d3d_texture_unavailable,
+    access_violation,
+};
+
+struct UiSurfaceSnapshot {
+    std::uintptr_t d3d_texture{};
+    UiSurfaceStatus status{UiSurfaceStatus::image_unavailable};
+};
+
+const char* UiSurfaceStatusName(UiSurfaceStatus status) noexcept;
 
 class UiBridge final {
 public:
@@ -20,6 +43,7 @@ public:
 
     void UpdateOnGameThread() noexcept;
     UiRectSnapshot ReadForRenderThread() const noexcept;
+    UiSurfaceSnapshot ResolveSurfaceOnSharedThread(std::uint32_t game_thread_id) const noexcept;
     void Clear() noexcept;
 
 private:
@@ -35,6 +59,7 @@ private:
     std::atomic<float> ui_height_{0.0f};
     std::atomic<bool> visible_{false};
     std::atomic<std::uint32_t> generation_{0};
+    std::atomic<std::uint32_t> game_thread_id_{0};
     bool polling_logged_{};
     bool map_visible_logged_{};
     std::uint32_t last_failure_{};

@@ -8,9 +8,9 @@ The repository contains the implementation, automated tests, UIO files, build sc
 
 Status: Phase 1 render and UI feasibility
 
-The current diagnostic build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, installs a UIO prefab, and probes the engine's Direct3D recreation function. It refuses to render until the live function entry matches a reviewed signature. This allows the first in-game run to collect the required evidence without patching unknown code.
+The current diagnostic build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, installs a UIO prefab, and probes the engine's Direct3D recreation function. Once the Pip-Boy is open, it validates the live UIO image, engine texture objects, Direct3D device, and callback thread before uploading a generated checkerboard. Any unknown object type, function entry, or thread arrangement disables the update instead of guessing.
 
-The host and Win32 automated tests pass. In-game render order, device recreation, resolution coverage, and DXVK support are not verified yet.
+The host and Win32 automated tests pass. Two separate overlay draw points were rejected because they rendered above the Pip-Boy UI. The engine-owned UIO image path is ready for its first in-game test. Device recreation, resolution coverage, and DXVK support are not verified yet.
 
 ## Build
 
@@ -56,7 +56,7 @@ The design has four runtime parts:
 
 1. An x86 xNVSE plugin owns lifecycle, menu state, worker threads, logging, and configuration.
 2. A private FFmpeg runtime opens MP4 containers, decodes audio and video, converts pixel formats, and resamples audio.
-3. A Direct3D 9 renderer uploads decoded frames on the game render thread and draws them over a UIO-injected Pip-Boy placeholder.
+3. A Direct3D 9 renderer uploads decoded frames into an engine-owned UIO image on the game render thread.
 4. An XAudio2 stream plays decoded PCM. Its sample cursor is the master playback clock when audio exists.
 
 The plugin remains ESP-less. xNVSE and UIO are required. JIP LN, JohnnyGuitar, and ShowOff are part of the VNV baseline but are not hard dependencies.

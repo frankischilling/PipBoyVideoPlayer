@@ -82,6 +82,21 @@ The candidate build found the expected relative call at `0x00870403`, decoded it
 
 The plugin recorded successful draws and ten 300-frame timing samples. Average cost ranged from 47.08 to 63.36 microseconds, with sample maxima from 97.70 to 221.40 microseconds. This result rejects the call as a usable XML underlay. The next test moves the checkerboard into an engine-owned `PBVP_VideoSurface` image.
 
+### Engine-owned UIO surface candidate
+
+Status: awaiting in-game test
+
+The candidate package adds a private 256x256 BGRA DDS as `PBVP_VideoSurface`. Gamebryo owns and draws this image in the prefab layer order. The plugin follows the reviewed `TileImage` texture chain, takes a temporary Direct3D reference, verifies the device and surface description, updates the pixels, and releases the reference before returning. It no longer draws a primitive or patches the rejected normal-frame call.
+
+The first test has four distinct outcomes:
+
+- A green checkerboard means the native texture update succeeded.
+- A dark purple surface means UIO loaded the private DDS, but the native update did not succeed. The plugin log should identify the failed check.
+- The black strip and `PBVP UI LAYER` text should remain visible above either surface.
+- The normal Pip-Boy frame and controls should remain visible and usable.
+
+This run must also confirm that the plugin reports matching game and Direct3D callback thread IDs. It is only a layer-order and texture-chain test. It does not complete the reset, resolution, base-profile, or DXVK matrix.
+
 ## Required profiles
 
 | Profile | Purpose |
