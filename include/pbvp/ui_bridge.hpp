@@ -35,6 +35,9 @@ private:
     std::atomic<float> ui_height_{0.0f};
     std::atomic<bool> visible_{false};
     std::atomic<std::uint32_t> generation_{0};
+    bool polling_logged_{};
+    bool map_visible_logged_{};
+    std::uint32_t last_failure_{};
     bool found_logged_{};
 };
 

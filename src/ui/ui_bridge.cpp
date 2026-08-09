@@ -25,6 +25,19 @@ constexpr std::size_t kMaxTileValues = 4096;
 constexpr std::size_t kMaxTilesVisited = 512;
 constexpr std::size_t kMaxParentDepth = 64;
 
+enum class ResolveStatus : std::uint32_t {
+    kMapHidden = 1u,
+    kMenuArrayUnavailable,
+    kMenuRootUnavailable,
+    kVideoRectUnavailable,
+    kVideoSizeUnavailable,
+    kMenuExtentUnavailable,
+    kParentChainInvalid,
+    kGeometryInvalid,
+    kAccessViolation,
+    kResolved,
+};
+
 struct Tile;
 
 struct ListNode {
@@ -130,32 +143,61 @@ Tile* FindDescendant(Tile* root, const char* name) noexcept {
     return nullptr;
 }
 
-bool ReadResolvedRect(UiRectSnapshot& output) noexcept {
+const char* ResolveStatusName(const ResolveStatus status) noexcept {
+    switch (status) {
+        case ResolveStatus::kMenuArrayUnavailable:
+            return "menu array unavailable";
+        case ResolveStatus::kMenuRootUnavailable:
+            return "MapMenu root unavailable";
+        case ResolveStatus::kVideoRectUnavailable:
+            return "PBVP_VideoRect unavailable";
+        case ResolveStatus::kVideoSizeUnavailable:
+            return "video width or height trait unavailable";
+        case ResolveStatus::kMenuExtentUnavailable:
+            return "MapMenu width or height trait unavailable";
+        case ResolveStatus::kParentChainInvalid:
+            return "video rectangle parent chain invalid or hidden";
+        case ResolveStatus::kGeometryInvalid:
+            return "video rectangle geometry invalid";
+        case ResolveStatus::kAccessViolation:
+            return "guarded UI memory access failed";
+        case ResolveStatus::kMapHidden:
+            return "MapMenu hidden";
+        case ResolveStatus::kResolved:
+            return "resolved";
+    }
+    return "unknown UI resolution failure";
+}
+
+ResolveStatus ReadResolvedRect(UiRectSnapshot& output) noexcept {
     __try {
         const auto* visible = reinterpret_cast<const std::uint8_t*>(kMenuVisibilityArray);
         if (visible[kMapMenuType] == 0u) {
-            return false;
+            return ResolveStatus::kMapHidden;
         }
 
         auto*** menu_array_pointer = reinterpret_cast<Tile***>(kTileMenuArrayPointer);
         if (menu_array_pointer == nullptr || *menu_array_pointer == nullptr) {
-            return false;
+            return ResolveStatus::kMenuArrayUnavailable;
         }
         Tile* menu_root = (*menu_array_pointer)[kMapMenuType - kMenuTypeMin];
         if (menu_root == nullptr) {
-            return false;
+            return ResolveStatus::kMenuRootUnavailable;
         }
         Tile* video_rect = FindDescendant(menu_root, "PBVP_VideoRect");
         if (video_rect == nullptr) {
-            return false;
+            return ResolveStatus::kVideoRectUnavailable;
         }
 
         TileValue* width = FindValue(video_rect, kValueWidth);
         TileValue* height = FindValue(video_rect, kValueHeight);
+        if (width == nullptr || height == nullptr) {
+            return ResolveStatus::kVideoSizeUnavailable;
+        }
         TileValue* root_width = FindValue(menu_root, kValueWidth);
         TileValue* root_height = FindValue(menu_root, kValueHeight);
-        if (width == nullptr || height == nullptr || root_width == nullptr || root_height == nullptr) {
-            return false;
+        if (root_width == nullptr || root_height == nullptr) {
+            return ResolveStatus::kMenuExtentUnavailable;
         }
 
         float x = 0.0f;
@@ -180,7 +222,7 @@ bool ReadResolvedRect(UiRectSnapshot& output) noexcept {
             current = current->parent;
         }
         if (current != menu_root || !visible_chain) {
-            return false;
+            return ResolveStatus::kParentChainInvalid;
         }
 
         output.rect = {x, y, x + width->number, y + height->number};
@@ -188,9 +230,9 @@ bool ReadResolvedRect(UiRectSnapshot& output) noexcept {
         output.visible = std::isfinite(x) && std::isfinite(y) &&
                          width->number > 0.0f && height->number > 0.0f &&
                          root_width->number > 0.0f && root_height->number > 0.0f;
-        return output.visible;
+        return output.visible ? ResolveStatus::kResolved : ResolveStatus::kGeometryInvalid;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return false;
+        return ResolveStatus::kAccessViolation;
     }
 }
 
@@ -202,8 +244,13 @@ UiBridge& UiBridge::Instance() noexcept {
 }
 
 void UiBridge::UpdateOnGameThread() noexcept {
+    if (!polling_logged_) {
+        PBVP_LOG_INFO("xNVSE game-thread UI polling active");
+        polling_logged_ = true;
+    }
     UiRectSnapshot snapshot{};
-    if (ReadResolvedRect(snapshot)) {
+    const ResolveStatus status = ReadResolvedRect(snapshot);
+    if (status == ResolveStatus::kResolved) {
         snapshot.generation = generation_.load(std::memory_order_relaxed) + 1u;
         if (!found_logged_) {
             PBVP_LOG_INFO(
@@ -214,6 +261,17 @@ void UiBridge::UpdateOnGameThread() noexcept {
         }
     } else {
         snapshot.visible = false;
+        if (status != ResolveStatus::kMapHidden) {
+            if (!map_visible_logged_) {
+                PBVP_LOG_INFO("MapMenu became visible; resolving the UIO video rectangle");
+                map_visible_logged_ = true;
+            }
+            const auto failure = static_cast<std::uint32_t>(status);
+            if (last_failure_ != failure) {
+                PBVP_LOG_WARN("Pip-Boy UI rectangle unavailable: %s", ResolveStatusName(status));
+                last_failure_ = failure;
+            }
+        }
     }
     Publish(snapshot);
 }
@@ -246,6 +304,8 @@ void UiBridge::Clear() noexcept {
     UiRectSnapshot empty{};
     Publish(empty);
     found_logged_ = false;
+    map_visible_logged_ = false;
+    last_failure_ = 0u;
 }
 
 void UiBridge::Publish(const UiRectSnapshot& snapshot) noexcept {

@@ -38,7 +38,9 @@ Evidence: the first in-game test showed that UIO found the registration and pref
 
 Rejected alternatives: adding another path component does not match UIO's three-part public entry format. Replacing the complete map menu would bypass UIO but violate the compatibility design.
 
-Consequence: the corrected registration still needs verification with the Extended and base UI stacks. A missing UIO add or inject entry is now a failed acceptance check, even if the plugin DLL loads normally.
+Consequence: a missing UIO add or inject entry is a failed acceptance check, even if the plugin DLL loads normally. The native tile bridge remains a separate acceptance check.
+
+Verification: the next VNV Extended run logged both the add and inject operations for `Player.xml` at `MM_MainRect`. The prefab still did not reach a visible native draw, so this closes only the registration-format defect.
 
 ### Native screen-space draw
 

@@ -30,6 +30,8 @@ Inference to test: a prefab can expose a stable rectangle and controls inside th
 
 The installed Pip-Boy UI Tweaks registrations and UIO's bundled author instructions confirm the public registration format. The first Phase 1 test used the correct target line, `PipBoyVideoPlayer\Player.xml::MapMenu::MM_MainRect`, but omitted the required condition line below it. UIO found the registration and prefab but did not add them. Its log contained a check entry without a matching add or inject entry, and `PBVP_Root` was absent from generated menu XML. The corrected record retains the target and adds `true` on the second line. A new in-game run must confirm the correction before the injection is treated as portable.
 
+The second VNV Extended run confirmed the correction. UIO logged both `Adding to 'Main\map_menu.xml' @ MM_MainRect` and `Injecting 'PipBoyVideoPlayer\Player.xml' @ MM_MainRect`. No checkerboard appeared, and the plugin logged no resolved rectangle or Direct3D activity. UIO composition is therefore working, while the native tile bridge or its upstream frame callbacks still need diagnosis.
+
 ## FFmpeg
 
 The [FFmpeg library documentation](https://www.ffmpeg.org/doxygen/trunk/index.html) assigns container I/O and demuxing to `libavformat`, decoding to `libavcodec`, scaling and pixel conversion to `libswscale`, and audio conversion to `libswresample`. Library major versions may include incompatible API changes, so the build must pin and validate a specific set.

@@ -55,14 +55,27 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
         ReleaseResources();
         return;
     }
-    if (!ui_rect.visible || device_lost_) {
+    if (!frame_callback_logged_) {
+        PBVP_LOG_INFO("Non-loading xNVSE frame-present callback active");
+        frame_callback_logged_ = true;
+    }
+    if (device_lost_) {
         return;
     }
 
     IDirect3DDevice9* device = FindDevice();
-    if (!ValidateDevice(device) || !EnsureResources(device)) {
+    if (!ValidateDevice(device)) {
         if (error_count_++ < 8u) {
-            PBVP_LOG_WARN("D3D frame skipped after validation or resource failure");
+            PBVP_LOG_WARN("D3D frame skipped after device validation failure");
+        }
+        return;
+    }
+    if (!ui_rect.visible) {
+        return;
+    }
+    if (!EnsureResources(device)) {
+        if (error_count_++ < 8u) {
+            PBVP_LOG_WARN("D3D frame skipped after resource creation failure");
         }
         return;
     }
@@ -123,6 +136,9 @@ bool D3dRenderer::ValidateDevice(IDirect3DDevice9* device) noexcept {
     if (device == nullptr) {
         return false;
     }
+    if (device_ == device) {
+        return true;
+    }
     __try {
         D3DDEVICE_CREATION_PARAMETERS parameters{};
         if (FAILED(device->GetCreationParameters(&parameters)) || parameters.hFocusWindow == nullptr) {
@@ -132,11 +148,9 @@ bool D3dRenderer::ValidateDevice(IDirect3DDevice9* device) noexcept {
         return false;
     }
 
-    if (device_ != device) {
-        ReleaseResources();
-        device_ = device;
-        LogDeviceProfile(device);
-    }
+    ReleaseResources();
+    device_ = device;
+    LogDeviceProfile(device);
     return true;
 }
 

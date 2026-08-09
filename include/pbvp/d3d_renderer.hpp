@@ -41,6 +41,7 @@ private:
     std::int64_t timing_max_ticks_{};
     bool shutdown_requested_{};
     bool device_lost_{};
+    bool frame_callback_logged_{};
     bool first_draw_logged_{};
 };
 
