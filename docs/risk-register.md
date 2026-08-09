@@ -5,7 +5,7 @@ This register tracks failures that can change the architecture, support promise,
 | Risk | Probability | Impact | Current response | Trigger or evidence | Phase owner |
 | --- | --- | --- | --- | --- | --- |
 | No safe Pip-Boy render point exists | Low to medium | Project-blocking | Test xNVSE's frame-present notification before decoder work | State leaks, wrong layer, or a draw behind the Pip-Boy screen | Phase 1 |
-| Direct3D device reset conflicts with another plugin | Medium | High | Verify the engine recreation prologue, fail closed if occupied, and release default-pool resources before recreation | Unknown bytes, an occupied entry point, failed Reset, black texture after Alt+Tab, or a crash in another hook | Phase 1 |
+| Direct3D device reset conflicts with another plugin | Low to medium | High | The Extended profile accepted the verified hook; next test actual recreation and default-pool release | Failed Reset, black texture after Alt+Tab, or a crash during another hook's reset work | Phase 1 |
 | DXVK behaves differently from native D3D9 | Medium | High | Treat it as a separate graphics target and keep the upload path replaceable | Different device lifetime, texture lock failure, or state restoration bug | Phase 1 |
 | UI rectangle is not portable across Pip-Boy layouts | High | High | Keep coordinates in UIO XML and limit the supported replacer list | Missing traits, incorrect clipping, or controls outside the screen | Phases 1 and 5 |
 | FFmpeg consumes too much 32-bit address space | Medium | High | Cap dimensions, keep queues small, disable unused features, and measure virtual memory | Private bytes or address space grows past the agreed budget | Phase 2 |

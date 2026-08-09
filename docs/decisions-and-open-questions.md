@@ -60,6 +60,8 @@ Rejected alternatives: hooking the Direct3D device `Reset` vtable entry has the 
 
 Consequence: the plugin accepts one relocation-free signature recovered from an independent Ghidra audit. It logs the live decrypted entry and installs the hook only after an exact match. Unknown or occupied entries fail closed.
 
+Verification: on August 9, 2026, the patched local Steam executable exposed the exact reviewed signature after runtime decryption. The hook installed with the VNV Extended graphics plugin stack present, and the game exited normally from the main menu.
+
 ### Private development licensing
 
 Date: August 9, 2026
@@ -97,11 +99,10 @@ Reason: the player should be safe to add or remove and should not leave missing 
 ## Open questions before phase one
 
 1. Does the xNVSE frame-present boundary place the draw at the correct depth relative to every required Pip-Boy layout?
-2. Does the patched local executable expose the reviewed `NiDX9Renderer::Recreate` prologue after runtime decryption?
-3. What coordinate transforms are required between UI tile space and the backbuffer for each aspect ratio?
-4. Does DXVK preserve the selected D3D9 behavior and Reset path?
-5. Which Pip-Boy replacers retain the same menu coordinate contract?
-6. Can the UI provide a clean Data entry without editing scripts or requiring an ESP?
+2. What coordinate transforms are required between UI tile space and the backbuffer for each aspect ratio?
+3. Does DXVK preserve the selected D3D9 behavior and Reset path?
+4. Which Pip-Boy replacers retain the same menu coordinate contract?
+5. Can the UI provide a clean Data entry without editing scripts or requiring an ESP?
 
 ## Open questions before phase two
 

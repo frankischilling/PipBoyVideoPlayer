@@ -18,6 +18,18 @@ The local planning baseline was inspected on August 9, 2026. The active VNV Exte
 
 These versions are a reproducible local snapshot, not permanent minimum requirements. Before each release, compare the current VNV guide and Wabbajack profile, then record the versions used for the release candidate.
 
+## Phase 1 execution results
+
+### Main-menu hook verification
+
+Date: August 9, 2026
+
+Profile: Viva New Vegas Extended, native Direct3D 9
+
+The Release diagnostic build loaded through MO2 and xNVSE 6.4.5. The decrypted `NiDX9Renderer::Recreate` entry matched the reviewed 16-byte signature exactly. MinHook installed the reset detour while Fallout Shader Loader 1.32, Depth Resolve 1.30, HD Pip-Boy, UIO 2.30, and the remaining Extended plugin stack were loaded. The game reached the main menu and exited normally. The plugin received the xNVSE exit message and logged its shutdown request.
+
+This run verifies plugin loading, the runtime gate, the local reset signature, hook availability, and ordinary process exit. It does not verify Pip-Boy rendering, UI coordinates, render state restoration, device recreation, Alt+Tab, or DXVK.
+
 ## Required profiles
 
 | Profile | Purpose |
