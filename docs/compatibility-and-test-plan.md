@@ -30,6 +30,22 @@ The Release diagnostic build loaded through MO2 and xNVSE 6.4.5. The decrypted `
 
 This run verifies plugin loading, the runtime gate, the local reset signature, hook availability, and ordinary process exit. It does not verify Pip-Boy rendering, UI coordinates, render state restoration, device recreation, Alt+Tab, or DXVK.
 
+### Visible native D3D9 draw
+
+Date: August 9, 2026
+
+Profile: Viva New Vegas Extended, native Direct3D 9, fullscreen 1920x1080
+
+UI stack: UIO 2.30, Vanilla UI Plus 9.48, Clean Vanilla HUD 1.01, and Pip-Boy UI Tweaks 5.2.1
+
+GPU: NVIDIA GeForce RTX 3060 through `nvldumd.dll`
+
+The corrected UIO registration injected `Player.xml` at `MM_MainRect`. The native bridge found `PBVP_VideoRect`, resolved its logical bounds as 110,108 through 670,423, and found a 1706.67x960 logical canvas above `MapMenu`. The user confirmed that the generated checkerboard was visible on the Pip-Boy Data tab.
+
+The generated 256x256 texture upload took 149.10 microseconds. A 300-frame sample of state capture, checkerboard drawing, and state restoration averaged 91.72 microseconds and reached a maximum of 647.70 microseconds.
+
+This run verifies one visible presentation path and its first cost sample. It does not yet verify clipping, layer order against controls, state isolation, device recreation, other resolutions, other display modes, the base profile, or DXVK.
+
 ## Required profiles
 
 | Profile | Purpose |

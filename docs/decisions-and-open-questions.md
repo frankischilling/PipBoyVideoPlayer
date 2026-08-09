@@ -62,7 +62,7 @@ Evidence: the native bridge found the video rectangle and its dimensions, but `M
 
 Rejected alternative: using the Win32 client size would treat logical XML coordinates as physical pixels and produce incorrect placement when UI scaling or aspect ratio changes.
 
-Consequence: the next in-game run must verify the resolved logical extent and the pixel conversion at 1920 by 1080 before other resolutions are tested.
+Consequence: the first fullscreen 1920x1080 test resolved a 1706.67x960 logical canvas and produced a visible checkerboard. Other resolutions and UI scales still need independent verification.
 
 ### Native screen-space draw
 
@@ -70,7 +70,7 @@ Decision: let XML define the rectangle, then let the native renderer draw the de
 
 Reason: the legacy XML image system has no planned interface for a live FFmpeg texture. Keeping coordinates in XML preserves layout flexibility.
 
-This decision is provisional until phase one proves render ordering and coordinate conversion.
+The first fullscreen 1920x1080 VNV Extended test verified a visible draw and coordinate conversion. This decision remains provisional until layer order, state isolation, device recovery, and the remaining compatibility matrix pass.
 
 ### xNVSE frame-present boundary
 

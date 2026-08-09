@@ -36,6 +36,8 @@ The diagnostic run confirmed that game-thread polling, non-loading frame present
 
 The next run resolved the video tile dimensions and stopped because `MapMenu` has no positive width and height pair. The active Vanilla UI Plus globals describe `screen` as the logical UI canvas and derive the physical screen dimensions from its width, height, and resolution converter. The native bridge now searches the bounded ancestor chain from `MapMenu` for the first positive width and height pair. It does not substitute the physical client size, which would mix backbuffer pixels with logical UI coordinates.
 
+The following VNV Extended run produced the first visible checkerboard on the Pip-Boy Data tab at fullscreen 1920x1080 under native Direct3D 9. The native bridge resolved a 1706.67x960 logical canvas and video bounds of 110,108 through 670,423. The generated 256x256 upload took 149.10 microseconds. State preservation and drawing averaged 91.72 microseconds over 300 frames, with a recorded maximum of 647.70 microseconds. Layer order, state isolation, device recreation, and the remaining compatibility matrix are still open.
+
 ## FFmpeg
 
 The [FFmpeg library documentation](https://www.ffmpeg.org/doxygen/trunk/index.html) assigns container I/O and demuxing to `libavformat`, decoding to `libavcodec`, scaling and pixel conversion to `libswscale`, and audio conversion to `libswresample`. Library major versions may include incompatible API changes, so the build must pin and validate a specific set.
