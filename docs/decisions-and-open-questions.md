@@ -132,6 +132,18 @@ Consequence: the visible checkerboard proves device access and coordinate conver
 
 Candidate under test: replace the normal-frame relative call at `0x00870403` only when its live target is the reviewed `0x00709B40` routine. The replacement draws first and then calls the original routine. This is not a final render-point decision until the black strip and `PBVP UI LAYER` text appear above the checkerboard in game.
 
+### Normal-frame pre-UI candidate rejected
+
+Date: August 9, 2026
+
+Decision: remove the normal-frame call replacement and test an engine-owned `TileImage` surface. Gamebryo will draw the image in XML order; the plugin will update pixels without issuing a separate primitive draw.
+
+Evidence: the runtime log decoded the unmodified call at `0x00870403` to `0x00709B40`, installed the replacement, and recorded successful checkerboard draws. The user saw the checkerboard hovering over the Pip-Boy, saw neither the black strip nor `PBVP UI LAYER`, and confirmed that the ordinary frame and controls remained visible and usable. Draw samples averaged 47.08 to 63.36 microseconds. The failure is therefore the visible order of the candidate, not hook installation or device access.
+
+Rejected alternative: continue trying frame-wide calls between `Main::Render` and presentation. Two credible late-frame boundaries have now produced the same overlay behavior, and another nearby call would not give the video an owned place within the XML child order.
+
+Consequence: Phase 1 will use the named UIO image as the presentation owner. The next spike must validate the maintained `TileImage` to `NiTexture` to `NiDX9TextureData` chain, prove thread identity, and update only a private texture. The direct checkerboard renderer remains useful as measured evidence but is no longer a release path.
+
 ### Verified reset hook only
 
 Date: August 9, 2026

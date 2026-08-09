@@ -2,7 +2,7 @@
 
 ## Runtime boundary
 
-The project is one x86 xNVSE plugin plus data files installed under `Data`. It does not use a `d3d9.dll` proxy and does not require an ESP. The plugin locates the game renderer after xNVSE load. The Phase 1 candidate draws from a checked normal-frame call immediately before the engine UI routine at `0x00709B40`. A verified engine recreation hook handles default-pool resource teardown. The plugin restores the original call and disables its work during shutdown.
+The project is one x86 xNVSE plugin plus data files installed under `Data`. It does not use a `d3d9.dll` proxy and does not require an ESP. The plugin locates the game renderer after xNVSE load. UIO provides an engine-owned `TileImage` for the video surface so Gamebryo controls its clipping and layer order. The plugin updates that image's reviewed Direct3D texture chain from the render thread and does not issue a separate screen-space draw.
 
 The implementation must target FalloutNV 1.4.0.525 and reject unknown executables. It should use verified relocations or signatures rather than naked absolute addresses. Steam, GOG, and patched Epic executables need separate verification records if their code layouts differ.
 
@@ -56,17 +56,17 @@ The player owns its XAudio2 engine and voices unless an implementation spike fin
 
 ### Renderer
 
-The renderer receives BGRA frames and uploads them on the game render thread. The preferred resource is a dynamic `D3DPOOL_DEFAULT` texture created with a lockable format. The implementation must copy rows using the returned Direct3D pitch rather than assuming tightly packed storage.
+The renderer receives BGRA frames and uploads them on the game render thread. UIO loads a private, uncompressed DDS into `PBVP_VideoSurface`. The bridge validates the `TileImage`, `NiTexture`, `NiDX9TextureData`, and `IDirect3DTexture9` chain before each new surface is used. It also verifies dimensions, format, pool, device identity, and the shared game and render thread identity.
 
-Before drawing, the renderer captures every Direct3D state it changes. It restores textures, samplers, shaders, vertex declarations, transforms, blend state, scissor state, and render targets before returning to the game. A state block may help, but the spike must measure its cost and confirm that it restores everything used by the selected hook point.
+The renderer locks the engine-owned texture, copies rows using the returned Direct3D pitch, and releases its temporary COM reference before returning. It does not bind the texture or issue a primitive draw, so Gamebryo retains its normal UI render state and draws the surface in XML order. An upload at the final frame callback becomes visible on the next rendered frame. Frame selection must include that one-frame presentation offset.
 
-The renderer releases all default-pool resources before `Reset` and recreates them only after a successful reset. The upload queue remains in system memory during a lost-device interval. Playback may pause if the interval is long enough to exhaust bounded queues.
+The plugin does not retain ownership of the UI texture across callbacks. The engine owns its lifetime and reset behavior. The verified recreation hook remains during the spike to observe device recreation and reject an occupied lifecycle boundary. If testing proves that the engine texture is managed and no plugin-owned default-pool resource remains, a later decision may remove that detour.
 
 ### Pip-Boy presentation bridge
 
-UIO injects a prefab into the selected Pip-Boy menu. The prefab owns the video rectangle, focus region, labels, control prompts, and state traits. It does not attempt to display the decoded Direct3D texture itself.
+UIO injects a prefab into the selected Pip-Boy menu. The prefab owns the video rectangle, engine image, focus region, labels, control prompts, and state traits. The engine image places video between the Pip-Boy screen and the controls without requiring a frame-wide overlay.
 
-The native renderer reads the resolved rectangle from the injected tile and draws the video into the same screen-space region at a verified point in the menu render order. This keeps layout decisions in XML while the native plugin owns the texture.
+The native bridge resolves the named image and follows the reviewed engine texture layout to its Direct3D resource. Gamebryo owns the texture and draws it. The plugin only updates its pixels while the image is live.
 
 The bridge must prove three things before decoder work begins:
 
@@ -97,16 +97,15 @@ The plugin log records component, state, error code, media basename, and timesta
 
 ## Hook policy
 
-xNVSE 6.4.5's `kMessage_OnFramePresent` notification remains enabled for diagnostics, but it no longer draws video. Testing showed that it runs after the visible menu UI. The plugin does not patch `Present`, `EndScene`, or a Direct3D device vtable.
+xNVSE 6.4.5's `kMessage_OnFramePresent` notification is the upload boundary for the engine-owned texture. It does not issue a primitive draw. The callback ignores loading screens and refuses the upload if its operating-system thread does not match the game thread that resolved the tile. The plugin does not patch `Present`, `EndScene`, the normal-frame UI call, or a Direct3D device vtable.
 
-The Phase 1 candidate replaces the five-byte relative call at `0x00870403`, which targets the engine routine at `0x00709B40` in Fallout NV 1.4.0.525. The replacement draws the video rectangle and then calls the original routine. Before writing the call, the plugin decodes the live target and accepts only the reviewed original address. A changed opcode or target disables rendering for the session. The original bytes are restored during orderly shutdown only if the site still contains this plugin's replacement.
-
-The engine's `NiDX9Renderer::Recreate` function remains the only MinHook detour. Before installing it, the plugin compares the live function entry with a reviewed signature table and rejects common jump stubs and unknown bytes. If either hook check fails, the plugin leaves the pre-UI call untouched and disables rendering.
+The engine's `NiDX9Renderer::Recreate` function remains the only MinHook detour during this spike. Before installing it, the plugin compares the live function entry with a reviewed signature table and rejects common jump stubs and unknown bytes. An unknown or occupied entry disables texture updates for the session instead of attempting to chain through another hook.
 
 The selected boundaries still need:
 
-- in-game confirmation that the candidate runs on the render thread;
-- in-game confirmation that the candidate sits above the Pip-Boy screen and below UIO controls;
+- validation of the live `TileImage` texture chain;
+- confirmation that the game-thread and upload callbacks use the same operating-system thread;
+- in-game confirmation that the engine image sits above the Pip-Boy screen and below UIO controls;
 - safe refusal when another plugin has already patched the reset target;
 - Reset or lost-device coverage;
 - conflict detection and a safe refusal path;
