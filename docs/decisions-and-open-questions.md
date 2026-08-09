@@ -118,6 +118,18 @@ Rejected alternatives: a root `d3d9.dll` proxy would conflict with common wrappe
 
 Consequence: Phase 1 needs no presentation hook. It still needs measured proof that this boundary has the required Pip-Boy draw order under native Direct3D 9 and any claimed DXVK configuration.
 
+### Frame-present draw order rejected
+
+Date: August 9, 2026
+
+Decision: do not use `kMessage_OnFramePresent` as the final video draw location. Keep the verified callback available for diagnostics while Phase 1 tests an engine-owned render point that runs before menu XML is drawn.
+
+Evidence: the test prefab placed a black image and the text `PBVP UI LAYER` inside `PBVP_VideoRect`. UIO processed and injected that updated prefab during the same run. The native bridge resolved the rectangle, and the checkerboard drew successfully. The user saw the checkerboard cover the Pip-Boy but saw neither probe element. This confirms that the native draw runs after the menu UI at the current callback.
+
+Rejected alternative: drawing the playback controls in Direct3D would duplicate the UIO control layer and make input, fonts, scaling, and UI compatibility harder. The project will first test credible engine render locations before considering that design.
+
+Consequence: the visible checkerboard proves device access and coordinate conversion only. It does not prove a usable presentation path. FFmpeg integration remains blocked on a render point where UIO controls can appear above the video.
+
 ### Verified reset hook only
 
 Date: August 9, 2026
@@ -168,7 +180,7 @@ Reason: the player should be safe to add or remove and should not leave missing 
 
 ## Open questions before phase one
 
-1. Does the xNVSE frame-present boundary place the draw at the correct depth relative to every required Pip-Boy layout?
+1. Which verified engine-owned render point places the video below UIO controls without interfering with the world or other menus?
 2. What coordinate transforms are required between UI tile space and the backbuffer for each aspect ratio?
 3. Does DXVK preserve the selected D3D9 behavior and Reset path?
 4. Which Pip-Boy replacers retain the same menu coordinate contract?

@@ -62,6 +62,16 @@ An explicit display-mode or resolution transition is still required to exercise
 the verified `NiDX9Renderer::Recreate` detour. The full 50-cycle acceptance test
 also remains open.
 
+### Frame-present layer order
+
+Date: August 9, 2026
+
+Profile: Viva New Vegas Extended, native Direct3D 9, fullscreen 1920x1080
+
+The test prefab placed a black strip and the text `PBVP UI LAYER` inside the checkerboard rectangle. UIO processed and injected the updated prefab. The plugin resolved the rectangle and logged successful checkerboard draws. The user saw the checkerboard cover the Pip-Boy but saw neither the strip nor the text.
+
+This run rejects `kMessage_OnFramePresent` as the final playback draw location because it runs after the visible menu UI. It does not reject the native Direct3D texture path or the UIO rectangle. Phase 1 must test a verified engine-owned render point before the menu UI is drawn.
+
 ## Required profiles
 
 | Profile | Purpose |

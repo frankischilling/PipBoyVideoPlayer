@@ -66,6 +66,15 @@ a recreation during those switches. The result is evidence for presentation
 persistence only. It does not yet prove the pre-Reset release and post-Reset
 resource path.
 
+The layer-order run used an updated prefab with a black image and the text
+`PBVP UI LAYER` inside `PBVP_VideoRect`. The current `ui_organizer.log` records
+both the add and inject operations for that prefab. The plugin log records the
+same rectangle and successful checkerboard draws. The user saw the checkerboard
+cover the Pip-Boy and saw neither UIO probe element. This rejects
+`kMessage_OnFramePresent` as the final playback draw point. The callback remains
+useful for presentation diagnostics, but the video draw needs an engine-owned
+location before menu rendering.
+
 ## FFmpeg
 
 The [FFmpeg library documentation](https://www.ffmpeg.org/doxygen/trunk/index.html) assigns container I/O and demuxing to `libavformat`, decoding to `libavcodec`, scaling and pixel conversion to `libswscale`, and audio conversion to `libswresample`. Library major versions may include incompatible API changes, so the build must pin and validate a specific set.
