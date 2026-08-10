@@ -6,12 +6,16 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 option(PBVP_BUILD_PLUGIN "Build the Win32 xNVSE plugin" ON)
 option(PBVP_BUILD_TESTS "Build automated tests" ON)
+option(PBVP_ENABLE_MEDIA_SMOKE_TEST "Arm the private live MO2 media decoder diagnostic" OFF)
 set(PBVP_XNVSE_ROOT "${CMAKE_SOURCE_DIR}/external/NVSE-6.4.5" CACHE PATH "xNVSE 6.4.5 release source root")
+set(PBVP_FFMPEG_ROOT "${CMAKE_SOURCE_DIR}/external/ffmpeg-8.1.2-i686" CACHE PATH "Verified FFmpeg 8.1.2 x86 install root")
 
 include(CTest)
 
 add_library(pbvp_core STATIC
+    src/core/checked_math.cpp
     src/core/frame_cadence.cpp
+    src/core/media_limits.cpp
     src/core/rect_math.cpp
     src/core/texture_contract.cpp)
 target_include_directories(pbvp_core PUBLIC include)
@@ -33,6 +37,21 @@ if(PBVP_BUILD_PLUGIN)
     if(NOT EXISTS "${PBVP_XNVSE_ROOT}/nvse/nvse/PluginAPI.h")
         message(FATAL_ERROR "PBVP_XNVSE_ROOT must point to the official xNVSE 6.4.5 release source.")
     endif()
+    if(NOT EXISTS "${PBVP_FFMPEG_ROOT}/include/libavformat/avformat.h" OR
+       NOT EXISTS "${PBVP_FFMPEG_ROOT}/bin/avcodec-62.dll")
+        message(FATAL_ERROR "PBVP_FFMPEG_ROOT must point to the verified FFmpeg 8.1.2 x86 build. Run scripts/build-ffmpeg.ps1.")
+    endif()
+
+    add_library(pbvp_media STATIC
+        src/media/ffmpeg_runtime.cpp
+        src/media/media_decoder.cpp
+        src/media/win32_avio.cpp)
+    target_include_directories(pbvp_media PUBLIC include)
+    target_include_directories(pbvp_media SYSTEM PUBLIC "${PBVP_FFMPEG_ROOT}/include")
+    target_compile_features(pbvp_media PUBLIC cxx_std_20)
+    target_compile_definitions(pbvp_media PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_compile_options(pbvp_media PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
+    set_target_properties(pbvp_media PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
     add_library(PipBoyVideoPlayer SHARED
         src/plugin/plugin_main.cpp
@@ -41,7 +60,7 @@ if(PBVP_BUILD_PLUGIN)
         src/diagnostics/logger.cpp
         src/plugin/version.rc
         src/plugin/exports.def)
-    target_link_libraries(PipBoyVideoPlayer PRIVATE pbvp_core d3d9)
+    target_link_libraries(PipBoyVideoPlayer PRIVATE pbvp_core pbvp_media d3d9 psapi)
     target_include_directories(PipBoyVideoPlayer PRIVATE
         include
         "${PBVP_XNVSE_ROOT}"
@@ -51,6 +70,9 @@ if(PBVP_BUILD_PLUGIN)
         WIN32 _WINDOWS RUNTIME RUNTIME_VERSION=0x040020D0
         WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS
         PBVP_VERSION_STRING="${PROJECT_VERSION}")
+    if(PBVP_ENABLE_MEDIA_SMOKE_TEST)
+        target_compile_definitions(PipBoyVideoPlayer PRIVATE PBVP_ENABLE_MEDIA_SMOKE_TEST=1)
+    endif()
     target_compile_options(PipBoyVideoPlayer PRIVATE
         /W4 /permissive- /utf-8 /Zc:__cplusplus /guard:cf
         "/FI${CMAKE_SOURCE_DIR}/include/pbvp/xnvse_prefix.hpp")
@@ -72,7 +94,34 @@ if(PBVP_BUILD_PLUGIN)
         add_dependencies(pbvp_plugin_abi_test PipBoyVideoPlayer)
         add_test(NAME pbvp_plugin_abi_test COMMAND pbvp_plugin_abi_test $<TARGET_FILE:PipBoyVideoPlayer>)
 
+        add_executable(pbvp_ffmpeg_loader_test tests/ffmpeg_runtime_tests.cpp)
+        target_link_libraries(pbvp_ffmpeg_loader_test PRIVATE pbvp_media)
+        target_compile_features(pbvp_ffmpeg_loader_test PRIVATE cxx_std_20)
+        target_compile_options(pbvp_ffmpeg_loader_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
+        set_target_properties(pbvp_ffmpeg_loader_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        add_test(NAME pbvp_ffmpeg_loader_test COMMAND pbvp_ffmpeg_loader_test "${PBVP_FFMPEG_ROOT}/bin")
+
+        add_executable(pbvp_win32_avio_test tests/win32_avio_tests.cpp)
+        target_link_libraries(pbvp_win32_avio_test PRIVATE pbvp_media)
+        target_include_directories(pbvp_win32_avio_test SYSTEM PRIVATE "${PBVP_FFMPEG_ROOT}/include")
+        target_compile_features(pbvp_win32_avio_test PRIVATE cxx_std_20)
+        target_compile_options(pbvp_win32_avio_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
+        set_target_properties(pbvp_win32_avio_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        add_test(NAME pbvp_win32_avio_test COMMAND pbvp_win32_avio_test "${PBVP_FFMPEG_ROOT}/bin")
+
+        add_executable(pbvp_media_decoder_test tests/media_decoder_tests.cpp)
+        target_link_libraries(pbvp_media_decoder_test PRIVATE pbvp_media pbvp_core psapi)
+        target_compile_features(pbvp_media_decoder_test PRIVATE cxx_std_20)
+        target_compile_options(pbvp_media_decoder_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus /Zm200)
+        set_target_properties(pbvp_media_decoder_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        add_test(
+            NAME pbvp_media_decoder_test
+            COMMAND pbvp_media_decoder_test
+                "${PBVP_FFMPEG_ROOT}/bin"
+                "${CMAKE_SOURCE_DIR}/tests/fixtures")
+
         find_program(PBVP_LLVM_PDBUTIL_EXECUTABLE NAMES llvm-pdbutil REQUIRED)
+        find_program(PBVP_LLVM_READOBJ_EXECUTABLE NAMES llvm-readobj REQUIRED)
         add_test(
             NAME pbvp_public_pdb_sanitizer_test
             COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
@@ -84,6 +133,18 @@ if(PBVP_BUILD_PLUGIN)
                 -BinaryPath $<TARGET_FILE:PipBoyVideoPlayer>
                 -LlvmPdbUtil ${PBVP_LLVM_PDBUTIL_EXECUTABLE})
         set_tests_properties(pbvp_public_pdb_sanitizer_test PROPERTIES CONFIGURATIONS Release)
+
+        add_test(
+            NAME pbvp_ffmpeg_runtime_audit_test
+            COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+                -NoProfile
+                -ExecutionPolicy Bypass
+                -File ${CMAKE_SOURCE_DIR}/tests/test-ffmpeg-runtime-audit.ps1
+                -AuditScript ${CMAKE_SOURCE_DIR}/scripts/audit-ffmpeg-runtime.ps1
+                -RuntimeDirectory ${PBVP_FFMPEG_ROOT}/bin
+                -ManifestPath ${CMAKE_SOURCE_DIR}/dependencies/ffmpeg-8.1.2.json
+                -LlvmReadObj ${PBVP_LLVM_READOBJ_EXECUTABLE}
+                -PrivatePathMarker ${CMAKE_SOURCE_DIR})
     endif()
 endif()
 
@@ -121,13 +182,43 @@ if(PBVP_BUILD_TESTS)
             -CounterModule ${CMAKE_SOURCE_DIR}/scripts/phase1-focus-counter.psm1)
 
     add_test(
+        NAME pbvp_ffmpeg_manifest_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-ffmpeg-manifest.ps1
+            -ManifestPath ${CMAKE_SOURCE_DIR}/dependencies/ffmpeg-8.1.2.json
+            -FetchScript ${CMAKE_SOURCE_DIR}/scripts/fetch-dependencies.ps1
+            -BuildScript ${CMAKE_SOURCE_DIR}/scripts/build-ffmpeg.ps1)
+
+    add_test(
+        NAME pbvp_phase2_media_profile_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase2-media-profile.ps1
+            -ProfileScript ${CMAKE_SOURCE_DIR}/scripts/create-phase2-media-profile.ps1
+            -FixturePath ${CMAKE_SOURCE_DIR}/tests/fixtures/h264-aac-1080p.mp4)
+
+    add_test(
+        NAME pbvp_phase2_media_smoke_log_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase2-media-smoke-log.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase2-media-smoke-log.ps1)
+
+    add_test(
         NAME pbvp_data_contract_test
         COMMAND ${CMAKE_COMMAND}
             -DPBVP_SOURCE_DIR=${CMAKE_SOURCE_DIR}
             -P ${CMAKE_SOURCE_DIR}/tests/verify_data_contract.cmake)
 
     add_executable(pbvp_tests
+        tests/bounded_queue_tests.cpp
+        tests/checked_math_tests.cpp
         tests/frame_cadence_tests.cpp
+        tests/media_limits_tests.cpp
         tests/rect_math_tests.cpp
         tests/texture_contract_tests.cpp
         tests/test_main.cpp)

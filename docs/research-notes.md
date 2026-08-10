@@ -93,7 +93,41 @@ The [FFmpeg library documentation](https://www.ffmpeg.org/doxygen/trunk/index.ht
 
 The [FFmpeg README](https://ffmpeg.org/doxygen/8.0/md_README.html) states that the codebase is mainly LGPL with optional GPL components. The actual configuration controls the resulting obligations. The package plan therefore excludes optional components until their licenses and need are reviewed.
 
-Inference to test: a minimal x86 build with MOV/MP4, H.264, and AAC support is small enough in code and address-space cost for the target VNV profile.
+The official release index identified FFmpeg 8.1.2 as the current stable release on August 10, 2026. The source archive was downloaded from `https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz`. Its SHA-256 is `464BEB5E7BF0C311E68B45AE2F04E9CC2AF88851ABB4082231742A74D97B524C`. GnuPG accepted the detached signature from release key fingerprint `FCF986EA15E6E293A5644F10B4322F04D67658D8`.
+
+The minimal i686 configuration enables five shared libraries, the MOV demuxer, H.264 and AAC decoding and parsing, Windows threads, software scaling, and audio resampling. It disables programs, documentation, networking, protocols, encoders, muxers, filters, devices, hardware acceleration, and automatic external dependency detection. The configuration reports LGPL version 2.1 or later.
+
+The first build imported `libwinpthread-1.dll` from `avutil-60.dll` for `clock_gettime32` and `nanosleep32`. A second profile linked only those functions from the pinned static winpthreads archive. The resulting five DLLs import only one another and Windows system libraries. The installed MSYS2 package is `mingw-w64-i686-winpthreads` version `13.0.0.r505.g7d006b2ea-1`, based on source commit `7d006b2ea4b17da66e515f4494b86cc1adb52f24`. Its terms are MIT and BSD-3-Clause-Clear.
+
+A path scan then found absolute source names in FFmpeg's runtime diagnostic strings even though debug symbols were disabled. GCC file-prefix mapping replaces the local checkout with `pbvp` without adding an absolute path to FFmpeg's published configure string. Two clean builds with source epoch `1781662671` produced the same five DLL hashes. The audit confirmed i386 machine type, exact imports, exact hashes, and no repository, MSYS2, or user-profile path.
+
+GCC emitted upstream warnings in AAC spectral band replication, frame-worker naming, VLC table analysis, and unused transform initialization functions. The build completed without a local FFmpeg patch. These warnings remain part of the dependency review record and will be checked again before an update.
+
+The current five DLLs total 6,056,006 bytes on disk. This resolves build size, not runtime address-space cost.
+
+The plugin loader builds the runtime directory from the xNVSE game path and the fixed private suffix `Data\NVSE\Plugins\PipBoyVideoPlayer\bin`. It passes each absolute DLL name to `LoadLibraryExW` with `LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR` and `LOAD_LIBRARY_SEARCH_SYSTEM32`. It then checks the loaded module path, resolves version and configuration functions by name, and compares the five exact library versions with the build headers. It also rejects a configuration missing the minimal libraries or containing GPL, nonfree, or version 3 switches.
+
+The Win32 loader test rejects a relative directory, accepts the pinned runtime, verifies all five numeric versions, rejects a second load, unloads cleanly, and rejects an incomplete private directory. Packaging audits the source DLLs again, copies only the manifest entries, includes the verified license files, scans every staged file for local path markers, and requires the final DLL inventory to contain only the plugin and the five private libraries.
+
+The custom AVIO bridge opens one direct-child media name through `CreateFileW`. It rejects relative or network roots, traversal, subdirectories, reparse points, empty files, and files beyond the configured 64-bit limit. Reads use an overlapped file handle and wait on either the read completion event or a manual cancellation event. A cancellation request signals the waiter and calls `CancelIoEx`, so shutdown does not depend on an ordinary synchronous read returning by itself.
+
+The Win32 test opens a generated 128 KiB fixture with a Unicode name. It verifies buffered reads, an absolute seek, data after the seek, the size query, and cancellation. It also exercises the path, file type, file size, and AVIO buffer failures. This proves the Windows and FFmpeg callback contract outside the game. It does not prove that `CreateFileW` sees a file supplied only by the active MO2 virtual filesystem.
+
+The completed Phase 2 suite on August 10, 2026 passed all 9 host tests and all 15 Win32 Release tests. The x86 run exercised the 64-bit to 32-bit size rejection used by the game build. Queue tests filled both count and byte capacity, advanced a seek generation while a producer was blocked, and closed a full queue while another producer was blocked. Both waiters woke with the expected refusal instead of publishing stale data or waiting through shutdown.
+
+FFmpeg 8.1.2's `AVFrame.best_effort_timestamp` is in the selected stream's time base and retains the differing presentation intervals needed for variable frame rate playback. `av_display_rotation_get` reports the display matrix angle counterclockwise. PBVP converts that value into the equivalent clockwise pixel transform and accepts only 0, 90, 180, or 270 degrees. Packet side data exposes `AV_PKT_DATA_ENCRYPTION_INFO`, which gives the worker a direct refusal path for encrypted samples.
+
+The decoder fixtures cover H.264 video, AAC input at 44.1 and 48 kHz, mono and 5.1 downmixing, conversion to BGRA, resampling to stereo 48 kHz signed 16-bit PCM, a silent variable frame rate file, and a right-angle display matrix. They also cover forward and backward generation seeks, queue-blocked cancellation, CENC encryption, unsupported audio and video codecs, an artificial source-dimension limit, missing and empty media, random bytes, and a half-truncated MP4. The truncated file initially reached ordinary end of file after the MOV demuxer dropped a partial packet. Comparing the last decoded video end with the declared track end turned that result into a structured damaged-media error.
+
+The expanded x86 run filled the 1080p queues and measured 66,113,536 bytes of working-set growth, 65,880,064 bytes of private-memory growth, and 74,383,360 bytes of committed address-space growth. The video queue held its exact three-frame maximum of 24,883,200 bytes, and the audio queue held 28,672 bytes. A separate full decode produced all 30 frames and 48,128 samples in 165,342 microseconds of wall time and 312,500 microseconds of total process CPU time.
+
+The first live MO2 media run opened a fixture that existed only in the isolated `Pip-Boy Video Player - Media Test` mod. The private FFmpeg runtime loaded, and custom Win32 I/O delivered all 30 1920x1080 frames and 48,128 resampled audio samples. The video queue peaked at 24,883,200 bytes, the audio queue peaked at 28,672 bytes, and the worker joined before FFmpeg unloaded. This proves that the AVIO path sees MO2 virtual media and that the normal game thread can drain the bounded output.
+
+The same run reported a 167,104,512 byte process private-memory increase from a baseline taken during `DeferredInit`, so it did not pass the 128 MiB in-game target. The first normal game-thread polling record followed 53 milliseconds after the baseline. Other game and plugin initialization could therefore be part of the process-wide delta, but the log does not prove how much. A delayed stable-baseline run and a no-decode control are required before attributing the excess to PBVP or changing the media limits.
+
+The corrected run waited five seconds after `DeferredInit`, then measured process private memory for one second without starting the decoder. That control changed by zero bytes. The diagnostic reset its baseline and decoded the same MO2-only 1080p fixture. Process private memory rose by 62,976,000 bytes, below the 128 MiB target. The game thread drained output during the run, so the video queue peaked at two BGRA frames, or 16,588,800 bytes, and the audio queue peaked at 24,576 bytes. The decoder produced all 30 frames and 48,128 samples, preserved generation 1, and joined before the private FFmpeg libraries unloaded.
+
+The comparison shows that the immediate `DeferredInit` baseline included roughly 104 MiB of unrelated process growth. It does not identify which game or plugin allocations produced that growth. A delayed baseline is therefore required for future in-game decoder memory measurements.
 
 ## Direct3D 9
 
@@ -243,7 +277,7 @@ Inference to test: `SamplesPlayed`, adjusted for seek and pre-roll, can provide 
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.
 
-Inference to test: media enumeration and the custom FFmpeg I/O bridge see files from an MO2 media mod, while private FFmpeg DLL loading remains deterministic. Dependency DLLs should be loaded from a verified private path rather than relying on VFS search order.
+The live Phase 2 test confirmed that custom Win32 I/O sees a file supplied only by an enabled MO2 media mod. The same run loaded all five private FFmpeg DLLs through the fixed absolute virtual `Data` path and verified their versions and configurations before decoding. No fixture existed in the physical game directory, the PBVP development mod, or MO2 overwrite.
 
 ## Research still needed
 

@@ -6,7 +6,7 @@ The repository contains the implementation, automated tests, UIO files, build sc
 
 ## Project status
 
-Status: Phase 1 render and UI feasibility
+Status: Phase 2 media core
 
 The current diagnostic build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, and installs a UIO prefab. Once the Pip-Boy is open, it validates the live UIO image, engine texture objects, managed Direct3D texture, device, and callback thread before uploading a generated checkerboard. Any unknown object type, texture profile, or thread arrangement disables the update instead of guessing. The plugin does not patch game functions or a Direct3D device vtable.
 
@@ -16,20 +16,25 @@ A synthetic recreation test froze inside the game's native reset sequence, so th
 
 Phase 1 supports native Direct3D 9 windowed mode. PBVP owns no default-pool resource and retains no Direct3D reference between callbacks. A changed device or engine surface is validated before use, but the tested windowed focus path did not produce an observable device recreation. DXVK and a safe root-management tool are not installed in the target VNV instance, so this phase makes no DXVK claim and does not add a root proxy. Controller and input-method switching remain Phase 5 work.
 
+Phase 2 has pinned FFmpeg 8.1.2 and a minimal Win32 runtime. The reproducible build enables only the MOV demuxer, H.264 and AAC decoders and parsers, software scaling, and audio resampling. Two clean builds produced the same five DLL hashes. The runtime audit rejects non-i386 images, changed hashes, unexpected imports, extra DLLs, and private build paths. The plugin loads that set from its private directory with restricted absolute paths and rejects wrong versions or configurations. Custom Windows AVIO supports bounded local reads, seeks, Unicode names, and cancellation. Checked media layouts and generation-aware queues enforce dimension, item-count, and byte limits before decoded data reaches the game.
+
+The decoder worker opens MP4 and MOV containers, requires H.264 video, accepts optional AAC audio, converts video to BGRA, applies right-angle display rotation, and resamples audio to bounded interleaved 16-bit PCM. It keeps variable frame rate timestamps from FFmpeg's best-effort timestamp field. Forward and backward seeks clear queued output by generation before the worker flushes its codecs. Synthetic tests cover valid decoding, silent variable frame rate video, rotation, cancellation, damaged and encrypted input, unsupported codecs, audio layouts, and source limits. A live MO2 run opened a 1080p fixture that existed only in a separate media mod, decoded all expected video and audio, and measured a 62,976,000 byte private-memory increase after a stable no-decode control.
+
 ## Build
 
 The repository follows the same local layout and script conventions as RadioCaptions. Downloaded sources stay under the ignored `external` directory, generated projects stay under `build-vs` or `build-host`, staging uses `stage`, and archives use `dist`.
 
-Required tools are CMake, Visual Studio with the x86 C++ workload, PowerShell, and 7-Zip. Release packaging also requires LLVM 22.1.0 so the symbol check uses a pinned `llvm-pdbutil` and matching `llvm-readobj`. Run these commands from a PowerShell prompt:
+Required tools are CMake, Visual Studio with the x86 C++ workload, PowerShell, MSYS2, and LLVM 22.1.0. The FFmpeg build uses the MSYS2 i686 GCC 15.2.0 toolchain, NASM 3.01, GNU Make 4.4.1, and pkgconf 2.5.1. Release packaging uses the pinned LLVM version for `llvm-pdbutil` and `llvm-readobj`. Run these commands from a PowerShell prompt:
 
 ```powershell
 .\scripts\fetch-dependencies.ps1
+.\scripts\build-ffmpeg.ps1 -Clean
 .\scripts\configure.ps1 -Target plugin
 .\scripts\build.ps1 -Configuration Debug
 .\scripts\test.ps1 -Configuration Debug
 ```
 
-The dependency script downloads the official xNVSE 6.4.5 source archive and verifies its SHA-256 hash before extraction. The plugin build uses a Win32 Visual Studio generator. A separate host build can run the portable tests without building the plugin:
+The dependency script downloads the official xNVSE 6.4.5 and FFmpeg 8.1.2 source archives and verifies both SHA-256 hashes before extraction. The FFmpeg script builds and audits the five private i386 runtime DLLs. The plugin build then uses a Win32 Visual Studio generator. A separate host build can run the portable tests without building the plugin:
 
 ```powershell
 .\scripts\configure.ps1 -Target host

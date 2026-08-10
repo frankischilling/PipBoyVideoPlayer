@@ -3,10 +3,16 @@
 #include <cstdio>
 
 void RunFrameCadenceTests();
+void RunCheckedMathTests();
+void RunMediaLimitTests();
+void RunBoundedQueueTests();
 void RunRectMathTests();
 void RunTextureContractTests();
 
 int main() {
+    RunCheckedMathTests();
+    RunMediaLimitTests();
+    RunBoundedQueueTests();
     RunFrameCadenceTests();
     RunRectMathTests();
     RunTextureContractTests();

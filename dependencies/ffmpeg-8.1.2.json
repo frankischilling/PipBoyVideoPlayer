@@ -1,0 +1,92 @@
+{
+  "name": "FFmpeg",
+  "version": "8.1.2",
+  "sourceUri": "https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz",
+  "sourceArchive": "ffmpeg-8.1.2.tar.xz",
+  "sourceSha256": "464BEB5E7BF0C311E68B45AE2F04E9CC2AF88851ABB4082231742A74D97B524C",
+  "sourceSignatureUri": "https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz.asc",
+  "sourceSignatureSha256": "0A0963FCCD70597838073F3E31B20F4A4D8CC2B5E577472C9A5A1F22624246F8",
+  "signingKeyFingerprint": "FCF986EA15E6E293A5644F10B4322F04D67658D8",
+  "sourceDateEpoch": 1781662671,
+  "license": "LGPL-2.1-or-later",
+  "licenseFiles": [
+    {
+      "file": "LICENSE.md",
+      "sha256": "2E1D16C72FD74E12063776371DA757322F8B77589386532F4FD8634BDE7DE1AF"
+    },
+    {
+      "file": "COPYING.LGPLv2.1",
+      "sha256": "246041B6ECF9BC32D718A62C57877C78B5EB397B6467E74ED7AE2626AB189C30"
+    }
+  ],
+  "toolVersions": {
+    "gcc": "15.2.0",
+    "nasm": "3.01",
+    "make": "4.4.1",
+    "pkgconf": "2.5.1",
+    "llvm": "22.1.0"
+  },
+  "staticSupport": {
+    "name": "mingw-w64 winpthreads",
+    "package": "mingw-w64-i686-winpthreads",
+    "packageVersion": "13.0.0.r505.g7d006b2ea-1",
+    "sourceCommit": "7d006b2ea4b17da66e515f4494b86cc1adb52f24",
+    "archive": "libwinpthread.a",
+    "archiveSha256": "CD4673731E6A655E20505DABB59682985D8CF0F8091B503DD15A871645E9557D",
+    "license": "MIT AND BSD-3-Clause-Clear",
+    "licenseFileSha256": "63263614CDD29F2F93CBA85E992F041B31F9FC7B4033692F31269489A8A1B177"
+  },
+  "configureArguments": [
+    "--arch=x86",
+    "--target-os=mingw32",
+    "--enable-shared",
+    "--disable-static",
+    "--disable-programs",
+    "--disable-doc",
+    "--disable-debug",
+    "--disable-autodetect",
+    "--disable-network",
+    "--disable-everything",
+    "--disable-avdevice",
+    "--disable-avfilter",
+    "--enable-avcodec",
+    "--enable-avformat",
+    "--enable-avutil",
+    "--enable-swscale",
+    "--enable-swresample",
+    "--enable-decoder=h264,aac",
+    "--enable-demuxer=mov",
+    "--enable-parser=h264,aac",
+    "--enable-w32threads",
+    "--extra-cflags=-D_WIN32_WINNT=0x0601",
+    "--extra-ldflags=-static-libgcc",
+    "--extra-libs=-Wl,-Bstatic,-lwinpthread,-Bdynamic"
+  ],
+  "runtime": [
+    {
+      "file": "avcodec-62.dll",
+      "sha256": "8BC401945DD1271E83CBA5CFF49EF209E6829B2F5E5EE64F34B3D7637763F9C4",
+      "imports": ["avutil-60.dll", "KERNEL32.dll", "msvcrt.dll"]
+    },
+    {
+      "file": "avformat-62.dll",
+      "sha256": "F2C69BD27F79BC7226D67C8DEDA3CEB2023108FAF64F8F40333C683644038ED5",
+      "imports": ["avcodec-62.dll", "avutil-60.dll", "KERNEL32.dll", "msvcrt.dll"]
+    },
+    {
+      "file": "avutil-60.dll",
+      "sha256": "366EC8E54A08607C9B0A4A66827C0A2172276F0A6B533E54E929E89787C75540",
+      "imports": ["bcrypt.dll", "KERNEL32.dll", "msvcrt.dll"]
+    },
+    {
+      "file": "swresample-6.dll",
+      "sha256": "DFEBCA24F10A5C0D500C0A3ABF234A51AB6A15265AE8A5C874AF927B2C4E46F2",
+      "imports": ["avutil-60.dll", "KERNEL32.dll", "msvcrt.dll"]
+    },
+    {
+      "file": "swscale-9.dll",
+      "sha256": "9CFDAC74C66034250EFD44EE7A5DC05E2DEBC1E02FEB8A5DEBF66EB2F71EDC08",
+      "imports": ["avutil-60.dll", "KERNEL32.dll", "msvcrt.dll"]
+    }
+  ]
+}

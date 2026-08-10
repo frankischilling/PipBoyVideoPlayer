@@ -89,7 +89,9 @@ If those statements cannot be proven, the project needs a different presentation
 | Menu tiles and game objects | Game thread | Workers publish plain data only |
 | Player state machine | Game thread | Workers post events without changing state directly |
 
-Lock ordering must be written down before implementation. No callback may wait on the game thread. Shutdown signals workers, stops audio, joins the decode worker, and then releases libraries and hooks.
+Current code may hold only one PBVP mutex at a time. A caller must release any player, command, or queue lock before it waits on a queue. Queue methods do not call external code while locked. XAudio2 callbacks acquire no PBVP mutex. Any future need to hold two locks at once requires a documented order and a focused deadlock test before implementation.
+
+No callback may wait on the game thread. Shutdown signals workers, stops audio, joins the decode worker, and then releases libraries and hooks.
 
 ## Error containment
 

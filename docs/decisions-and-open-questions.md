@@ -462,15 +462,73 @@ Reason: synchronizing video to consumed audio prevents a slow game frame rate fr
 
 ### Bounded software decode
 
+Date: August 10, 2026
+
 Decision: start with software decoding, a 1080p source cap, and small bounded queues.
 
 Reason: hardware decoding adds device and format paths before the basic renderer is known to be stable. Bounded queues protect the game's limited address space.
+
+Evidence: the standalone x86 process filled all three 1920x1080 BGRA queue slots and measured a 65,880,064 byte private-memory increase. The video queue held exactly 24,883,200 bytes, the audio queue held 28,672 bytes, and the total stayed below the 128 MiB target. The first in-game measurement decoded the same 30 frames and 48,128 audio samples through MO2, but process private memory rose by 167,104,512 bytes from a baseline taken at `DeferredInit`. Normal game-thread initialization began 53 milliseconds after that baseline, so the process-wide result could not be assigned to the decoder alone.
+
+The corrected diagnostic waited five seconds, measured a one-second no-decode control, and then reset its baseline immediately before starting the worker. The control delta was zero. The 1080p decode then added 62,976,000 private bytes, produced all 30 frames and 48,128 samples, and joined before FFmpeg unloaded. Its video and audio queues peaked at 16,588,800 and 24,576 bytes because the game thread drained them while decoding.
+
+Consequence: the measured source, queue, and process totals fit the current 128 MiB budget. Keep the 1080p cap and current defaults for Phase 3. Reopen this decision if longer playback or integrated audio adds enough memory to cross the budget.
 
 ### Private FFmpeg directory
 
 Decision: place FFmpeg DLLs in a mod-private directory and load the pinned set through restricted absolute paths.
 
 Reason: shared plugin or game-root DLLs can collide with unrelated mods and allow accidental version substitution.
+
+### Minimal FFmpeg 8.1.2 runtime
+
+Date: August 10, 2026
+
+Decision: use FFmpeg 8.1.2 built as five shared i686 libraries with MSYS2 GCC 15.2.0. Enable only MOV demuxing, H.264 and AAC parsing and decoding, software scaling, audio resampling, and Windows threads. Link the required winpthreads clock functions statically into `avutil`.
+
+Evidence: the official archive and detached signature passed the pinned hash and release-key checks. The first five-library build required `libwinpthread-1.dll`. Static linkage removed that runtime dependency. Two clean builds with fixed source time and neutral file-prefix mapping produced the same hashes. The automated audit verified every PE machine type, import, hash, and private-path check. Host tests passed 7 of 7, and Win32 Release tests passed 10 of 10.
+
+Rejected alternatives: do not use a general FFmpeg binary bundle, enable unrelated codecs, ship command-line tools, depend on a shared MinGW runtime DLL, link FFmpeg statically into the plugin, or retain absolute source paths in diagnostic strings.
+
+Consequence: the plugin must load this exact private DLL set through restricted absolute paths and verify the expected library majors before decoding. Any FFmpeg or toolchain update requires new source verification, two clean builds, updated hashes, an import review, an upstream warning review, and a license review.
+
+### Custom overlapped Windows AVIO
+
+Date: August 10, 2026
+
+Decision: open media through a custom `AVIOContext` backed by a Unicode Win32 file handle. Accept only one direct-child filename under a drive-qualified media root. Reject directories, reparse points, empty files, network roots, and files beyond the configured limit. Use overlapped reads with a cancellation event and keep all seek positions in signed 64-bit range.
+
+Evidence: the Win32 test passed reads, seeking, size queries, Unicode names, cancellation, and every implemented refusal. The bridge allocates one bounded FFmpeg buffer and frees the current context buffer before releasing the context, as required by FFmpeg's AVIO contract.
+
+Rejected alternatives: do not use FFmpeg's default file protocol, convert paths to the game's narrow character set, accept arbitrary absolute media paths, allow recursive paths in the first release, map an entire media file into 32-bit address space, or leave shutdown waiting on an uncancellable synchronous read.
+
+Consequence: the decode worker owns the AVIO context and closes it before FFmpeg unloads. The game thread may request cancellation, but it must join the worker before releasing callback targets. The isolated live test proved that the same `CreateFileW` path sees a media file supplied only by MO2.
+
+### Bounded media payloads and seek generations
+
+Date: August 10, 2026
+
+Decision: check every video and audio payload calculation before allocation. Reject sources above 1920x1080. Bound each queue by both item count and total payload bytes. Every queued item carries a seek generation, and advancing the generation clears queued data, wakes waiters, and rejects work from an older generation.
+
+Evidence: portable tests cover checked addition, multiplication, alignment, and 64-bit size conversion. They also cover BGRA and PCM layout limits, count and byte capacity, stale generation rejection, queue drain after close, and blocked producer wakeup after a generation change or shutdown. The completed Phase 2 suite passes all 9 host tests and all 15 Win32 Release tests. The x86 run uses the same 32-bit `size_t` as the game process.
+
+Rejected alternatives: do not rely on frame count alone, allow allocation arithmetic to wrap, keep pre-seek buffers until the consumer notices them, or let shutdown wait for queue capacity.
+
+Consequence: the decoder may block only through the queue API and may hold no other PBVP lock while waiting. Queue capacities remain a profiling decision, but they must fit the release memory budget and cannot be changed by untrusted media metadata.
+
+### Single-owner decoder worker
+
+Date: August 10, 2026
+
+Decision: one worker owns the custom AVIO context, demuxer, codec contexts, packet, frames, scaler, and resampler. It accepts H.264 video with optional AAC audio from MP4 or MOV. Output consists of owned BGRA frames and interleaved signed 16-bit PCM chunks tagged with the active seek generation. Right-angle display matrices are applied during BGRA conversion. Other rotation angles are rejected.
+
+Evidence: synthetic x86 tests decode H.264 with AAC at 44.1 and 48 kHz, resample mono, stereo, and 5.1 layouts to stereo 48 kHz, preserve both 100 ms and 200 ms frame intervals in a variable frame rate file, and turn a display matrix into a 90x160 output frame. Forward and backward seeks return only the requested generation. Cancellation wakes a worker blocked by a full queue. Unsupported codecs, encrypted samples, random and empty input, source limits, missing files, and a half-truncated MP4 produce structured failures. All 15 Win32 Release tests pass.
+
+The truncated fixture exposed a demuxer edge case. FFmpeg dropped the final partial packet and returned ordinary end of file. PBVP now compares the last decoded video timestamp with the declared track end, using a 250 ms tolerance, and reports damaged media when too much of the track is missing.
+
+Rejected alternatives: do not share FFmpeg contexts across threads, expose FFmpeg-owned frame buffers to the renderer, retain output from an old seek generation, or treat every demuxer end-of-file result as proof of a complete track.
+
+Consequence: the owner must join this worker before unloading FFmpeg. The live diagnostic follows that order, and packaging rejects any DLL that retains the diagnostic marker.
 
 ### No save persistence
 
@@ -486,14 +544,12 @@ Reason: the player should be safe to add or remove and should not leave missing 
 4. Which Pip-Boy replacers retain the same menu coordinate contract?
 5. Can the UI provide a clean Data entry without editing scripts or requiring an ESP?
 
-## Open questions before phase two
+## Remaining open questions before phase two
 
-1. Which FFmpeg release and minimal configure set will be pinned?
-2. Will the x86 build use MSVC-compatible import libraries or a fully MinGW-built dependency set?
-3. Does custom Win32 I/O see all media supplied by MO2's virtual filesystem?
-4. Which malformed-media corpus can be used without redistribution problems?
-5. Should the decoder scale directly to the current presentation rectangle or to a fixed intermediate size?
-6. What exact queue byte limits fit the VNV address-space budget under a large mod list?
+1. Does custom Win32 I/O see all media supplied by MO2's virtual filesystem?
+2. Which malformed-media corpus can be used without redistribution problems?
+3. Should the decoder scale directly to the current presentation rectangle or to a fixed intermediate size?
+4. What exact queue byte limits fit the VNV address-space budget under a large mod list?
 
 ## Open questions before phase three
 

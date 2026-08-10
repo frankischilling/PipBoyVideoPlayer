@@ -1,17 +1,17 @@
 # Build, packaging, and licensing
 
-## Planned toolchain
+## Toolchain
 
-The plugin is a 32-bit Windows DLL. The initial toolchain should use:
+The plugin is a 32-bit Windows DLL. The checked build uses:
 
-- Visual Studio 2022 with the current v143 x86 compiler;
+- Visual Studio 2026 with the v145 x86 compiler;
 - CMake presets for repeatable developer and release builds;
 - LLVM 22.1.0 `llvm-pdbutil` for validating public release symbols;
 - the Windows SDK and Direct3D 9 headers and import library;
 - XAudio2 2.7 from the legacy DirectX SDK if the audio spike selects it;
 - xNVSE plugin headers pinned to a reviewed commit;
-- an x86 FFmpeg build pinned by release tag and configure options;
-- a small hook library only after the rendering spike compares the available choices.
+- FFmpeg 8.1.2 built for i686 with MSYS2 GCC 15.2.0;
+- NASM 3.01, GNU Make 4.4.1, and pkgconf 2.5.1 for the FFmpeg build.
 
 The exact C++ language level is an implementation decision. It must be supported by the selected compiler and every dependency. Release builds need symbols, deterministic version metadata, and an optimization profile that preserves useful crash stacks.
 
@@ -31,13 +31,15 @@ Do not download DLLs from general DLL mirror sites. Release dependencies must co
 
 ## FFmpeg build profile
 
-FFmpeg should be built with only the libraries, demuxers, parsers, decoders, and conversion features required by the support contract. The planning baseline includes MP4/MOV demuxing, H.264 parsing and decoding, AAC decoding, core protocol support for local files or custom I/O, software scaling, and audio resampling.
+FFmpeg 8.1.2 is pinned by source archive, signature, toolchain, configure arguments, and runtime hashes in `dependencies/ffmpeg-8.1.2.json`. The source archive SHA-256 is `464BEB5E7BF0C311E68B45AE2F04E9CC2AF88851ABB4082231742A74D97B524C`. Its detached signature was verified with release key fingerprint `FCF986EA15E6E293A5644F10B4322F04D67658D8`.
 
-Network protocols, encoders, capture devices, filters, command-line programs, and unrelated external codec libraries should be disabled. A smaller feature set reduces package size and the number of untested parsers in the game process.
+The build enables shared `avcodec`, `avformat`, `avutil`, `swscale`, and `swresample` libraries. It enables the MOV demuxer, H.264 and AAC decoders and parsers, Windows threads, software scaling, and audio resampling. Network support, protocols, encoders, muxers, filters, capture devices, command-line programs, hardware acceleration, and automatic external dependency detection are disabled.
 
-Dynamic FFmpeg libraries are preferred because they keep FFmpeg separate from the plugin and make LGPL replacement practical. They belong in a private `PipBoyVideoPlayer\bin` directory. The plugin should construct absolute dependency paths and use restricted Windows DLL search APIs. FFmpeg DLLs must not be copied into the game root or the shared `Data\NVSE\Plugins` directory.
+The exact configure arguments are stored in the manifest and applied by `scripts/build-ffmpeg.ps1`. The build sets a fixed source epoch and maps compile-time file names to the neutral `pbvp` prefix. It statically links the two required winpthreads clock functions so no MinGW runtime DLL is needed. FFmpeg remains in replaceable shared libraries. The winpthreads archive and license hashes are also pinned.
 
-The final FFmpeg configure line, configuration report, source revision, patches, and license texts belong in the source repository and release notices once implementation starts.
+The runtime contains only `avcodec-62.dll`, `avformat-62.dll`, `avutil-60.dll`, `swresample-6.dll`, and `swscale-9.dll`. Every file is an i386 PE image. The manifest records each SHA-256 hash and exact import set. Two clean builds on August 10, 2026 produced the same hashes. The automated audit rejects a changed hash, wrong architecture, changed import, extra DLL, or private local path.
+
+These DLLs belong in the private `PipBoyVideoPlayer\bin` directory. The plugin must construct absolute dependency paths and use restricted Windows DLL search APIs. FFmpeg DLLs must not be copied into the game root or the shared `Data\NVSE\Plugins` directory.
 
 ## Proposed release layout
 

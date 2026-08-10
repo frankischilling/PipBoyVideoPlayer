@@ -93,6 +93,18 @@ if(symbol_sanitizer_offset EQUAL -1)
     message(FATAL_ERROR "Package script does not prepare path-neutral public symbols")
 endif()
 
+foreach(required_package_text IN ITEMS
+        "audit-ffmpeg-runtime.ps1"
+        "PipBoyVideoPlayer\\bin"
+        "licenseFiles"
+        "build-manifest.json"
+        "winpthreads")
+    string(FIND "${package_text}" "${required_package_text}" package_text_offset)
+    if(package_text_offset EQUAL -1)
+        message(FATAL_ERROR "Package script is missing ${required_package_text}")
+    endif()
+endforeach()
+
 file(READ "${PBVP_SOURCE_DIR}/CMakeLists.txt" cmake_text)
 string(REGEX MATCH "MinHook|minhook" removed_hook_dependency "${cmake_text}")
 if(NOT removed_hook_dependency STREQUAL "")
