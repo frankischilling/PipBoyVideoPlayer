@@ -296,6 +296,14 @@ Reason: the maintained Psycho display implementation identifies the target setti
 
 Rejected alternatives: do not leave the transient values changed, accept a mismatch between active and backbuffer dimensions, overwrite an existing nonzero request, call the recreation helper directly, or call `IDirect3DDevice9::Reset`.
 
+Fourth runtime result and decision update: the guarded same-size request reached the verified `NiDX9Renderer::Recreate` detour and then froze before the original engine call returned. The log contains the pre-recreation record and none of the expected return, consumption, restoration, summary, or shutdown records. CrashLogger produced no dump. This disproves the assumption that matching dimensions and reversible field staging are sufficient to invoke the full renderer transition safely.
+
+Decision: retire the private forced-recreation diagnostic and remove its request scheduler. Do not repeat it with other dimensions or broaden it into a direct helper, renderer, or Direct3D reset call. Keep the normal development DLL installed while the production lifecycle boundary is reassessed.
+
+Reason: PBVP owns no persistent Direct3D resource in the current renderer path. It temporarily references an engine-owned `D3DPOOL_MANAGED` texture, updates it, and releases the reference before the callback returns. The user's successful Alt+Tab and reopen checks already show that this surface survives the tested native fullscreen transitions. A synthetic full renderer restart introduces game-wide callback and resource ownership that PBVP cannot safely reconstruct.
+
+Consequence: Phase 1 still needs a safe lifecycle result, but forced recreation is no longer an acceptance route. The next architecture change must either observe a naturally initiated engine recreation or remove the recreation detour after proving that PBVP retains no default-pool resource across callbacks. No DXVK or untested display-mode claim follows from the managed-texture result.
+
 ### Reversible compatibility cases
 
 Date: August 9, 2026

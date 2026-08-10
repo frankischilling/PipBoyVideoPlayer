@@ -163,32 +163,13 @@ Automated recreation result contract
 
 The host and Win32 suites verify the audited `NiDX9Renderer::Recreate` return values. Zero keeps texture uploads disabled. One permits device reacquisition after the engine recovers the original presentation parameters. Two permits reacquisition after the requested parameters are applied. Every other value is unknown and keeps uploads disabled. An in-game display recreation is still required to exercise the detour and replacement device.
 
-### Controlled engine recreation candidate
+### Retired controlled engine recreation candidate
 
 The normal game flow has not exposed a repeatable recreation action. The current executable audit found one main-loop read and one clear of the deferred request byte. When set, the main loop calls the complete renderer and window helper. That helper requires separate nonzero requested width and height values before it reaches `NiDX9Renderer::Recreate`.
 
-The repository has a private build option that schedules this request once, after a successful checkerboard upload and shared-thread validation. It first checks the exact 23-byte main-loop gate. The option is off by default, and the package script refuses any normal build directory marked as armed.
+The repository temporarily had a private build option that scheduled this request once after a successful checkerboard upload and shared-thread validation. The first request lacked the transient size fields and returned early. A later guarded build staged matching 1920x1080 values and reached the native recreation call, where the game froze. The option and its installer are retired. Do not build or run this diagnostic again.
 
-Build and install the private candidate only in the separate development mod:
-
-```powershell
-.\scripts\configure.ps1 `
-  -Target plugin `
-  -BuildDirectory build-vs-recreate-test `
-  -EnableRecreateTest
-.\scripts\build.ps1 `
-  -Configuration Release `
-  -BuildDirectory build-vs-recreate-test
-.\scripts\test.ps1 `
-  -Configuration Release `
-  -BuildDirectory build-vs-recreate-test
-.\scripts\install-recreate-test.ps1 `
-  -MO2ModsDirectory 'C:\path\to\VNV\mods' `
-  -BuildDirectory build-vs-recreate-test `
-  -Confirm:$false
-```
-
-Open the Pip-Boy Data tab once, confirm that the checkerboard returns after the recreation, then exit through the game menu. The log must pass with `-MinimumRecreates 1 -RequireScheduledRecreate -RequireCleanExit`. This proves that the armed build loaded, scheduled exactly one engine request, completed the recreation, reacquired the surface, and shut down cleanly. Reinstall the normal development build immediately after the test. A test failure, a missing replacement device, a black surface, or a crash blocks Phase 1.
+This failure does not prove that normal game-initiated recreation is unsafe. It proves that PBVP cannot safely synthesize the transition from the audited consumer inputs alone. Future lifecycle testing must observe a transition initiated by the game or use the documented managed-resource ownership result. Direct renderer calls, direct Direct3D resets, device-vtable patches, and synthetic request writes remain prohibited.
 
 Automated hook conflict classification
 
@@ -324,7 +305,9 @@ The next clean follow-up run kept the checkerboard visible and produced an order
 
 The per-field follow-up found a valid renderer and readable requested-size fields, but both size values were zero. The validated backbuffer remained 1920x1080, the checkerboard stayed visible, and the clean summary recorded one 30.00 microsecond upload with no failures. This confirms that a request byte alone reaches only the helper's early return.
 
-The next private candidate may stage 1920x1080 only if the audited active render globals and current backbuffer both report that exact size. The original requested-size values must be zero and writable. The diagnostic must verify each write, set the deferred byte last, and restore the original values after consumption, timeout, or orderly shutdown. Any size mismatch or restoration failure rejects the test.
+The guarded same-size candidate met those checks, staged 1920x1080, and entered the verified recreation detour. The game then froze before the original `NiDX9Renderer::Recreate` call returned. The log contains no request consumption, value restoration, renderer summary, or orderly shutdown record, and CrashLogger produced no dump. This is a failed compatibility result. The private forced-recreation path is retired and must not be installed or run again.
+
+The normal development DLL was restored after FalloutNV closed. Its SHA-256 is `450619F2DA5B97F3D3C330D15ACA7D9D7EE9B554431358B10E7B4C161794FEBA`. Phase 1 now requires either observation of a naturally initiated recreation or a reviewed decision that the engine-owned managed texture leaves PBVP with no reset-sensitive resource to release. Neither route permits a DXVK or untested display-mode claim.
 
 ## UI matrix
 

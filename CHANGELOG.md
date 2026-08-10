@@ -40,3 +40,4 @@
 - Recorded the clean guarded run that kept the checkerboard visible but refused the recreation request because a helper precondition was unavailable.
 - Identified both transient recreation dimensions as readable zero values and specified a bounded, reversible request-staging test.
 - Required the controlled recreation log check to verify restoration of the transient requested-size values.
+- Retired the private forced-recreation diagnostic after its same-size request froze the game inside the native renderer recreation call. Normal development builds remain safe and cannot schedule this request.
