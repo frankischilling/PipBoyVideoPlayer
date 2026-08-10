@@ -192,7 +192,7 @@ Evidence: the parent-only depth candidate still disappeared after the Data trans
 
 Rejected alternatives: repeated texture uploads would not change the draw order and would add unnecessary per-frame work. A native overlay remains rejected because it covered the Pip-Boy. Raising PBVP above depth 15 could hide headline or tab controls.
 
-Consequence: the next run must prove that all three PBVP drawables remain visible after the transition while the native headline, tabs, and controls remain visible and usable.
+Consequence: the next run kept the checkerboard, black probe, and text probe visible together, and the user reported that the result looked good. This accepts the depth rule for the active VNV Extended stack. Native input, other UI profiles, resolutions, display modes, and DXVK remain separate acceptance checks.
 
 ### Verified reset hook only
 

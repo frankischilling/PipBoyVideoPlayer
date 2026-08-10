@@ -119,6 +119,12 @@ Setting `PBVP_Root` to depth 10 did not change the steady result. Opening the Pi
 
 Vanilla UI Plus assigns depth to drawable children rather than relying on a container to carry it. Its map-marker shadow, for example, explicitly copies the parent image depth and subtracts `0.02`. The next candidate keeps the root at depth 10 and assigns explicit depths 10, 11, and 12 to the surface, black probe, and text probe. This is an inference from the active XML and still requires an in-game check.
 
+Fifth run: explicit drawable depths accepted
+
+The follow-up VNV Extended run kept the green checkerboard, black probe, and `PBVP UI LAYER` visible together. The user reported that the result looked good. The log recorded the expected managed surface and successful uploads from 22.6 to 30.7 microseconds across the initial Data display and several MapMenu returns.
+
+This accepts explicit drawable depths 10 through 12 for the active fullscreen 1920x1080 Vanilla UI Plus stack. It does not yet prove input behavior, device recreation, other resolutions or display modes, base VNV, or DXVK. Those checks remain open in the matrix below.
+
 ## Required profiles
 
 | Profile | Purpose |
