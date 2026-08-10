@@ -161,7 +161,7 @@ The host and Win32 suites convert the accepted logical rectangle through represe
 
 Automated recreation result contract
 
-The earlier host and Win32 suites verified the audited `NiDX9Renderer::Recreate` return values while the observation detour was present. The managed-texture decision removes that detour because PBVP owns no reset-sensitive resource. The replacement tests must require `D3DPOOL_MANAGED`, reject every other pool, and prove that a changed device or surface receives fresh validation and upload. An in-game natural display transition is still required.
+The earlier host and Win32 suites verified the audited `NiDX9Renderer::Recreate` return values while the observation detour was present. The managed-texture decision removes that detour because PBVP owns no reset-sensitive resource. The replacement tests require `D3DPOOL_MANAGED`, reject every other pool, and verify that a changed device or surface receives fresh validation and upload. An in-game natural display transition is still required.
 
 ### Retired controlled engine recreation candidate
 
@@ -174,6 +174,16 @@ This failure does not prove that normal game-initiated recreation is unsafe. It 
 No executable hook surface
 
 The current renderer uses xNVSE's frame-present notification and installs no executable or device-vtable hook. The earlier hook classifier, MinHook fixture, and reset detour were removed with the managed-texture decision. Runtime rejection now covers the FalloutNV version, engine object layouts, Direct3D device identity, texture dimensions, pixel format, and `D3DPOOL_MANAGED` requirement.
+
+Twelfth run: hook-free managed texture accepted
+
+Date: August 10, 2026
+
+Profile: Viva New Vegas Extended, native Direct3D 9, fullscreen 1920x1080
+
+The first run after removing the recreation hook displayed the checkerboard in the accepted position. The user reported that the game did not freeze, the panel looked correct, and it remained correct after Alt+Tab. The plugin logged the hook-free presentation path, a 256x256 `A8R8G8B8` texture in `D3DPOOL_MANAGED`, and one successful upload at 26.30 microseconds. It recorded zero upload failures and wrote both renderer and cadence summaries before normal process shutdown.
+
+The strict Phase 1 log check passed with one validated device, one successful upload, a 1920x1080 fullscreen backbuffer, and a clean exit. This accepts the hook-free managed-texture path for the tested VNV Extended configuration. It does not prove a Direct3D device recreation occurred during Alt+Tab, and it does not extend the result to other profiles, resolutions, display modes, controllers, or DXVK.
 
 ### Repeatable diagnostic log check
 
@@ -194,11 +204,11 @@ The plugin measures up to eight three-second windows while the Pip-Boy is visibl
 
 The checker rejects plugin errors, inconsistent cadence records, and a backbuffer that does not match the expected dimensions. Add `-RequireCleanExit` when the test includes an orderly process exit. A clean-exit check requires the renderer summary and, when samples exist, the cadence summary.
 
-The accepted 1920x1080 VNV Extended run passes with one validated device and one upload at 27.30 microseconds. The log contains no plugin errors. The run predates removal of the recreation detour, so the hook-free build still needs its own in-game result.
+The accepted hook-free 1920x1080 VNV Extended run passes with one validated device and one upload at 26.30 microseconds. The log contains no plugin errors and ends with the renderer summary, cadence summary, and shutdown record.
 
 CTest runs the checker against generated logs. The fixtures cover a normal clean exit and a 60 FPS cadence. They also confirm rejection of an error record, a wrong backbuffer, a wrong frame rate, inconsistent cadence arithmetic, and a clean exit without the renderer summary. Portable texture-contract tests accept the two supported 256x256 color formats in the managed pool and reject wrong dimensions, unsupported formats, and every other pool. The generated fixtures contain no game data or personal media.
 
-The next normal installed candidate records fixed-size session totals for frame callbacks, visible frames, device validations, texture uploads, and cadence samples. It also reports minimum, average, and maximum successful upload time and visible FPS. These summaries still need an in-game orderly-exit check before they can be counted as runtime evidence.
+The normal installed build records fixed-size session totals for frame callbacks, visible frames, device validations, texture uploads, and cadence samples. It also reports minimum, average, and maximum successful upload time and visible FPS. The August 10 hook-free run verified these summaries during an orderly in-game exit.
 
 ## Required profiles
 
