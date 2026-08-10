@@ -71,6 +71,12 @@ void TestAudioCompletion(
     PBVP_CHECK(snapshot.metrics.peak_staged_video_bytes <= 8u * 1024u * 1024u);
     PBVP_CHECK(snapshot.metrics.peak_decoder_video_bytes <= 32u * 1024u * 1024u);
     PBVP_CHECK(snapshot.metrics.peak_decoder_audio_bytes <= 4u * 1024u * 1024u);
+    PBVP_CHECK(snapshot.metrics.last_presented_video_pts_us >= 1'800'000);
+    PBVP_CHECK(snapshot.metrics.last_presented_video_end_us >= 1'900'000);
+    PBVP_CHECK(snapshot.metrics.last_media_time_us >=
+               snapshot.metrics.last_presented_video_end_us);
+    PBVP_CHECK(snapshot.metrics.last_media_time_us -
+                   snapshot.metrics.last_presented_video_end_us <= 50'000);
     std::printf(
         "integrated audio completion: frames=%llu delivered=%llu dropped=%llu samples=%llu clock_us=%lld underruns=%llu\n",
         static_cast<unsigned long long>(snapshot.metrics.presented_video_frames),

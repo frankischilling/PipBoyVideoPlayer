@@ -489,6 +489,8 @@ The live `PBVP Phase 4 Playback` profile used the generated two-second H.264 and
 
 This accepts the short integrated path for the tested profile. It does not close the live 30-minute synchronization test, low-FPS in-game playback, pause and seek input scenarios, controller coverage, DXVK, other UI profiles, or the two-hour stability soak.
 
+The live 30-minute test now has a reproducible private fixture and strict checker. The pinned generator produced an exact 1,800-second, 54,000-frame, 1280x720 H.264 stream with stereo 48 kHz AAC. The 15,720,894 byte file reproduced SHA-256 `431220B5D0F941E85E44671CDC46F04E43C3D6FA5AFA04988B35073E5C2FA239`. The armed build records progress every five minutes and measures final synchronization error, private-memory growth, queue peaks, upload cost, underruns, and shutdown order. Packaging rejects that build. This describes prepared test infrastructure, not a passed live result.
+
 ## UI matrix
 
 Test these layouts independently:

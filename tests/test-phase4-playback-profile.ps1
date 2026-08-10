@@ -46,6 +46,35 @@ try {
         throw 'The generated profile was not selected.'
     }
 
+    & $ProfileScript -InstanceRoot $temporaryRoot -SourceProfile 'Source' `
+        -TargetProfile 'Long Playback Test' -FixturePath $FixturePath `
+        -ExpectedFixtureHash '6549BA517226F8CB0CFB70F3B87489B58AA6ECCFCAB4DB75F808BD219DA1A068' `
+        -PlaybackModName 'Pip-Boy Video Player - Long Playback Test' `
+        -PlaybackFileName 'PBVP-Phase4-30Minute.mp4'
+    $longFixture = Join-Path $mods 'Pip-Boy Video Player - Long Playback Test\NVSE\Plugins\PipBoyVideoPlayer\Videos\PBVP-Phase4-30Minute.mp4'
+    if ((Get-FileHash -LiteralPath $longFixture -Algorithm SHA256).Hash -cne
+        '6549BA517226F8CB0CFB70F3B87489B58AA6ECCFCAB4DB75F808BD219DA1A068') {
+        throw 'The custom Phase 4 profile installed the wrong playback fixture.'
+    }
+    $longModList = @(Get-Content -LiteralPath (Join-Path $profiles 'Long Playback Test\modlist.txt'))
+    if (@($longModList | Where-Object {
+            $_ -eq '+Pip-Boy Video Player - Long Playback Test'
+        }).Count -ne 1) {
+        throw 'The custom Phase 4 profile did not enable its media mod.'
+    }
+
+    $escaped = $false
+    try {
+        & $ProfileScript -InstanceRoot $temporaryRoot -SourceProfile 'Source' `
+            -TargetProfile 'Escaped Playback Test' -FixturePath $FixturePath `
+            -PlaybackFileName '..\escape.mp4'
+    } catch {
+        $escaped = $true
+    }
+    if (-not $escaped) {
+        throw 'The profile script accepted a playback filename with traversal.'
+    }
+
     [IO.File]::WriteAllText(
         (Join-Path $target 'saves\must-remain.fos'), 'test save',
         [Text.UTF8Encoding]::new($false))

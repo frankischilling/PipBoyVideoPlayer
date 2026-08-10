@@ -295,6 +295,10 @@ The first live Phase 4 playback run used the generated two-second H.264 and AAC 
 
 The shutdown record followed the required order. Playback stopped, the decoder worker joined, renderer counters were written, and process shutdown completed. The log contained no absolute media path. This run verifies the short integrated path and a clean post-playback focus change in native D3D9 fullscreen at 1920x1080. It does not satisfy the 30-minute live synchronization target, low-FPS in-game test, repeated seeks, DXVK, or the full UI and input matrix.
 
+The long-test generator uses the pinned FFmpeg 8.0.1 executable to encode one exact ten-second video-only segment, loop it without re-encoding, and add one continuous 30-minute AAC track. An earlier candidate looped a segment that already contained AAC. Encoder padding at each loop left only 53,888 video frames and created periodic timestamp gaps, so that candidate was rejected. The corrected file is 15,720,894 bytes, has SHA-256 `431220B5D0F941E85E44671CDC46F04E43C3D6FA5AFA04988B35073E5C2FA239`, and contains exactly 54,000 frames over 1,800 seconds. A second generation produced the same hash.
+
+The private long-test build logs five-minute progress, final audio and video times, their absolute difference, process private-memory growth, queue peaks, renderer uploads, and teardown order. Its checker enforces the 50 millisecond synchronization target and 128 MiB private-memory limit. The build and checker are ready, but no live 30-minute result is recorded yet.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

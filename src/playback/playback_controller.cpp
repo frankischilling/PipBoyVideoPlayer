@@ -575,9 +575,18 @@ bool PlaybackController::SelectVideoForCurrentClock() noexcept {
         }
 
         if (selection.present_index.has_value()) {
+            const DecodedVideoFrame& selected = staged_video_.front();
+            const std::int64_t maximum = (std::numeric_limits<std::int64_t>::max)();
+            if (selected.duration_us > maximum - selected.pts_us) {
+                Fail(PlaybackError::decoder_failed);
+                return false;
+            }
             if (ready_frame_.has_value()) {
                 ++snapshot_.metrics.dropped_video_frames;
             }
+            snapshot_.metrics.last_presented_video_pts_us = selected.pts_us;
+            snapshot_.metrics.last_presented_video_end_us =
+                selected.pts_us + selected.duration_us;
             ready_frame_ = std::move(staged_video_.front());
             ++snapshot_.metrics.presented_video_frames;
             snapshot_.metrics.maximum_video_lateness_us = (std::max)(

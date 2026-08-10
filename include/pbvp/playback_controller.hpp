@@ -55,6 +55,8 @@ struct PlaybackMetrics final {
     std::size_t peak_decoder_audio_bytes{};
     std::int64_t maximum_video_lateness_us{};
     std::int64_t last_media_time_us{};
+    std::int64_t last_presented_video_pts_us{};
+    std::int64_t last_presented_video_end_us{};
 };
 
 struct PlaybackControllerSnapshot final {

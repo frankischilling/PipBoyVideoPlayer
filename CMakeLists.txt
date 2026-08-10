@@ -9,6 +9,10 @@ option(PBVP_BUILD_TESTS "Build automated tests" ON)
 option(PBVP_ENABLE_MEDIA_SMOKE_TEST "Arm the private live MO2 media decoder diagnostic" OFF)
 option(PBVP_ENABLE_AUDIO_SMOKE_TEST "Arm the private live MO2 decoded-audio diagnostic" OFF)
 option(PBVP_ENABLE_PLAYBACK_SMOKE_TEST "Arm the private live integrated playback diagnostic" OFF)
+option(PBVP_ENABLE_PLAYBACK_LONG_TEST "Arm the private 30-minute integrated playback diagnostic" OFF)
+if(PBVP_ENABLE_PLAYBACK_SMOKE_TEST AND PBVP_ENABLE_PLAYBACK_LONG_TEST)
+    message(FATAL_ERROR "Only one private playback diagnostic may be armed at a time.")
+endif()
 set(PBVP_XNVSE_ROOT "${CMAKE_SOURCE_DIR}/external/NVSE-6.4.5" CACHE PATH "xNVSE 6.4.5 release source root")
 set(PBVP_FFMPEG_ROOT "${CMAKE_SOURCE_DIR}/external/ffmpeg-8.1.2-i686" CACHE PATH "Verified FFmpeg 8.1.2 x86 install root")
 
@@ -104,6 +108,9 @@ if(PBVP_BUILD_PLUGIN)
     endif()
     if(PBVP_ENABLE_PLAYBACK_SMOKE_TEST)
         target_compile_definitions(PipBoyVideoPlayer PRIVATE PBVP_ENABLE_PLAYBACK_SMOKE_TEST=1)
+    endif()
+    if(PBVP_ENABLE_PLAYBACK_LONG_TEST)
+        target_compile_definitions(PipBoyVideoPlayer PRIVATE PBVP_ENABLE_PLAYBACK_LONG_TEST=1)
     endif()
     target_compile_options(PipBoyVideoPlayer PRIVATE
         /W4 /permissive- /utf-8 /Zc:__cplusplus /guard:cf
@@ -302,6 +309,14 @@ if(PBVP_BUILD_TESTS)
             -ExecutionPolicy Bypass
             -File ${CMAKE_SOURCE_DIR}/tests/test-phase4-playback-smoke-log.ps1
             -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase4-playback-smoke-log.ps1)
+
+    add_test(
+        NAME pbvp_phase4_long_playback_log_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase4-long-playback-log.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase4-long-playback-log.ps1)
 
     add_test(
         NAME pbvp_data_contract_test

@@ -37,15 +37,29 @@ std::atomic<bool> g_presentation_ready{false};
 pbvp::FfmpegRuntime g_ffmpeg_runtime;
 std::unique_ptr<pbvp::PlaybackController> g_playback_controller;
 pbvp::PlaybackState g_last_playback_state{pbvp::PlaybackState::idle};
+#if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST) || defined(PBVP_ENABLE_PLAYBACK_LONG_TEST)
+#define PBVP_ENABLE_PLAYBACK_DIAGNOSTIC 1
+#endif
 #if defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
 std::wstring g_audio_smoke_root;
 #endif
-#if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST)
+#if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
+#if defined(PBVP_ENABLE_PLAYBACK_LONG_TEST)
+constexpr wchar_t kPlaybackSmokeFile[] = L"PBVP-Phase4-30Minute.mp4";
+constexpr ULONGLONG kPlaybackSmokeTimeoutMs = 31u * 60u * 1000u;
+constexpr float kPlaybackSmokeVolume = 0.03f;
+#else
 constexpr wchar_t kPlaybackSmokeFile[] = L"PBVP-Phase4-Playback.mp4";
+constexpr ULONGLONG kPlaybackSmokeTimeoutMs = 20'000u;
+constexpr float kPlaybackSmokeVolume = 0.10f;
+#endif
 std::wstring g_playback_smoke_root;
 ULONGLONG g_playback_smoke_deadline{};
+ULONGLONG g_playback_smoke_next_progress{};
 bool g_playback_smoke_attempted{};
 bool g_playback_smoke_reported{};
+std::uint64_t g_playback_smoke_private_baseline{};
+std::uint64_t g_playback_smoke_peak_private_delta{};
 #endif
 
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
@@ -111,7 +125,7 @@ std::wstring PrivateFfmpegDirectory(const char* runtime_directory) noexcept {
 }
 
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST) || defined(PBVP_ENABLE_AUDIO_SMOKE_TEST) || \
-    defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST)
+    defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
 std::wstring PrivateMediaDirectory(const char* runtime_directory) noexcept {
     try {
         std::wstring path = WidenRuntimeDirectory(runtime_directory);
@@ -126,6 +140,20 @@ std::wstring PrivateMediaDirectory(const char* runtime_directory) noexcept {
     } catch (...) {
         return {};
     }
+}
+#endif
+
+#if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST) || defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
+std::uint64_t ProcessPrivateBytes() noexcept {
+    PROCESS_MEMORY_COUNTERS_EX counters{};
+    counters.cb = static_cast<DWORD>(sizeof(counters));
+    if (GetProcessMemoryInfo(
+            GetCurrentProcess(),
+            reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters),
+            static_cast<DWORD>(sizeof(counters))) == FALSE) {
+        return 0u;
+    }
+    return static_cast<std::uint64_t>(counters.PrivateUsage);
 }
 #endif
 
@@ -152,17 +180,30 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
         return;
     }
 
-#if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST)
+#if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
     if (!g_playback_smoke_attempted && ui_snapshot.visible) {
         g_playback_smoke_attempted = true;
+#if defined(PBVP_ENABLE_PLAYBACK_LONG_TEST)
+        PBVP_LOG_INFO(
+            "PBVP_PLAYBACK_LONG_TEST_ARMED: opening the generated 30-minute 720p30 fixture at volume 0.03");
+#else
         PBVP_LOG_INFO(
             "PBVP_PLAYBACK_SMOKE_TEST_ARMED: opening the generated Phase 4 fixture at volume 0.10");
+#endif
+        g_playback_smoke_private_baseline = ProcessPrivateBytes();
+        g_playback_smoke_peak_private_delta = 0u;
         if (g_playback_smoke_root.empty() ||
             !g_playback_controller->Open(g_playback_smoke_root, kPlaybackSmokeFile)) {
             PBVP_LOG_ERROR("Integrated playback smoke could not open its private fixture");
             g_playback_smoke_reported = true;
+        } else if (g_playback_smoke_private_baseline == 0u) {
+            g_playback_controller->Stop(pbvp::PlaybackTerminalReason::failed);
+            PBVP_LOG_ERROR("Integrated playback diagnostic could not read process memory");
+            g_playback_smoke_reported = true;
         } else {
-            g_playback_smoke_deadline = GetTickCount64() + 20'000u;
+            const ULONGLONG now = GetTickCount64();
+            g_playback_smoke_deadline = now + kPlaybackSmokeTimeoutMs;
+            g_playback_smoke_next_progress = now + 5u * 60u * 1000u;
         }
     }
 #endif
@@ -188,6 +229,30 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
     }
 
     const pbvp::PlaybackControllerSnapshot after = g_playback_controller->Snapshot();
+#if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
+    if (g_playback_smoke_attempted && !g_playback_smoke_reported) {
+        const std::uint64_t private_bytes = ProcessPrivateBytes();
+        if (private_bytes > g_playback_smoke_private_baseline) {
+            g_playback_smoke_peak_private_delta = (std::max)(
+                g_playback_smoke_peak_private_delta,
+                private_bytes - g_playback_smoke_private_baseline);
+        }
+    }
+#if defined(PBVP_ENABLE_PLAYBACK_LONG_TEST)
+    if (!g_playback_smoke_reported && PlaybackActive(after.playback.state) &&
+        GetTickCount64() >= g_playback_smoke_next_progress) {
+        PBVP_LOG_INFO(
+            "Integrated playback long test progress: clock_us=%lld decoded=%llu presented=%llu dropped=%llu underruns=%llu private_delta=%llu",
+            static_cast<long long>(after.metrics.last_media_time_us),
+            static_cast<unsigned long long>(after.metrics.decoded_video_frames),
+            static_cast<unsigned long long>(after.metrics.presented_video_frames),
+            static_cast<unsigned long long>(after.metrics.dropped_video_frames),
+            static_cast<unsigned long long>(after.audio.underruns),
+            static_cast<unsigned long long>(g_playback_smoke_peak_private_delta));
+        g_playback_smoke_next_progress = GetTickCount64() + 5u * 60u * 1000u;
+    }
+#endif
+#endif
     if (ui_snapshot.visible &&
         !pbvp::UiBridge::Instance().SetPlaybackStatus(after.playback) &&
         after.playback.state == pbvp::PlaybackState::error) {
@@ -205,7 +270,7 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
         pbvp::D3dRenderer::Instance().ClearVideoFrame();
     }
 
-#if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST)
+#if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
     if (!g_playback_smoke_reported && g_playback_smoke_attempted &&
         g_playback_smoke_deadline != 0u && GetTickCount64() >= g_playback_smoke_deadline &&
         PlaybackActive(after.playback.state)) {
@@ -216,8 +281,34 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
     } else if (!g_playback_smoke_reported &&
                after.terminal_reason == pbvp::PlaybackTerminalReason::completed) {
         const pbvp::D3dRendererSnapshot render = pbvp::D3dRenderer::Instance().Snapshot();
+        const std::int64_t sync_error_us = after.metrics.last_media_time_us >=
+                after.metrics.last_presented_video_end_us
+            ? after.metrics.last_media_time_us - after.metrics.last_presented_video_end_us
+            : after.metrics.last_presented_video_end_us - after.metrics.last_media_time_us;
+#if defined(PBVP_ENABLE_PLAYBACK_LONG_TEST)
         PBVP_LOG_INFO(
-            "Integrated playback smoke passed: decoded=%llu presented=%llu dropped=%llu audio_samples=%llu clock_us=%lld underruns=%llu seeks=%llu video_submitted=%llu video_uploaded=%llu mailbox_replaced=%llu upload_us=%.2f/%.2f/%.2f generation=%llu",
+            "Integrated playback long test passed: decoded=%llu presented=%llu dropped=%llu audio_samples=%llu clock_us=%lld video_end_us=%lld sync_error_us=%lld underruns=%llu seeks=%llu video_submitted=%llu video_uploaded=%llu mailbox_replaced=%llu upload_us=%.2f/%.2f/%.2f private_delta=%llu staged_peak=%zu decoder_video_peak=%zu decoder_audio_peak=%zu generation=%llu",
+            static_cast<unsigned long long>(after.metrics.decoded_video_frames),
+            static_cast<unsigned long long>(after.metrics.presented_video_frames),
+            static_cast<unsigned long long>(after.metrics.dropped_video_frames),
+            static_cast<unsigned long long>(after.metrics.submitted_audio_samples),
+            static_cast<long long>(after.metrics.last_media_time_us),
+            static_cast<long long>(after.metrics.last_presented_video_end_us),
+            static_cast<long long>(sync_error_us),
+            static_cast<unsigned long long>(after.audio.underruns),
+            static_cast<unsigned long long>(after.metrics.seek_count),
+            static_cast<unsigned long long>(render.submitted_video_frames),
+            static_cast<unsigned long long>(render.uploaded_video_frames),
+            static_cast<unsigned long long>(render.replaced_mailbox_frames),
+            render.upload_minimum_us, render.upload_average_us, render.upload_maximum_us,
+            static_cast<unsigned long long>(g_playback_smoke_peak_private_delta),
+            after.metrics.peak_staged_video_bytes,
+            after.metrics.peak_decoder_video_bytes,
+            after.metrics.peak_decoder_audio_bytes,
+            static_cast<unsigned long long>(after.generation));
+#else
+        PBVP_LOG_INFO(
+            "Integrated playback smoke passed: decoded=%llu presented=%llu dropped=%llu audio_samples=%llu clock_us=%lld underruns=%llu seeks=%llu video_submitted=%llu video_uploaded=%llu mailbox_replaced=%llu upload_us=%.2f/%.2f/%.2f generation=%llu sync_error_us=%lld private_delta=%llu staged_peak=%zu decoder_video_peak=%zu decoder_audio_peak=%zu",
             static_cast<unsigned long long>(after.metrics.decoded_video_frames),
             static_cast<unsigned long long>(after.metrics.presented_video_frames),
             static_cast<unsigned long long>(after.metrics.dropped_video_frames),
@@ -229,7 +320,13 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
             static_cast<unsigned long long>(render.uploaded_video_frames),
             static_cast<unsigned long long>(render.replaced_mailbox_frames),
             render.upload_minimum_us, render.upload_average_us, render.upload_maximum_us,
-            static_cast<unsigned long long>(after.generation));
+            static_cast<unsigned long long>(after.generation),
+            static_cast<long long>(sync_error_us),
+            static_cast<unsigned long long>(g_playback_smoke_peak_private_delta),
+            after.metrics.peak_staged_video_bytes,
+            after.metrics.peak_decoder_video_bytes,
+            after.metrics.peak_decoder_audio_bytes);
+#endif
         g_playback_smoke_reported = true;
     }
 #endif
@@ -243,18 +340,6 @@ void StopMediaSmoke() noexcept {
         PBVP_LOG_INFO("Media smoke worker joined before private FFmpeg unload");
     }
     g_media_smoke_stage = MediaSmokeStage::finished;
-}
-
-std::uint64_t ProcessPrivateBytes() noexcept {
-    PROCESS_MEMORY_COUNTERS_EX counters{};
-    counters.cb = static_cast<DWORD>(sizeof(counters));
-    if (GetProcessMemoryInfo(
-            GetCurrentProcess(),
-            reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters),
-            static_cast<DWORD>(sizeof(counters))) == FALSE) {
-        return 0u;
-    }
-    return static_cast<std::uint64_t>(counters.PrivateUsage);
 }
 
 std::int64_t MediaSmokeStageMicroseconds() noexcept {
@@ -593,7 +678,7 @@ extern "C" bool NVSEPlugin_Load(NVSEInterface* nvse) {
 #if defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
     g_audio_smoke_root = PrivateMediaDirectory(nvse->GetRuntimeDirectory());
 #endif
-#if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST)
+#if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
     g_playback_smoke_root = PrivateMediaDirectory(nvse->GetRuntimeDirectory());
 #endif
     if (ffmpeg_directory.empty()) {
@@ -616,8 +701,8 @@ extern "C" bool NVSEPlugin_Load(NVSEInterface* nvse) {
         ffmpeg_versions.swresample, ffmpeg_versions.swscale);
     try {
         pbvp::PlaybackControllerConfig playback_config{};
-#if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST)
-        playback_config.volume = 0.10f;
+#if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
+        playback_config.volume = kPlaybackSmokeVolume;
 #endif
         g_playback_controller = std::make_unique<pbvp::PlaybackController>(
             g_ffmpeg_runtime, playback_config);

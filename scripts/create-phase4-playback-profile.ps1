@@ -4,6 +4,10 @@ param(
     [string]$SourceProfile = 'PBVP Phase 1 Extended',
     [string]$TargetProfile = 'PBVP Phase 4 Playback',
     [string]$FixturePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'tests\fixtures\h264-aac-44100-stereo.mp4'),
+    [ValidatePattern('^[A-Fa-f0-9]{64}$')]
+    [string]$ExpectedFixtureHash = '6549BA517226F8CB0CFB70F3B87489B58AA6ECCFCAB4DB75F808BD219DA1A068',
+    [string]$PlaybackModName = 'Pip-Boy Video Player - Playback Test',
+    [string]$PlaybackFileName = 'PBVP-Phase4-Playback.mp4',
     [switch]$VerifyOnly,
     [switch]$SelectProfile
 )
@@ -58,13 +62,17 @@ if (-not $VerifyOnly -and (Test-InstanceOrganizerRunning)) {
 }
 
 $fixture = (Resolve-Path -LiteralPath $FixturePath).Path
-$expectedFixtureHash = '6549BA517226F8CB0CFB70F3B87489B58AA6ECCFCAB4DB75F808BD219DA1A068'
+$expectedFixtureHash = $ExpectedFixtureHash.ToUpperInvariant()
+if ([IO.Path]::GetFileName($PlaybackFileName) -cne $PlaybackFileName -or
+    [IO.Path]::GetExtension($PlaybackFileName) -cne '.mp4') {
+    throw 'The playback fixture name must be one direct-child MP4 filename.'
+}
 if ((Get-FileHash -LiteralPath $fixture -Algorithm SHA256).Hash -cne $expectedFixtureHash) {
     throw 'The Phase 4 playback fixture hash does not match the canonical generated file.'
 }
 
-$playbackModName = 'Pip-Boy Video Player - Playback Test'
-$playbackRelativePath = 'NVSE\Plugins\PipBoyVideoPlayer\Videos\PBVP-Phase4-Playback.mp4'
+$playbackModName = $PlaybackModName
+$playbackRelativePath = Join-Path 'NVSE\Plugins\PipBoyVideoPlayer\Videos' $PlaybackFileName
 $playbackMod = Resolve-ChildPath -Root $mods -Name $playbackModName
 $playbackTarget = Join-Path $playbackMod $playbackRelativePath
 $source = Resolve-ChildPath -Root $profiles -Name $SourceProfile

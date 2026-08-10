@@ -8,6 +8,7 @@
 - Added automated integrated tests for low game frame rates, 30-minute clock mapping, seek generations, Pip-Boy closure, game transitions, shutdown order, thread ownership, silent playback, and renderer mailbox pressure.
 - Verified the live Phase 4 path in FalloutNV with visible video and status text, 18 presented frames, two dropped startup frames, 96,967 played samples, a 2,020,125 microsecond final clock, zero underruns, and a 59.40 microsecond maximum upload.
 - Added a save-free Phase 4 MO2 profile, a generated playback fixture in a separate media mod, a strict playback log checker, and package rejection for an armed integrated diagnostic.
+- Added a pinned 30-minute 720p30 fixture generator, final audio-to-video error metrics, process and queue memory measurements, five-minute progress records, a strict long-playback checker, and package rejection for the separate armed long diagnostic.
 - Added checked audio-sample and QueryPerformanceCounter clocks with pause, resume, seek-origin, 30-minute mapping, and overflow tests.
 - Added a bounded system XAudio2 2.9 stream with a fixed PCM pool, atomics-only callbacks, play, stop, pause, resume, mute, volume, end of stream, and default-device reconstruction.
 - Added tracked COM ownership on the audio thread after the first native mastering-voice test exposed the missing initialization step.
