@@ -111,6 +111,15 @@ bool PlaybackStateMachine::BeginSeek() noexcept {
     return true;
 }
 
+bool PlaybackStateMachine::BeginRebuffer() noexcept {
+    if (state_ != PlaybackState::playing) {
+        return false;
+    }
+    pause_after_buffering_ = false;
+    state_ = PlaybackState::buffering;
+    return true;
+}
+
 bool PlaybackStateMachine::BeginStop() noexcept {
     switch (state_) {
         case PlaybackState::opening:

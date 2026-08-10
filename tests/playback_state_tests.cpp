@@ -21,6 +21,9 @@ void RunPlaybackStateTests() {
     PBVP_CHECK(state.BeginSeek());
     PBVP_CHECK(state.BufferReady());
     PBVP_CHECK(state.Snapshot().state == pbvp::PlaybackState::playing);
+    PBVP_CHECK(state.BeginRebuffer());
+    PBVP_CHECK(state.Snapshot().state == pbvp::PlaybackState::buffering);
+    PBVP_CHECK(state.BufferReady());
     PBVP_CHECK(state.BeginStop());
     PBVP_CHECK(state.BeginStop());
     PBVP_CHECK(state.FinishStop());

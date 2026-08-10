@@ -67,6 +67,15 @@ if(PBVP_BUILD_PLUGIN)
     target_compile_options(pbvp_media PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
     set_target_properties(pbvp_media PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
+    add_library(pbvp_playback STATIC
+        src/playback/playback_controller.cpp)
+    target_link_libraries(pbvp_playback PUBLIC pbvp_audio pbvp_core pbvp_media)
+    target_include_directories(pbvp_playback PUBLIC include)
+    target_compile_features(pbvp_playback PUBLIC cxx_std_20)
+    target_compile_definitions(pbvp_playback PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_compile_options(pbvp_playback PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
+    set_target_properties(pbvp_playback PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
     add_library(PipBoyVideoPlayer SHARED
         src/plugin/plugin_main.cpp
         src/render/d3d_renderer.cpp
@@ -74,7 +83,7 @@ if(PBVP_BUILD_PLUGIN)
         src/diagnostics/logger.cpp
         src/plugin/version.rc
         src/plugin/exports.def)
-    target_link_libraries(PipBoyVideoPlayer PRIVATE pbvp_audio pbvp_core pbvp_media d3d9 psapi)
+    target_link_libraries(PipBoyVideoPlayer PRIVATE pbvp_audio pbvp_core pbvp_media pbvp_playback d3d9 psapi)
     target_include_directories(PipBoyVideoPlayer PRIVATE
         include
         "${PBVP_XNVSE_ROOT}"
@@ -153,6 +162,17 @@ if(PBVP_BUILD_PLUGIN)
         add_test(
             NAME pbvp_media_audio_pipeline_test
             COMMAND pbvp_media_audio_pipeline_test
+                "${PBVP_FFMPEG_ROOT}/bin"
+                "${CMAKE_SOURCE_DIR}/tests/fixtures")
+
+        add_executable(pbvp_playback_controller_test tests/playback_controller_tests.cpp)
+        target_link_libraries(pbvp_playback_controller_test PRIVATE pbvp_playback)
+        target_compile_features(pbvp_playback_controller_test PRIVATE cxx_std_20)
+        target_compile_options(pbvp_playback_controller_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus /Zm200)
+        set_target_properties(pbvp_playback_controller_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        add_test(
+            NAME pbvp_playback_controller_test
+            COMMAND pbvp_playback_controller_test
                 "${PBVP_FFMPEG_ROOT}/bin"
                 "${CMAKE_SOURCE_DIR}/tests/fixtures")
 

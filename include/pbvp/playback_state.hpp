@@ -47,6 +47,7 @@ public:
     [[nodiscard]] bool Pause() noexcept;
     [[nodiscard]] bool Resume() noexcept;
     [[nodiscard]] bool BeginSeek() noexcept;
+    [[nodiscard]] bool BeginRebuffer() noexcept;
     [[nodiscard]] bool BeginStop() noexcept;
     [[nodiscard]] bool FinishStop() noexcept;
     [[nodiscard]] bool AcknowledgeError() noexcept;
