@@ -111,6 +111,14 @@ if(PBVP_BUILD_TESTS)
             -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase1-log.ps1)
 
     add_test(
+        NAME pbvp_phase1_profile_setup_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase1-profile-setup.ps1
+            -ProfileScript ${CMAKE_SOURCE_DIR}/scripts/create-phase1-profiles.ps1)
+
+    add_test(
         NAME pbvp_data_contract_test
         COMMAND ${CMAKE_COMMAND}
             -DPBVP_SOURCE_DIR=${CMAKE_SOURCE_DIR}

@@ -227,6 +227,30 @@ The next installed candidate records fixed-size session totals for frame callbac
 | VNV Extended with DXVK | Tests the D3D9 API through a translation layer |
 | VNV Extended with a supported handheld Pip-Boy | Tests screen rectangle and animation assumptions |
 
+### Local test profile isolation
+
+The local MO2 instance has three PBVP-specific Phase 1 profiles:
+
+- `PBVP Phase 1 Base`
+- `PBVP Phase 1 Extended`
+- `PBVP Phase 1 Extended No Pip-Boy Tweaks`
+
+Each profile enables only the separate `Pip-Boy Video Player - Dev` mod on top of its source profile. The setup copies no save directory and does not change MO2's selected profile. Because the original base profile has an empty `falloutprefs.ini`, its test copy uses the Extended profile's known 1920x1080 fullscreen display preferences. The base mod list remains the source for every other setting.
+
+Create these profiles once, or verify them later:
+
+```powershell
+.\scripts\create-phase1-profiles.ps1 `
+  -InstanceRoot 'C:\path\to\Viva New Vegas' `
+  -Confirm:$false
+
+.\scripts\create-phase1-profiles.ps1 `
+  -InstanceRoot 'C:\path\to\Viva New Vegas' `
+  -VerifyOnly
+```
+
+The creation command refuses to replace an existing target. The automated test builds a temporary MO2 fixture, confirms that saves are not copied, verifies the disabled Pip-Boy UI Tweaks entries, and checks the replacement refusal.
+
 ENB and New Vegas Reloaded begin as unsupported configurations. They may enter the matrix after the native D3D9 path is stable and a maintainer can reproduce them.
 
 ## Graphics matrix
