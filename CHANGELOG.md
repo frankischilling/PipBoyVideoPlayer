@@ -35,3 +35,4 @@
 - Added bounded visible-frame cadence samples and an independent log check for the expected game FPS.
 - Added path-neutral public symbol packaging with exact PDB identity, public-symbol, FPO, section-contribution, and archive-content checks.
 - Tightened the controlled recreation log check to require the armed-build banner and exactly one scheduled engine request.
+- Recorded that the first deferred-request run recovered the UI surface but did not enter the verified device-recreation hook. The request alone no longer counts as reset evidence.
