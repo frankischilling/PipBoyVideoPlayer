@@ -285,6 +285,8 @@ The completed native stream test uses a fixed buffer pool and silent PCM so auto
 
 A second x86 test connects the real Phase 2 decoder to the bounded XAudio2 stream. It played three generated fixtures while muted. The 44.1 kHz stereo source produced 96,967 stereo 48 kHz samples and ended at 2,020,125 microseconds. The 48 kHz mono and 5.1 sources each produced 48,128 stereo samples and ended at 1,002,651 microseconds. All three runs reached the XAudio2 end callback with zero underruns. This verifies the resampled and downmixed PCM path, not only synthetic audio.
 
+The live Phase 3 diagnostic used the same generated 44.1 kHz stereo MP4 through the isolated MO2 profile. The user heard its two-second tone at 10 percent source-voice volume. XAudio2 consumed all 96,967 output samples, reported the expected 2,020,125 microsecond end time, completed 88 buffers, and raised one stream-end callback without an underrun. The pool stayed at its fixed 262,144 byte capacity. Shutdown stopped and flushed audio, joined the decoder, released the voices and callback targets, and then unloaded FFmpeg. The strict checker accepted the lifecycle and privacy-safe log.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

@@ -496,6 +496,18 @@ Rejected alternatives: do not assume Fallout or a test process initialized COM, 
 
 Consequence: initialization and shutdown must occur on the audio owner. A COM setup failure becomes a structured engine-creation error. Phase 4 must keep this ownership when it connects the player state machine.
 
+### Bounded XAudio2 stream and initial prebuffer
+
+Date: August 10, 2026
+
+Decision: use 16 fixed 16 KiB PCM slots and a 200 ms startup prebuffer for the current reference system. Accept only mono or stereo signed 16-bit PCM from 8 to 192 kHz at the XAudio2 boundary. The media decoder continues to supply stereo 48 kHz PCM during normal playback.
+
+Evidence: the native x86 test passed 100, 200, and 300 ms prebuffers without an underrun. The decoder-to-audio test passed 44.1 kHz stereo, 48 kHz mono, and 48 kHz 5.1 sources after conversion. The live MO2 diagnostic used the 200 ms default, played all 96,967 output samples, reached the expected 2,020,125 microsecond clock, and reported zero underruns. Its pool remained fixed at 262,144 bytes.
+
+Rejected alternatives: do not allocate PCM inside callbacks, grow the queue when the game is slow, begin before the chosen threshold unless the entire short stream is already queued, or expose multichannel PCM to XAudio2 when the media worker already performs the tested stereo downmix.
+
+Consequence: Phase 4 may tune the threshold only if integrated measurements show a reason. Any larger configurable pool must remain within the 2 MiB hard cap and must pass the 32-bit memory budget again.
+
 ### Bounded software decode
 
 Date: August 10, 2026
@@ -590,8 +602,7 @@ Reason: the player should be safe to add or remove and should not leave missing 
 ## Open questions before phase three
 
 1. How should player volume relate to the game's master and effects volume?
-2. What buffering depth avoids underruns without making pause and seek feel sluggish?
-3. How should audio-device removal appear to the user?
+2. How should audio-device removal appear to the user?
 
 ## Open questions before release
 

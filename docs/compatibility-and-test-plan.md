@@ -473,6 +473,14 @@ The corrected run waited five seconds, recorded a zero-byte private-memory chang
 
 The fixture existed only in the enabled `Pip-Boy Video Player - Media Test` mod. It was absent from the physical game directory, the PBVP development mod, and MO2 overwrite. This proves custom AVIO visibility through the active USVFS session. It does not complete the larger release media matrix, long-duration stability tests, or integrated playback measurements assigned to later phases.
 
+## Phase 3 audio and clock evidence
+
+The native x86 stream test compared 100, 200, and 300 ms prebuffers. Each case reached end of stream without an underrun. It also passed pause, resume, mute, volume, stop and flush, sample-origin replacement, end of stream, healthy device reconstruction, 44.1 and 48 kHz mono and stereo output, QPC pause and seek behavior, pool exhaustion, foreign-thread refusal, and 25 complete stream lifetime cycles. The real decoder-to-audio test played generated 44.1 kHz stereo, 48 kHz mono, and 48 kHz 5.1 sources while muted. FFmpeg converted each source to stereo 48 kHz PCM, and XAudio2 reached the expected end time with zero underruns.
+
+The live `PBVP Phase 3 Audio` MO2 profile supplied its generated MP4 through a separate test mod. The user heard the two-second tone at the main menu. The plugin submitted 96,967 samples, reported a final audio clock of 2,020,125 microseconds, and reached one end-of-stream callback with zero underruns. Its fixed PCM pool was 262,144 bytes. The decoder worker joined before FFmpeg unload, and the source voice, callback targets, and pool were released before process shutdown. The strict log checker passed and found no absolute media path.
+
+This result selects a 200 ms default for the current reference system. Phase 4 still needs the 30-minute synchronization target, low-FPS video dropping, menu lifecycle behavior, and repeated integrated seeks. Phase 6 retains device-removal fault injection and the full stability matrix.
+
 ## UI matrix
 
 Test these layouts independently:
