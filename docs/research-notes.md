@@ -327,6 +327,10 @@ The updated 1080p full-queue test held three frames at exactly 1,769,472 bytes. 
 
 The real 30-minute fixture passed another five-second native startup run. Playback stayed in `playing` with no error or failure site. It decoded 150 frames, delivered 143, dropped six late frames, submitted 245,760 audio samples, and reached a 4,940,000-microsecond clock.
 
+The same `VirtualAlloc` build passed its short in-game startup gate. The user saw uninterrupted video for about 56 seconds and reported no playback error. The renderer submitted and uploaded 1,659 frames with no upload failure. Upload time was 18.00 microseconds minimum, 25.65 microseconds average, and 98.10 microseconds maximum. Shutdown stopped audio and joined the decoder worker.
+
+The long diagnostic used 3 percent source-voice volume. The user did not hear its tone, while the earlier Phase 3 tone was audible at 10 percent. The log contained no audio-device or playback error. The run confirms the live video allocation path but does not add an audible-audio result. The complete 30-minute synchronization test remains open.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

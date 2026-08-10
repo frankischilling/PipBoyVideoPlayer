@@ -516,7 +516,7 @@ Rejected alternatives: do not reduce the source or intermediate resolution again
 
 Consequence: add a typed allocator with checked byte arithmetic, use it only for `DecodedVideoFrame` pixel storage, test repeated allocation and move ownership, and repeat the short live startup test before restarting the 30-minute run.
 
-Implementation evidence: the allocator stress test completed 512 allocation, move, and release cycles for 589,824-byte payloads and retained less than 8 MiB after the loop. The 1080p queue and complete decode passed, and the real long fixture completed a five-second native startup run with no error or failure site. The live startup check remains open.
+Implementation evidence: the allocator stress test completed 512 allocation, move, and release cycles for 589,824-byte payloads and retained less than 8 MiB after the loop. The 1080p queue and complete decode passed, and the real long fixture completed a five-second native startup run with no error or failure site. The live build then displayed continuous video for about 56 seconds with 1,659 successful uploads and no playback or allocation error. This passes the short live startup check. The complete 30-minute run remains open.
 
 ### System XAudio2 2.9 runtime
 

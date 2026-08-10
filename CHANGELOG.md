@@ -15,6 +15,7 @@
 - Replaced the misleading `VIDEO FORMAT ERROR` message with separate video decode and video memory errors.
 - Moved video pixel payloads from the loaded game's C++ heap to checked `VirtualAlloc` regions after both source-sized and 589,824-byte heap allocations failed during live playback.
 - Added 512 repeated video payload allocation, move, and release checks with retained-memory limits.
+- Passed the short live allocator retest with about 56 seconds of uninterrupted video, 1,659 successful uploads, and no playback or allocation error.
 - Added checked audio-sample and QueryPerformanceCounter clocks with pause, resume, seek-origin, 30-minute mapping, and overflow tests.
 - Added a bounded system XAudio2 2.9 stream with a fixed PCM pool, atomics-only callbacks, play, stop, pause, resume, mute, volume, end of stream, and default-device reconstruction.
 - Added tracked COM ownership on the audio thread after the first native mastering-voice test exposed the missing initialization step.

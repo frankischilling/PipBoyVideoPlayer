@@ -503,6 +503,10 @@ The first bounded-output in-game attempt played and uploaded video for about fou
 
 The virtual-memory payload candidate passes its native gates. A stress case completed 512 payload allocation, move, and release cycles while retaining less than 8 MiB after the loop. The 1080p queue and complete decode passed. The real long fixture also stayed in playback for five seconds with 150 decoded frames, 143 delivered frames, six late drops, 245,760 audio samples, a 4,940,000-microsecond clock, and no failure site. A live startup run remains required.
 
+The `VirtualAlloc` payload build passed its short live startup gate. The user saw continuous video for about 56 seconds and reported no playback error. The shutdown summary counted 1,659 submitted frames, 1,659 uploaded frames, and zero upload failures. Upload time was 18.00 microseconds minimum, 25.65 microseconds average, and 98.10 microseconds maximum. Playback reached buffering as the session ended, then stopped audio and joined the decoder worker during process shutdown. The complete 30-minute run is still pending.
+
+The user did not hear the fixture's tone during this run. The long diagnostic uses 3 percent source-voice volume, compared with 10 percent in the audible Phase 3 test. The log contained no audio-device or playback error. This run confirms the short live allocation fix but does not add an audible-audio result.
+
 ## UI matrix
 
 Test these layouts independently:
