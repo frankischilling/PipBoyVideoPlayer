@@ -15,6 +15,7 @@
 - Added a locus to the video rectangle so the checkerboard and status elements follow its position.
 - Added a Direct3D 9 checkerboard upload that uses a temporary COM reference and leaves drawing to Gamebryo.
 - Added device-profile, surface-profile, texture-upload, thread-identity, and device-recreation diagnostics.
+- Added one orderly-shutdown renderer summary with fixed-size counters for callbacks, visible frames, devices, uploads, upload timing, and recreation results.
 - Added one-time diagnostics for game-thread UI polling, MapMenu lookup, frame presentation, and D3D device discovery.
 - Corrected the native height and width trait IDs and now source them from the official xNVSE `Tile` definitions.
 - Resolved the logical UI canvas from the bounded MapMenu ancestor chain instead of assuming the menu root has screen dimensions.
@@ -25,5 +26,5 @@
 - Added host tests, Win32 tests, DLL export checks, and PE architecture checks.
 - Added coordinate conversion coverage for 4:3, 16:9, 16:10, and ultrawide canvases.
 - Added a data-contract test for the UIO registration, named prefab tiles, private surface path, and package generator.
-- Added a repeatable Phase 1 log check for plugin load, hook verification, UI geometry, device validation, texture uploads, recreation failures, and clean shutdown.
+- Added a repeatable Phase 1 log check for plugin load, hook verification, UI geometry, device validation, texture uploads, recreation failures, renderer summary, and clean shutdown.
 - Added RadioCaptions-style build, test, package, and MO2 development-install scripts.

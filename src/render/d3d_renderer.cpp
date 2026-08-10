@@ -58,6 +58,7 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
         ReleaseResources();
         return;
     }
+    ++frame_callback_count_;
     if (!frame_callback_logged_) {
         PBVP_LOG_INFO("xNVSE frame-present texture upload boundary active");
         frame_callback_logged_ = true;
@@ -70,6 +71,7 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
         last_surface_status_ = 0u;
         return;
     }
+    ++visible_frame_count_;
 
     const std::uint32_t current_thread = GetCurrentThreadId();
     if (ui_rect.game_thread_id == 0u || current_thread != ui_rect.game_thread_id) {
@@ -119,12 +121,15 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
     if (surface.d3d_texture == last_surface_) {
         return;
     }
+    ++upload_attempt_count_;
     if (!UploadCheckerboard(device, surface.d3d_texture)) {
+        ++upload_failure_count_;
         if (error_count_++ < 8u) {
             PBVP_LOG_WARN("Generated checkerboard upload to the engine image failed");
         }
         return;
     }
+    ++upload_success_count_;
     last_surface_ = surface.d3d_texture;
     PBVP_LOG_INFO("Generated checkerboard uploaded to PBVP_VideoSurface");
 }
@@ -141,16 +146,19 @@ void D3dRenderer::BeforeDeviceRecreate(void* renderer) noexcept {
 void D3dRenderer::AfterDeviceRecreate(void* renderer, const std::uint32_t result) noexcept {
     const RecreateResult classification = ClassifyRecreateResult(result);
     if (classification == RecreateResult::failed) {
+        ++recreate_failure_count_;
         PBVP_LOG_WARN("D3D engine recreation failed; texture uploads remain disabled");
         return;
     }
     if (classification == RecreateResult::unknown) {
+        ++recreate_failure_count_;
         PBVP_LOG_ERROR(
             "D3D engine recreation returned unexpected value %u; texture uploads remain disabled",
             result);
         return;
     }
     if (DeviceFromRenderer(renderer) == nullptr) {
+        ++recreate_failure_count_;
         PBVP_LOG_ERROR(
             "D3D engine recreation returned %u without publishing a device; texture uploads remain disabled",
             result);
@@ -159,6 +167,7 @@ void D3dRenderer::AfterDeviceRecreate(void* renderer, const std::uint32_t result
 
     device_ = nullptr;
     device_lost_ = false;
+    ++recreate_success_count_;
     if (classification == RecreateResult::recovered) {
         PBVP_LOG_INFO(
             "D3D engine recreation recovered the original presentation parameters; resources will be reacquired");
@@ -171,6 +180,7 @@ void D3dRenderer::AfterDeviceRecreate(void* renderer, const std::uint32_t result
 void D3dRenderer::RequestShutdown() noexcept {
     shutdown_requested_ = true;
     ReleaseResources();
+    LogSessionSummary();
 }
 
 IDirect3DDevice9* D3dRenderer::FindDevice() noexcept {
@@ -200,6 +210,7 @@ bool D3dRenderer::ValidateDevice(IDirect3DDevice9* device) noexcept {
 
     ReleaseResources();
     device_ = device;
+    ++device_validation_count_;
     LogDeviceProfile(device);
     return true;
 }
@@ -280,9 +291,29 @@ bool D3dRenderer::UploadCheckerboard(
     if (QueryPerformanceFrequency(&frequency) && frequency.QuadPart > 0) {
         const double microseconds = static_cast<double>(finished.QuadPart - started.QuadPart) *
                                     1000000.0 / static_cast<double>(frequency.QuadPart);
+        RecordUploadDuration(microseconds);
         PBVP_LOG_INFO("Engine texture checkerboard upload took %.2f microseconds", microseconds);
     }
     return true;
+}
+
+void D3dRenderer::RecordUploadDuration(const double microseconds) noexcept {
+    if (microseconds < 0.0) {
+        return;
+    }
+    if (upload_timing_count_ == 0u) {
+        upload_minimum_microseconds_ = microseconds;
+        upload_maximum_microseconds_ = microseconds;
+    } else {
+        if (microseconds < upload_minimum_microseconds_) {
+            upload_minimum_microseconds_ = microseconds;
+        }
+        if (microseconds > upload_maximum_microseconds_) {
+            upload_maximum_microseconds_ = microseconds;
+        }
+    }
+    upload_total_microseconds_ += microseconds;
+    ++upload_timing_count_;
 }
 
 void D3dRenderer::LogDeviceProfile(IDirect3DDevice9* device) noexcept {
@@ -317,6 +348,26 @@ void D3dRenderer::LogDeviceProfile(IDirect3DDevice9* device) noexcept {
         description, driver, mode, presentation.BackBufferWidth, presentation.BackBufferHeight,
         static_cast<unsigned>(presentation.BackBufferFormat),
         static_cast<unsigned>(presentation.PresentationInterval));
+}
+
+void D3dRenderer::LogSessionSummary() noexcept {
+    if (summary_logged_) {
+        return;
+    }
+    summary_logged_ = true;
+    const double average = upload_timing_count_ > 0u
+                               ? upload_total_microseconds_ /
+                                     static_cast<double>(upload_timing_count_)
+                               : 0.0;
+    PBVP_LOG_INFO(
+        "Phase 1 renderer summary: callbacks=%llu visible=%llu devices=%u upload-successes=%llu upload-attempts=%llu upload-failures=%llu upload-us=%.2f/%.2f/%.2f recreation-successes=%u recreation-starts=%u recreation-failures=%u",
+        static_cast<unsigned long long>(frame_callback_count_),
+        static_cast<unsigned long long>(visible_frame_count_), device_validation_count_,
+        static_cast<unsigned long long>(upload_success_count_),
+        static_cast<unsigned long long>(upload_attempt_count_),
+        static_cast<unsigned long long>(upload_failure_count_), upload_minimum_microseconds_,
+        average, upload_maximum_microseconds_, recreate_success_count_, reset_count_,
+        recreate_failure_count_);
 }
 
 void D3dRenderer::ReleaseResources() noexcept {

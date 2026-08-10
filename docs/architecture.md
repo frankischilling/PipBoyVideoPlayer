@@ -62,6 +62,8 @@ The renderer locks the engine-owned texture, copies rows using the returned Dire
 
 The plugin does not retain ownership of the UI texture across callbacks. The engine owns its lifetime and reset behavior. The verified recreation hook remains during the spike to observe device recreation and reject an occupied lifecycle boundary. If testing proves that the engine texture is managed and no plugin-owned default-pool resource remains, a later decision may remove that detour.
 
+The renderer keeps fixed-size session counters for frame callbacks, visible frames, validated devices, upload attempts, successful uploads, failures, and recreation results. It records the minimum, average, and maximum successful checkerboard upload time. An orderly shutdown writes one summary line. The counters do not allocate memory and the render callback does not write a line for each frame.
+
 ### Pip-Boy presentation bridge
 
 UIO injects a prefab into the selected Pip-Boy menu. The prefab owns the video rectangle, engine image, focus region, labels, control prompts, and state traits. `PBVP_VideoRect` establishes a locus, so its surface and status elements use local coordinates and move with the viewport. In the reviewed Vanilla UI Plus MapMenu, each PBVP drawable has an explicit depth from 10 through 12. Normal map and list content reaches depth 8, while headline cards use depth 15 and the tab line uses depth 22. The parent root also uses depth 10, but the implementation does not rely on that value propagating to drawable children. This places the video above page content and below the existing navigation without a frame-wide overlay.
@@ -101,14 +103,6 @@ xNVSE 6.4.5's `kMessage_OnFramePresent` notification is the upload boundary for 
 
 The engine's `NiDX9Renderer::Recreate` function remains the only MinHook detour during this spike. Before installing it, the plugin compares the live function entry with a reviewed signature table and rejects common jump stubs and unknown bytes. An unknown or occupied entry disables texture updates for the session instead of attempting to chain through another hook. The detour clears transient surface state before the native call. It resumes uploads only when the engine returns `1` for recovered parameters or `2` for requested parameters and publishes a replacement device. The next frame revalidates that device and reacquires the engine-owned surface. A failure, unknown return value, or missing device leaves uploads disabled.
 
-The selected boundaries still need:
-
-- validation of the live `TileImage` texture chain;
-- confirmation that the game-thread and upload callbacks use the same operating-system thread;
-- in-game confirmation that the engine image sits above the Pip-Boy screen and below UIO controls;
-- safe refusal when another plugin has already patched the reset target;
-- Reset or lost-device coverage;
-- conflict detection and a safe refusal path;
-- a test result for native D3D9 and DXVK.
+The active VNV Extended test has validated the live texture chain, matching callback thread IDs, and the intended layer order. The selected boundaries still need a controlled live hook-conflict fixture, an engine recreation test, the remaining native Direct3D matrix, and a separate DXVK result before any DXVK support claim.
 
 A proxy DLL is excluded because VNV users may already have root-level graphics wrappers. The normal package must remain installable through MO2.

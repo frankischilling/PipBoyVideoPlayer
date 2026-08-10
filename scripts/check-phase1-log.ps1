@@ -39,6 +39,8 @@ try {
     )
     $errors = Get-Matches -Lines $lines -Pattern '\[ERROR\]'
     $resetFailures = Get-Matches -Lines $lines -Pattern '\[(?:WARN|ERROR)\] D3D engine recreation (?:failed|returned)'
+    $summaryPattern = '\[INFO\] Phase 1 renderer summary: callbacks=(?<callbacks>[0-9]+) visible=(?<visible>[0-9]+) devices=(?<devices>[0-9]+) upload-successes=(?<uploadSuccesses>[0-9]+) upload-attempts=(?<uploadAttempts>[0-9]+) upload-failures=(?<uploadFailures>[0-9]+) upload-us=[0-9]+(?:\.[0-9]+)?/[0-9]+(?:\.[0-9]+)?/[0-9]+(?:\.[0-9]+)? recreation-successes=(?<recreateSuccesses>[0-9]+) recreation-starts=(?<recreateStarts>[0-9]+) recreation-failures=(?<recreateFailures>[0-9]+)$'
+    $summaries = Get-Matches -Lines $lines -Pattern $summaryPattern
     $shutdowns = Get-Matches -Lines $lines -Pattern '\[INFO\] Process shutdown requested$'
 
     if ($loads.Count -lt 1) { $failures.Add('Plugin load record is missing.') }
@@ -60,6 +62,42 @@ try {
     }
     if ($RequireCleanExit -and $shutdowns.Count -lt 1) {
         $failures.Add('Clean process shutdown record is missing.')
+    }
+    if ($RequireCleanExit -and $summaries.Count -ne 1) {
+        $failures.Add("Expected one renderer session summary, found $($summaries.Count).")
+    }
+    if ($RequireCleanExit -and $summaries.Count -eq 1) {
+        $summary = [regex]::Match($summaries[0].Line, $summaryPattern)
+        $summaryCallbacks = [uint64]$summary.Groups['callbacks'].Value
+        $summaryVisible = [uint64]$summary.Groups['visible'].Value
+        $summaryDevices = [uint64]$summary.Groups['devices'].Value
+        $summaryUploadSuccesses = [uint64]$summary.Groups['uploadSuccesses'].Value
+        $summaryUploadAttempts = [uint64]$summary.Groups['uploadAttempts'].Value
+        $summaryUploadFailures = [uint64]$summary.Groups['uploadFailures'].Value
+        $summaryRecreateSuccesses = [uint64]$summary.Groups['recreateSuccesses'].Value
+        $summaryRecreateStarts = [uint64]$summary.Groups['recreateStarts'].Value
+        $summaryRecreateFailures = [uint64]$summary.Groups['recreateFailures'].Value
+
+        if ($summaryVisible -gt $summaryCallbacks) {
+            $failures.Add('Renderer summary has more visible frames than callbacks.')
+        }
+        if ($summaryDevices -ne $devices.Count) {
+            $failures.Add('Renderer summary device count does not match the log.')
+        }
+        if ($summaryUploadSuccesses -ne $uploads.Count) {
+            $failures.Add('Renderer summary upload count does not match the log.')
+        }
+        if (($summaryUploadSuccesses + $summaryUploadFailures) -ne $summaryUploadAttempts) {
+            $failures.Add('Renderer summary upload outcomes do not match its attempt count.')
+        }
+        if ($summaryRecreateSuccesses -ne $recreateSuccesses.Count -or
+            $summaryRecreateStarts -ne $recreateStarts.Count) {
+            $failures.Add('Renderer summary recreation counts do not match the log.')
+        }
+        if (($summaryRecreateSuccesses + $summaryRecreateFailures) -ne
+            $summaryRecreateStarts) {
+            $failures.Add('Renderer summary recreation outcomes do not match its start count.')
+        }
     }
 
     if (($ExpectedWidth -eq 0) -xor ($ExpectedHeight -eq 0)) {
@@ -93,7 +131,10 @@ try {
     Write-Host "Successful uploads: $($uploads.Count)"
     Write-Host ("Upload time range: {0:F2} to {1:F2} microseconds" -f $minimumTime, $maximumTime)
     Write-Host "Successful recreations: $($recreateSuccesses.Count)"
-    if ($RequireCleanExit) { Write-Host 'Clean shutdown record: present' }
+    if ($RequireCleanExit) {
+        Write-Host 'Renderer session summary: present'
+        Write-Host 'Clean shutdown record: present'
+    }
 } catch {
     Write-Host "Phase 1 log check could not run: $($_.Exception.Message)"
     exit 1

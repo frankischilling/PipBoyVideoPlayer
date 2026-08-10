@@ -33,6 +33,7 @@ try {
 12:00:01.010 [INFO] D3D device validated: adapter=Fixture driver=fixture.dll mode=fullscreen backbuffer=1920x1080 format=22 interval=0x00000001
 12:00:01.020 [INFO] Engine texture checkerboard upload took 24.50 microseconds
 12:00:01.021 [INFO] Generated checkerboard uploaded to PBVP_VideoSurface
+12:00:01.900 [INFO] Phase 1 renderer summary: callbacks=120 visible=90 devices=1 upload-successes=1 upload-attempts=1 upload-failures=0 upload-us=24.50/24.50/24.50 recreation-successes=0 recreation-starts=0 recreation-failures=0
 12:00:02.000 [INFO] Process shutdown requested
 '@
     $normal = Write-Fixture -Name 'normal.txt' -Text $base
@@ -42,12 +43,16 @@ try {
     }
 
     $resetText = $base.Replace(
-        '12:00:02.000 [INFO] Process shutdown requested',
+        '12:00:01.900 [INFO] Phase 1 renderer summary: callbacks=120 visible=90 devices=1 upload-successes=1 upload-attempts=1 upload-failures=0 upload-us=24.50/24.50/24.50 recreation-successes=0 recreation-starts=0 recreation-failures=0',
         "12:00:01.500 [INFO] Transient engine-surface state cleared before engine recreation 1`n" +
         "12:00:01.600 [INFO] D3D engine recreation applied the requested presentation parameters; resources will be reacquired`n" +
-        '12:00:02.000 [INFO] Process shutdown requested')
+        "12:00:01.700 [INFO] D3D device validated: adapter=Fixture driver=fixture.dll mode=fullscreen backbuffer=1920x1080 format=22 interval=0x00000001`n" +
+        "12:00:01.800 [INFO] Engine texture checkerboard upload took 25.50 microseconds`n" +
+        "12:00:01.801 [INFO] Generated checkerboard uploaded to PBVP_VideoSurface`n" +
+        '12:00:01.900 [INFO] Phase 1 renderer summary: callbacks=120 visible=90 devices=2 upload-successes=2 upload-attempts=2 upload-failures=0 upload-us=24.50/25.00/25.50 recreation-successes=1 recreation-starts=1 recreation-failures=0')
     $reset = Write-Fixture -Name 'reset.txt' -Text $resetText
-    if ((Invoke-Checker -Fixture $reset -Arguments @('-MinimumRecreates', '1')) -ne 0) {
+    if ((Invoke-Checker -Fixture $reset -Arguments @(
+            '-MinimumRecreates', '1', '-RequireCleanExit')) -ne 0) {
         throw 'The valid recreation fixture failed.'
     }
 
@@ -62,6 +67,18 @@ try {
     }
     if ((Invoke-Checker -Fixture $normal -Arguments @('-MinimumRecreates', '1')) -eq 0) {
         throw 'The missing recreation fixture was accepted.'
+    }
+
+    $missingSummary = Write-Fixture -Name 'missing-summary.txt' -Text (
+        ($base -split "`n" | Where-Object { $_ -notmatch 'Phase 1 renderer summary:' }) -join "`n")
+    if ((Invoke-Checker -Fixture $missingSummary -Arguments @('-RequireCleanExit')) -eq 0) {
+        throw 'The clean-exit fixture without a renderer summary was accepted.'
+    }
+
+    $inconsistentSummary = Write-Fixture -Name 'inconsistent-summary.txt' -Text (
+        $base.Replace('devices=1 upload-successes=1', 'devices=2 upload-successes=1'))
+    if ((Invoke-Checker -Fixture $inconsistentSummary -Arguments @('-RequireCleanExit')) -eq 0) {
+        throw 'The inconsistent renderer summary was accepted.'
     }
 
     Write-Host 'Phase 1 log checker tests passed.'

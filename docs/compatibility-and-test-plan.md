@@ -179,11 +179,13 @@ Maintainers can check a Phase 1 game log from the repository root:
   -MinimumUploads 1
 ```
 
-The check requires a plugin load record, the verified recreation hook, a resolved UIO rectangle, a validated Direct3D device, and the requested number of successful texture uploads. It rejects plugin errors, failed or unknown recreation results, and a backbuffer that does not match the expected dimensions. Add `-MinimumRecreates 1` after a controlled display recreation. Add `-RequireCleanExit` when the test includes an orderly process exit.
+The check requires a plugin load record, the verified recreation hook, a resolved UIO rectangle, a validated Direct3D device, and the requested number of successful texture uploads. It rejects plugin errors, failed or unknown recreation results, and a backbuffer that does not match the expected dimensions. Add `-MinimumRecreates 1` after a controlled display recreation. Add `-RequireCleanExit` when the test includes an orderly process exit. A clean-exit check also requires the renderer session summary.
 
 The accepted 1920x1080 VNV Extended run passes with one validated device and one upload at 27.30 microseconds. The log contains no plugin errors. It has zero recreation records, so this result does not satisfy the device-recreation test.
 
-CTest runs the checker against generated logs. The fixtures cover a normal clean exit and a successful recreation. They also confirm rejection of an error record, a wrong backbuffer, and a missing required recreation. The generated logs contain no game data or personal media.
+CTest runs the checker against generated logs. The fixtures cover a normal clean exit and a successful recreation. They also confirm rejection of an error record, a wrong backbuffer, a missing required recreation, and a clean exit without the renderer summary. The generated logs contain no game data or personal media.
+
+The next installed candidate records fixed-size session totals for frame callbacks, visible frames, device validations, texture uploads, and recreation outcomes. It also reports minimum, average, and maximum successful upload time. This summary still needs an in-game orderly-exit check before it can be counted as runtime evidence.
 
 ## Required profiles
 
