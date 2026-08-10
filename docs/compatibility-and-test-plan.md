@@ -208,6 +208,21 @@ CTest runs the checker against generated logs. The fixtures cover a normal clean
 
 The normal installed build records fixed-size session totals for frame callbacks, visible frames, device validations, texture uploads, and cadence samples. It also reports minimum, average, and maximum successful upload time and visible FPS. The August 10 hook-free run verified these summaries during an orderly in-game exit.
 
+### Measured Alt+Tab cycles
+
+Run the external focus counter before launching FalloutNV:
+
+```powershell
+.\scripts\measure-phase1-focus-cycles.ps1 `
+  -OutputPath .\build-host\phase1-focus-cycles.json `
+  -TargetCycles 50 `
+  -StopAtTarget
+```
+
+The counter waits for one FalloutNV process, then polls the foreground window's process ID. A cycle begins when FalloutNV loses the foreground and completes when it becomes the foreground process again. Samples before the game's first foreground window do not count, and an unfinished final focus loss does not count. The script writes the completed count and away-time range to JSON. It does not install a Windows event hook, inspect input, inject code, or change game files.
+
+The user later performed what they estimated as more than 44 additional Alt+Tab cycles on the hook-free build. The checkerboard remained usable, and the session log passed with 21,933 callbacks, ten successful surface uploads, zero upload failures, and a normal shutdown. Uploads ranged from 24.60 to 47.70 microseconds. This is a clean extended stress result, but the estimate is not an exact 50-cycle measurement. The external counter must supply that final acceptance record.
+
 ## Required profiles
 
 | Profile | Purpose |

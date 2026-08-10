@@ -45,3 +45,4 @@
 - Required the engine-owned video texture to use `D3DPOOL_MANAGED` and added portable tests for the accepted size, format, and pool contract.
 - Validated the hook-free managed-texture build in fullscreen 1920x1080 VNV Extended. The checkerboard survived Alt+Tab, the upload took 26.30 microseconds, no upload failed, and the process shut down normally.
 - Made the Phase 1 case configurator check every target file for write access before it creates backups or changes test settings.
+- Added an external foreground-process counter that measures completed Alt+Tab cycles without installing a Windows hook or changing the game process.
