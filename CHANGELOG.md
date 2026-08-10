@@ -49,3 +49,6 @@
 - Added a display-only test-case mode that leaves RTSS unchanged and still restores every isolated-profile INI byte.
 - Completed 50 measured focus-loss and return cycles in native Direct3D 9 windowed mode at 1920x1080. The managed surface had no failed upload, the log check passed, and the game shut down normally.
 - Added a test-only Stewie Tweaks override that prevents autosaves and exit saves in isolated Phase 1 profiles without changing the shared VNV settings or release package.
+- Allowed empty MO2-created save directories in isolated profiles while continuing to reject any save data.
+- Raised the diagnostic video panel by 52 logical units after the Base UI test found that the previous position covered its Local Map and World Map buttons.
+- Refused isolated-profile and display-case mutations while the selected Mod Organizer instance is running.

@@ -20,6 +20,26 @@ if (-not (Test-Path -LiteralPath $mods -PathType Container)) {
     throw 'The selected MO2 instance has no mods directory.'
 }
 
+function Test-InstanceOrganizerRunning {
+    foreach ($process in Get-Process -Name 'ModOrganizer' -ErrorAction SilentlyContinue) {
+        try {
+            if (-not [string]::IsNullOrWhiteSpace($process.Path) -and
+                [IO.Path]::GetFullPath((Split-Path -Parent $process.Path)).TrimEnd(
+                    [IO.Path]::DirectorySeparatorChar) -ieq $instance.TrimEnd(
+                    [IO.Path]::DirectorySeparatorChar)) {
+                return $true
+            }
+        } catch {
+            continue
+        }
+    }
+    return $false
+}
+
+if (-not $VerifyOnly -and (Test-InstanceOrganizerRunning)) {
+    throw 'Close Mod Organizer before creating or updating isolated test profiles.'
+}
+
 $saveGuardModName = 'Pip-Boy Video Player - Phase 1 Save Guard'
 $saveGuardRelativePath = 'NVSE\Plugins\Tweaks\INIs\PipBoyVideoPlayerPhase1.ini'
 $saveGuardContent = @'
@@ -199,8 +219,10 @@ function Test-Profile {
     if (-not (Test-Path -LiteralPath $target -PathType Container)) {
         throw "Test profile is missing: $($Specification.Target)"
     }
-    if (Test-Path -LiteralPath (Join-Path $target 'saves')) {
-        throw "Test profile contains a saves directory: $($Specification.Target)"
+    $saves = Join-Path $target 'saves'
+    if ((Test-Path -LiteralPath $saves -PathType Container) -and
+        @(Get-ChildItem -LiteralPath $saves -Force).Count -ne 0) {
+        throw "Test profile contains save data: $($Specification.Target)"
     }
     $prefs = Join-Path $target 'falloutprefs.ini'
     if (-not (Test-Path -LiteralPath $prefs -PathType Leaf) -or
@@ -246,8 +268,10 @@ if (-not $VerifyOnly) {
         }
         if (Test-Path -LiteralPath $target) {
             if ($InstallSaveGuard) {
-                if (Test-Path -LiteralPath (Join-Path $target 'saves')) {
-                    throw "Refusing to update a test profile that contains saves: $($specification.Target)"
+                $saves = Join-Path $target 'saves'
+                if ((Test-Path -LiteralPath $saves -PathType Container) -and
+                    @(Get-ChildItem -LiteralPath $saves -Force).Count -ne 0) {
+                    throw "Refusing to update a test profile that contains save data: $($specification.Target)"
                 }
                 Add-TestMods -Path (Join-Path $target 'modlist.txt')
                 Test-Profile -Specification $specification

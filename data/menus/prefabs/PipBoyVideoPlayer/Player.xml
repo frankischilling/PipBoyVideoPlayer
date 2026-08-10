@@ -12,7 +12,7 @@
         <y>
             <copy src="parent" trait="height" />
             <sub src="me" trait="height" />
-            <sub> 12 </sub>
+            <sub> 64 </sub>
         </y>
         <width> 384 </width>
         <height> 216 </height>

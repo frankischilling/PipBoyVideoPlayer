@@ -106,13 +106,30 @@ function Assert-FileWritable {
 }
 
 $instance = (Resolve-Path -LiteralPath $InstanceRoot).Path
+foreach ($process in Get-Process -Name 'ModOrganizer' -ErrorAction SilentlyContinue) {
+    try {
+        if (-not [string]::IsNullOrWhiteSpace($process.Path) -and
+            [IO.Path]::GetFullPath((Split-Path -Parent $process.Path)).TrimEnd(
+                [IO.Path]::DirectorySeparatorChar) -ieq $instance.TrimEnd(
+                [IO.Path]::DirectorySeparatorChar)) {
+            throw 'Close Mod Organizer before applying or restoring a Phase 1 test case.'
+        }
+    } catch {
+        if ($_.Exception.Message -eq
+            'Close Mod Organizer before applying or restoring a Phase 1 test case.') {
+            throw
+        }
+    }
+}
 $profilesRoot = Resolve-ContainedPath -Parent $instance -Child 'profiles'
 $profile = Resolve-ContainedPath -Parent $profilesRoot -Child $ProfileName
 if (-not (Test-Path -LiteralPath $profile -PathType Container)) {
     throw "The isolated MO2 profile is missing: $ProfileName"
 }
-if (Test-Path -LiteralPath (Join-Path $profile 'saves')) {
-    throw "The isolated test profile contains saves: $ProfileName"
+$saves = Join-Path $profile 'saves'
+if ((Test-Path -LiteralPath $saves -PathType Container) -and
+    @(Get-ChildItem -LiteralPath $saves -Force).Count -ne 0) {
+    throw "The isolated test profile contains save data: $ProfileName"
 }
 
 $modList = Join-Path $profile 'modlist.txt'

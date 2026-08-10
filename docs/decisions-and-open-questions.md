@@ -254,6 +254,18 @@ Rejected alternatives: do not return to the 560 by 315 rectangle because it cove
 
 Consequence: the next run resolved the panel at `42,375` through `426,591`. The user reported that the larger panel looked good, so 384 by 216 is the accepted Phase 1 size for the active fullscreen 1920x1080 VNV Extended profile. Other resolutions and UI profiles still need separate checks.
 
+### Base UI button clearance candidate
+
+Date: August 10, 2026
+
+Decision: raise `PBVP_VideoRect` by changing its bottom inset from 12 to 64 logical units. Keep the accepted 384 by 216 size, left inset, locus, texture path, and draw depths unchanged.
+
+Evidence: the first 1920x1080 native windowed Base VNV run displayed the checkerboard and otherwise looked and ran correctly. The user reported that the panel sat a little too low and covered the Local Map and World Map buttons. This disproves the assumption that the Extended lower-left position clears controls in the base UI.
+
+Rejected alternatives: do not shrink the accepted viewport, move it horizontally toward the list content, hide the native map buttons, or special-case the Base profile before one shared raised position is tested across both layouts.
+
+Consequence: the next candidate moves the panel up 52 logical units. On the previously measured 1706.67 by 960 canvas, its expected rectangle changes from `42,375` through `426,591` to `42,323` through `426,539`. The candidate needs a Base visual check and an Extended regression check before it becomes the shared Phase 1 position.
+
 ### Verified reset hook only
 
 Date: August 9, 2026
@@ -373,6 +385,10 @@ Reason: a profile-only override stops the side effect at its source while preser
 Rejected alternatives: do not edit the shared Extended INI, copy and replace its complete settings file, turn off local saves, delete generated files without a recoverable copy, or package test-only save behavior with the plugin.
 
 Consequence: profile creation verifies the override file, the active Stewie Tweaks multi-INI setting, and one enabled guard entry per test profile. The display-case helper refuses to run without the guard. A later in-game exit must confirm that no new test save is produced.
+
+Follow-up evidence: the first Base test created no save data, but it did not verify the guard. Mod Organizer had remained open while the local guard mod was added. When the user switched to the Base profile, MO2 wrote that new mod as disabled. External profile edits made while MO2 is running can therefore be lost or replaced by its in-memory state.
+
+Updated consequence: both profile setup and display-case mutation now refuse to run while the selected instance's Mod Organizer process is active. Close MO2, enable or repair the guard, reopen MO2, and verify its checked state before the next in-game exit.
 
 ### Separate public and private symbols
 

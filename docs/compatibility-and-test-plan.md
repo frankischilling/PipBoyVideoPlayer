@@ -245,6 +245,16 @@ The plugin log identified the windowed 1920x1080 backbuffer and the 256x256 mana
 
 This accepts repeated focus loss and return for the tested native Direct3D 9 windowed configuration. It does not extend that result to native fullscreen, DXVK, another resolution, or another UI profile.
 
+### Base VNV windowed placement result
+
+Date: August 10, 2026
+
+Profile: PBVP Phase 1 Base, native Direct3D 9, windowed 1920x1080, VSync on, RTSS limit unchanged
+
+The first Base UI run displayed the checkerboard and otherwise looked and ran correctly. The user reported one layout problem: the 12-unit bottom inset placed the panel over the Local Map and World Map buttons. This rejects the Extended profile's accepted vertical position as a shared Base UI position. The next candidate keeps the 384 by 216 size and raises the complete locus-owned panel by 52 logical units.
+
+MO2 created an empty local `saves` directory, but no save or co-save file appeared. Later inspection found that the open MO2 process had written the new save-guard mod as disabled when the user switched profiles. This run is not evidence that the guard worked, though it confirms that no save data was created. The guard still needs an in-game exit check after it is enabled with MO2 closed. Test tools now allow an empty MO2-created directory and continue to refuse any profile that contains save data.
+
 ## Required profiles
 
 | Profile | Purpose |
@@ -267,7 +277,7 @@ The local MO2 instance has four PBVP-specific Phase 1 profiles:
 
 The Base profile supplies the vanilla visual UI with UIO still active for PBVP injection. The VUI Plus profile keeps Vanilla UI Plus but disables Clean Vanilla HUD and both Pip-Boy UI Tweaks mods. The no-tweaks Extended profile keeps Vanilla UI Plus and Clean Vanilla HUD while disabling only the Pip-Boy tweaks. The full Extended profile retains its normal UI stack.
 
-Each profile enables the separate `Pip-Boy Video Player - Dev` mod and the local `Pip-Boy Video Player - Phase 1 Save Guard` mod on top of its source profile. The guard uses Stewie Tweaks multi-INI support to disable improved autosaves, save-on-exit, and the autosave timer only in these test profiles. It is not part of the PBVP release data. The setup copies no save directory and does not change MO2's selected profile. Because the original base profile has an empty `falloutprefs.ini`, its test copy uses the Extended profile's known 1920x1080 fullscreen display preferences. The base mod list remains the source for every other setting.
+Each profile enables the separate `Pip-Boy Video Player - Dev` mod and the local `Pip-Boy Video Player - Phase 1 Save Guard` mod on top of its source profile. The guard uses Stewie Tweaks multi-INI support to disable improved autosaves, save-on-exit, and the autosave timer only in these test profiles. It is not part of the PBVP release data. The setup copies no save data and does not change MO2's selected profile. Because the original base profile has an empty `falloutprefs.ini`, its test copy uses the Extended profile's known 1920x1080 fullscreen display preferences. The base mod list remains the source for every other setting.
 
 Create these profiles once, or verify them later:
 
@@ -290,13 +300,13 @@ Existing PBVP profiles created before the save guard can be updated once:
   -Confirm:$false
 ```
 
-The normal creation command refuses to replace an existing target. If a later project update adds another isolated profile, `-CreateMissing` validates every existing target and creates only the missing profiles. The automated test builds a temporary MO2 fixture, confirms that saves are not copied, verifies each disabled UI layer, checks the replacement refusal, recreates one missing profile without touching the others, and verifies save-guard installation and repair.
+The normal creation command refuses to replace an existing target. If a later project update adds another isolated profile, `-CreateMissing` validates every existing target and creates only the missing profiles. The automated test builds a temporary MO2 fixture, confirms that saves are not copied, verifies each disabled UI layer, checks the replacement refusal, recreates one missing profile without touching the others, and verifies save-guard installation and repair. Verification accepts an empty `saves` directory created by MO2 but refuses the profile as soon as that directory contains a file or subdirectory.
 
 The first windowed Extended run exposed the source profile's enabled save-on-exit setting. It created one `.fos` file and its `.nvse` co-save inside the isolated profile at shutdown. Both files were new test output. They were moved together to the ignored `build-host/quarantine` area and remain recoverable. No original VNV save was read, changed, or removed. The dedicated save guard prevents the same side effect in later runs without changing the shared Stewie Tweaks INI.
 
 ### Reversible display and frame-rate cases
 
-Exit FalloutNV before changing a test case. Create a FalloutNV.exe application profile in RTSS, then configure one isolated MO2 profile:
+Exit FalloutNV and close Mod Organizer before changing a test case. The scripts refuse to change profile files while the Mod Organizer executable from the selected instance is running. Create a FalloutNV.exe application profile in RTSS, then configure one isolated MO2 profile:
 
 ```powershell
 $rtssProfile = Join-Path ${env:ProgramFiles(x86)} `
@@ -328,7 +338,7 @@ Restore the files before testing a different profile:
 
 The restore operation puts the saved bytes back and removes its temporary state. Before creating a backup, the script checks that every profile and RTSS file is writable. It refuses a protected file without changing settings or leaving temporary state. It also refuses a second profile while another profile has an active case, profiles with saves, a missing development mod, a missing save guard, an unexpected RTSS filename, or an undocumented resolution. Its automated fixture covers the protected-file refusal, save-guard refusal, two successive cases, other rejection behavior, and byte-for-byte restoration. This tooling prepares repeatable cases but does not count as an in-game result.
 
-For a display or VSync check that must leave RTSS untouched, omit `-RtssProfilePath` and add `-SkipFrameCap`. The script then changes only the three INI files inside the selected save-free PBVP profile. It stores the restore state in that profile and reports that the frame cap is unchanged. A display-only result cannot be used as evidence for any FPS-cap row.
+For a display or VSync check that must leave RTSS untouched, omit `-RtssProfilePath` and add `-SkipFrameCap`. The script then changes only the three INI files inside the selected save-isolated PBVP profile. It stores the restore state in that profile and reports that the frame cap is unchanged. A display-only result cannot be used as evidence for any FPS-cap row.
 
 ENB and New Vegas Reloaded begin as unsupported configurations. They may enter the matrix after the native D3D9 path is stable and a maintainer can reproduce them.
 

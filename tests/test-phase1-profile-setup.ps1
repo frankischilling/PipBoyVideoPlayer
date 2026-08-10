@@ -75,6 +75,23 @@ try {
         if (@($targetModList | Where-Object { $_ -eq "+$guardName" }).Count -ne 1) {
             throw "The save guard is not enabled exactly once in $target."
         }
+        [IO.Directory]::CreateDirectory((Join-Path $profiles "$target\saves")) | Out-Null
+    }
+    & $script -InstanceRoot $tempRoot -VerifyOnly
+
+    $blockedSave = Join-Path $profiles 'PBVP Phase 1 Base\saves\blocked.fos'
+    [IO.File]::WriteAllText($blockedSave, 'fixture')
+    $saveDataRefused = $false
+    try {
+        & $script -InstanceRoot $tempRoot -VerifyOnly
+    } catch {
+        if ($_.Exception.Message -notmatch 'contains save data') { throw }
+        $saveDataRefused = $true
+    } finally {
+        Remove-Item -LiteralPath $blockedSave -Force
+    }
+    if (-not $saveDataRefused) {
+        throw 'Profile verification accepted actual save data.'
     }
 
     $refused = $false

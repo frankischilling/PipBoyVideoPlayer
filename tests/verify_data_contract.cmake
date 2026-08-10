@@ -36,10 +36,10 @@ if(root_stack_offset EQUAL -1)
 endif()
 
 set(expected_video_anchor
-    "<rect name=\"PBVP_VideoRect\">\n        <x> 12 </x>\n        <y>\n            <copy src=\"parent\" trait=\"height\" />\n            <sub src=\"me\" trait=\"height\" />\n            <sub> 12 </sub>\n        </y>")
+    "<rect name=\"PBVP_VideoRect\">\n        <x> 12 </x>\n        <y>\n            <copy src=\"parent\" trait=\"height\" />\n            <sub src=\"me\" trait=\"height\" />\n            <sub> 64 </sub>\n        </y>")
 string(FIND "${prefab_text}" "${expected_video_anchor}" video_anchor_offset)
 if(video_anchor_offset EQUAL -1)
-    message(FATAL_ERROR "UI video rectangle must stay anchored to the lower-left inset")
+    message(FATAL_ERROR "UI video rectangle must retain the raised lower-left anchor")
 endif()
 
 string(FIND "${prefab_text}"
