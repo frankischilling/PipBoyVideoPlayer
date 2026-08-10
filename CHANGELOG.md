@@ -2,6 +2,14 @@
 
 ## 0.1.0 - Unreleased
 
+- Added checked audio-sample and QueryPerformanceCounter clocks with pause, resume, seek-origin, 30-minute mapping, and overflow tests.
+- Added a bounded system XAudio2 2.9 stream with a fixed PCM pool, atomics-only callbacks, play, stop, pause, resume, mute, volume, end of stream, and default-device reconstruction.
+- Added tracked COM ownership on the audio thread after the first native mastering-voice test exposed the missing initialization step.
+- Compared 100, 200, and 300 ms prebuffers with zero underruns and selected 200 ms as the current reference-system default.
+- Added native tests for 44.1 and 48 kHz mono and stereo voices, pool exhaustion, foreign-thread refusal, 25 complete audio lifetimes, and QPC pause and seek behavior.
+- Connected decoded AAC to XAudio2 in an x86 test covering generated 44.1 kHz stereo, 48 kHz mono, and 48 kHz 5.1 sources with zero underruns.
+- Verified the live MO2 audio path inside FalloutNV with 96,967 samples, an exact 2,020,125 microsecond end clock, zero underruns, and orderly decoder, callback, voice, and FFmpeg shutdown.
+- Added a save-free Phase 3 MO2 profile, strict live-audio log checker, package rejection for an armed audio diagnostic, and package rejection for bundled XAudio2 DLLs.
 - Pinned a reproducible, minimal i686 FFmpeg 8.1.2 runtime for MOV, H.264, AAC, BGRA conversion, and audio resampling.
 - Added restricted private FFmpeg loading with exact path, version, configuration, architecture, import, hash, and package-inventory checks.
 - Added custom Win32 AVIO with Unicode direct-child paths, file and buffer limits, overlapped reads, cancellation, and 64-bit seeks.

@@ -6,11 +6,11 @@ The repository contains the implementation, automated tests, UIO files, build sc
 
 ## Project status
 
-Status: Phase 2 media core
+Status: Phase 3 audio and clock
 
 The current diagnostic build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, and installs a UIO prefab. Once the Pip-Boy is open, it validates the live UIO image, engine texture objects, managed Direct3D texture, device, and callback thread before uploading a generated checkerboard. Any unknown object type, texture profile, or thread arrangement disables the update instead of guessing. The plugin does not patch game functions or a Direct3D device vtable.
 
-The host and Win32 automated tests pass. Two overlay draw points were rejected because they rendered above the Pip-Boy UI. The accepted path updates an engine-owned managed texture and leaves drawing to the game. It uses no executable hook or Direct3D device vtable patch. The raised 384x216 panel passed all four isolated UI profiles at 1920x1080. Keyboard and mouse input, ten Pip-Boy reopen cycles, and 50 measured focus-loss and return cycles passed in the tested native windowed configuration.
+All 11 host tests and all 19 Win32 Release tests pass. Two overlay draw points were rejected because they rendered above the Pip-Boy UI. The accepted path updates an engine-owned managed texture and leaves drawing to the game. It uses no executable hook or Direct3D device vtable patch. The raised 384x216 panel passed all four isolated UI profiles at 1920x1080. Keyboard and mouse input, ten Pip-Boy reopen cycles, and 50 measured focus-loss and return cycles passed in the tested native windowed configuration.
 
 A synthetic recreation test froze inside the game's native reset sequence, so the test, reset hook, and MinHook dependency were removed. A PBVP-disabled control later reproduced the native fullscreen NVIDIA driver crash, so repeated fullscreen Alt+Tab is not supported. The isolated test-profile save guard passes Base and full Extended exit checks without changing normal profiles. Native windowed rows passed at 1280x720 and 30 FPS, 1280x960 and 60 FPS, 2560x1440 and 90 FPS, and 3440x1440 and 120 FPS. The two larger windows were clipped by the 1920x1080 monitor, so those results cover the visible panel and logged backbuffer rather than the full window.
 
@@ -19,6 +19,10 @@ Phase 1 supports native Direct3D 9 windowed mode. PBVP owns no default-pool reso
 Phase 2 has pinned FFmpeg 8.1.2 and a minimal Win32 runtime. The reproducible build enables only the MOV demuxer, H.264 and AAC decoders and parsers, software scaling, and audio resampling. Two clean builds produced the same five DLL hashes. The runtime audit rejects non-i386 images, changed hashes, unexpected imports, extra DLLs, and private build paths. The plugin loads that set from its private directory with restricted absolute paths and rejects wrong versions or configurations. Custom Windows AVIO supports bounded local reads, seeks, Unicode names, and cancellation. Checked media layouts and generation-aware queues enforce dimension, item-count, and byte limits before decoded data reaches the game.
 
 The decoder worker opens MP4 and MOV containers, requires H.264 video, accepts optional AAC audio, converts video to BGRA, applies right-angle display rotation, and resamples audio to bounded interleaved 16-bit PCM. It keeps variable frame rate timestamps from FFmpeg's best-effort timestamp field. Forward and backward seeks clear queued output by generation before the worker flushes its codecs. Synthetic tests cover valid decoding, silent variable frame rate video, rotation, cancellation, damaged and encrypted input, unsupported codecs, audio layouts, and source limits. A live MO2 run opened a 1080p fixture that existed only in a separate media mod, decoded all expected video and audio, and measured a 62,976,000 byte private-memory increase after a stable no-decode control.
+
+Phase 3 uses the Windows 10 and Windows 11 system XAudio2 2.9 runtime. The audio stream owns a fixed 256 KiB PCM pool, keeps callbacks limited to atomic updates, and uses the consumed sample count as the media clock. A checked QPC clock handles silent video. Automated tests cover pause, resume, mute, volume, stop and flush, forward and backward clock origins, end of stream, bounded queue pressure, default-device reconstruction, 44.1 and 48 kHz mono and stereo voices, 5.1 downmix through the decoder, and 25 complete audio lifetimes. The 100, 200, and 300 ms prebuffer cases completed with zero underruns.
+
+The live Phase 3 MO2 diagnostic played a generated two-second AAC fixture through FalloutNV. The user heard the tone. XAudio2 consumed 96,967 output samples, reached the expected 2,020,125 microsecond clock, and reported zero underruns. The decoder joined before FFmpeg unload, and the source voice and callback targets were released before process shutdown. The release packager rejects this private diagnostic and any bundled XAudio2 DLL.
 
 ## Build
 
@@ -90,7 +94,7 @@ Fallout: New Vegas is a 32-bit process. Video queues must stay bounded, source d
 
 VNV compatibility is a release gate, not a best-effort claim. Each release candidate must pass against the documented VNV profiles and UI variants before publication.
 
-The project can still fail during the rendering spike. The [risk register](docs/risk-register.md) lists the conditions that would block or redirect the design.
+The remaining integration, catalog, compatibility, and stability work can still expose a release blocker. The [risk register](docs/risk-register.md) lists the conditions that would block or redirect the design.
 
 ## Naming
 
