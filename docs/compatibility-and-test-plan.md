@@ -321,6 +321,16 @@ The active monitor was 1920x1080, so the larger game window extended beyond its 
 
 Eight cadence samples measured 89.99 to 90.04 FPS, with a 90.01 FPS session average. Both summaries and the clean shutdown record were present, the strict check passed, and the isolated save directory remained empty. This accepts the 2560x1440 resolution and 90 FPS cap rows for native windowed mode. It does not claim full-window visual coverage on the smaller physical display.
 
+### 3440x1440 and 120 FPS result
+
+Date: August 10, 2026
+
+Profile: PBVP Phase 1 Extended, native Direct3D 9, windowed 3440x1440, VSync on, RTSS 120 FPS
+
+The active monitor was 1920x1080, so the ultrawide game window extended beyond its right and bottom edges. The user reported that the visible panel looked good. The plugin confirmed the requested 3440x1440 backbuffer, resolved a 2293.33x960 logical canvas, and completed one upload in 24.90 microseconds with no failure.
+
+Eight cadence samples measured 119.89 to 120.19 FPS, with a 120.01 FPS session average. Both summaries and the clean shutdown record were present, the strict check passed, and the isolated save directory remained empty. This accepts the 3440x1440 resolution and 120 FPS cap rows for native windowed mode. It does not claim full-window visual coverage on the smaller physical display.
+
 ## Required profiles
 
 | Profile | Purpose |

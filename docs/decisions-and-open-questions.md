@@ -352,6 +352,8 @@ Second capped result: the first 1280x960 visual run passed placement and input, 
 
 Third capped result: the 2560x1440 native windowed case used VSync off and RTSS at 90 FPS. The user reported that the visible panel looked good on the 1920x1080 monitor. Eight cadence samples measured 89.99 to 90.04 FPS with a 90.01 FPS average. The log confirmed the requested backbuffer, one 25.70-microsecond upload, no failure, an empty save directory, and a clean shutdown. This accepts the 2560x1440 and 90 FPS rows. The larger window was clipped by the physical display, so this result is limited to the visible panel and logged backbuffer.
 
+Fourth capped result: the 3440x1440 native windowed case used VSync on and RTSS at 120 FPS. The user reported that the visible panel looked good. Eight cadence samples measured 119.89 to 120.19 FPS with a 120.01 FPS average. The log confirmed the requested ultrawide backbuffer and logical canvas, one 24.90-microsecond upload, no failure, an empty save directory, and a clean shutdown. This accepts the 3440x1440 and 120 FPS rows. As with 2560x1440, the physical display clipped part of the larger window.
+
 ### Native fullscreen focus-cycle baseline
 
 Date: August 10, 2026

@@ -64,3 +64,4 @@
 - Accepted native windowed 1280x720 with VSync off and a measured 30 FPS RTSS cap.
 - Accepted native windowed 1280x960 with VSync on and a stable measured 60 FPS RTSS cap.
 - Accepted the visible panel at native windowed 2560x1440 with VSync off and a measured 90 FPS RTSS cap.
+- Accepted the visible panel at native windowed 3440x1440 with VSync on and a measured 120 FPS RTSS cap.
