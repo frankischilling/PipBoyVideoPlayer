@@ -279,6 +279,8 @@ The callback guidance requires very short operations on XAudio2's audio processi
 
 Inference to test: `SamplesPlayed`, adjusted for a new origin after each flushed seek, can provide stable audio-led synchronization inside the paused Pip-Boy menu. The QPC fallback must freeze across pause and resume without accumulating paused time.
 
+The first native x86 backend run created an XAudio2 engine but failed eight default mastering-voice attempts. Both Windows audio services were running, and the system reported working audio devices. Microsoft's [XAudio2 initialization guide](https://learn.microsoft.com/en-us/windows/win32/xaudio2/how-to--initialize-xaudio2) requires COM initialization before engine and mastering-voice setup. The backend now calls `CoInitializeEx` on its owner thread, records whether it owns the returned reference, and balances only its own successful call after XAudio2 shutdown. An existing apartment with a different model is left unchanged. The same test then passed every initialization case and a complete device-recovery cycle.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

@@ -43,6 +43,16 @@ if(PBVP_BUILD_PLUGIN)
         message(FATAL_ERROR "PBVP_FFMPEG_ROOT must point to the verified FFmpeg 8.1.2 x86 build. Run scripts/build-ffmpeg.ps1.")
     endif()
 
+    add_library(pbvp_audio STATIC
+        src/audio/win32_playback_clock.cpp
+        src/audio/xaudio_stream.cpp)
+    target_link_libraries(pbvp_audio PUBLIC pbvp_core xaudio2)
+    target_include_directories(pbvp_audio PUBLIC include)
+    target_compile_features(pbvp_audio PUBLIC cxx_std_20)
+    target_compile_definitions(pbvp_audio PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_compile_options(pbvp_audio PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
+    set_target_properties(pbvp_audio PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
     add_library(pbvp_media STATIC
         src/media/ffmpeg_runtime.cpp
         src/media/media_decoder.cpp
@@ -61,7 +71,7 @@ if(PBVP_BUILD_PLUGIN)
         src/diagnostics/logger.cpp
         src/plugin/version.rc
         src/plugin/exports.def)
-    target_link_libraries(PipBoyVideoPlayer PRIVATE pbvp_core pbvp_media d3d9 psapi)
+    target_link_libraries(PipBoyVideoPlayer PRIVATE pbvp_audio pbvp_core pbvp_media d3d9 psapi)
     target_include_directories(PipBoyVideoPlayer PRIVATE
         include
         "${PBVP_XNVSE_ROOT}"
@@ -120,6 +130,13 @@ if(PBVP_BUILD_PLUGIN)
             COMMAND pbvp_media_decoder_test
                 "${PBVP_FFMPEG_ROOT}/bin"
                 "${CMAKE_SOURCE_DIR}/tests/fixtures")
+
+        add_executable(pbvp_xaudio_stream_test tests/xaudio_stream_tests.cpp)
+        target_link_libraries(pbvp_xaudio_stream_test PRIVATE pbvp_audio)
+        target_compile_features(pbvp_xaudio_stream_test PRIVATE cxx_std_20)
+        target_compile_options(pbvp_xaudio_stream_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
+        set_target_properties(pbvp_xaudio_stream_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        add_test(NAME pbvp_xaudio_stream_test COMMAND pbvp_xaudio_stream_test)
 
         find_program(PBVP_LLVM_PDBUTIL_EXECUTABLE NAMES llvm-pdbutil REQUIRED)
         find_program(PBVP_LLVM_READOBJ_EXECUTABLE NAMES llvm-readobj REQUIRED)
@@ -216,6 +233,7 @@ if(PBVP_BUILD_TESTS)
             -P ${CMAKE_SOURCE_DIR}/tests/verify_data_contract.cmake)
 
     add_executable(pbvp_tests
+        tests/audio_callback_state_tests.cpp
         tests/bounded_queue_tests.cpp
         tests/checked_math_tests.cpp
         tests/frame_cadence_tests.cpp

@@ -484,6 +484,18 @@ Rejected alternatives: do not allocate or free from a callback, perform decoder 
 
 Consequence: each submitted slot remains stable until its own completion. Pause uses `Stop` without a flush. Seek and stop halt and flush the source voice, then drain completions outside PBVP locks. Shutdown destroys the source voice before releasing the callback target and pool. The audio owner must create a new sample origin after a flushed seek because the source voice counter no longer describes the old media position.
 
+### COM ownership for XAudio2
+
+Date: August 10, 2026
+
+Decision: initialize COM on the audio owner's thread before creating XAudio2. If `CoInitializeEx` returns `S_OK` or `S_FALSE`, balance it with `CoUninitialize` on that same thread after all XAudio2 objects are gone. If it reports an existing apartment model, use that initialized apartment without changing it or calling `CoUninitialize` for someone else's ownership.
+
+Evidence: the first x86 stream test created the XAudio2 engine but failed every default mastering-voice attempt while the Windows audio services and endpoints were available. Microsoft requires COM initialization before XAudio2 setup. After the backend added tracked COM ownership, every initialization case and device-recovery case opened its mastering voice, and the complete stream test passed.
+
+Rejected alternatives: do not assume Fallout or a test process initialized COM, change an existing thread apartment, balance another component's COM initialization, or uninitialize COM before XAudio2 releases its engine and voices.
+
+Consequence: initialization and shutdown must occur on the audio owner. A COM setup failure becomes a structured engine-creation error. Phase 4 must keep this ownership when it connects the player state machine.
+
 ### Bounded software decode
 
 Date: August 10, 2026

@@ -52,7 +52,7 @@ The decode worker resamples audio to a fixed PCM format selected during stream s
 
 XAudio2 `SamplesPlayed` is the master clock once playback starts. The clock subtracts known pre-roll and seek offsets. For silent videos, a QueryPerformanceCounter timeline becomes the master.
 
-The player owns a system XAudio2 2.9 engine, mastering voice, source voice, callback target, and buffer pool. Using a separate engine avoids altering Fallout's audio objects. The source voice uses the default output device so Windows can follow ordinary device changes. The player volume follows its own setting in the first release; integration with game effect-volume settings is a later decision.
+The player owns a system XAudio2 2.9 engine, mastering voice, source voice, callback target, and buffer pool. The audio owner initializes COM before creating XAudio2 and balances any successful COM initialization on that same thread after the voices and engine are gone. Using a separate engine avoids altering Fallout's audio objects. The source voice uses the default output device so Windows can follow ordinary device changes. The player volume follows its own setting in the first release; integration with game effect-volume settings is a later decision.
 
 ### Renderer
 
