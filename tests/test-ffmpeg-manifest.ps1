@@ -21,6 +21,14 @@ if ($manifest.staticSupport.packageVersion -cne '13.0.0.r505.g7d006b2ea-1' -or
     $manifest.staticSupport.license -cne 'MIT AND BSD-3-Clause-Clear') {
     throw 'The pinned winpthreads support library identity or license changed.'
 }
+$licenseFiles = @($manifest.licenseFiles | ForEach-Object { "$($_.file):$($_.sha256)" } | Sort-Object)
+$expectedLicenseFiles = @(
+    'COPYING.LGPLv2.1:246041B6ECF9BC32D718A62C57877C78B5EB397B6467E74ED7AE2626AB189C30',
+    'LICENSE.md:2E1D16C72FD74E12063776371DA757322F8B77589386532F4FD8634BDE7DE1AF'
+) | Sort-Object
+if (($licenseFiles -join "`n") -cne ($expectedLicenseFiles -join "`n")) {
+    throw 'The pinned FFmpeg license file inventory changed.'
+}
 
 $requiredArguments = @(
     '--arch=x86',

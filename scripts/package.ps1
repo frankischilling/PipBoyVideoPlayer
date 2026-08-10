@@ -2,7 +2,9 @@
 param(
     [string]$Version = '0.1.0',
     [ValidateSet('Debug','Release')][string]$Configuration = 'Release',
-    [string]$BuildDirectory = (Join-Path (Split-Path -Parent $PSScriptRoot) 'build-vs')
+    [string]$BuildDirectory = (Join-Path (Split-Path -Parent $PSScriptRoot) 'build-vs'),
+    [string]$Msys2Root = 'C:\msys64',
+    [string]$LlvmReadObj = 'C:\Program Files\LLVM\bin\llvm-readobj.exe'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -49,6 +51,16 @@ function Write-PbvpSurfaceDds {
 }
 
 $root = Split-Path -Parent $PSScriptRoot
+$ffmpegManifestPath = Join-Path $root 'dependencies\ffmpeg-8.1.2.json'
+$ffmpegManifest = Get-Content -LiteralPath $ffmpegManifestPath -Raw | ConvertFrom-Json
+$ffmpegRoot = Join-Path $root "external\ffmpeg-$($ffmpegManifest.version)-i686"
+$ffmpegRuntime = Join-Path $ffmpegRoot 'bin'
+$ffmpegSource = Join-Path $root "external\ffmpeg-$($ffmpegManifest.version)"
+& (Join-Path $PSScriptRoot 'audit-ffmpeg-runtime.ps1') `
+    -RuntimeDirectory $ffmpegRuntime `
+    -ManifestPath $ffmpegManifestPath `
+    -LlvmReadObj $LlvmReadObj `
+    -PrivatePathMarkers @($root, $Msys2Root, $env:USERPROFILE) | Out-Null
 $build = (Resolve-Path -LiteralPath $BuildDirectory).Path
 $binary = Join-Path $build "$Configuration\PipBoyVideoPlayer.dll"
 $pdb = Join-Path $build "$Configuration\PipBoyVideoPlayer.pdb"
@@ -82,11 +94,35 @@ Write-PbvpSurfaceDds -Path $surfacePath
 $pluginDirectory = Join-Path $stage 'NVSE\Plugins'
 [IO.Directory]::CreateDirectory($pluginDirectory) | Out-Null
 Copy-Item -LiteralPath $binary -Destination (Join-Path $pluginDirectory 'PipBoyVideoPlayer.dll')
+$privateRuntimeDirectory = Join-Path $pluginDirectory 'PipBoyVideoPlayer\bin'
+[IO.Directory]::CreateDirectory($privateRuntimeDirectory) | Out-Null
+foreach ($runtime in $ffmpegManifest.runtime) {
+    Copy-Item -LiteralPath (Join-Path $ffmpegRuntime $runtime.file) -Destination $privateRuntimeDirectory
+}
 foreach ($document in @('README.md', 'CHANGELOG.md', 'THIRD_PARTY_NOTICES.md')) {
     Copy-Item -LiteralPath (Join-Path $root $document) -Destination $stage
 }
 Copy-Item -LiteralPath (Join-Path $root 'docs') -Destination $stage -Recurse
-Copy-Item -LiteralPath (Join-Path $root 'licenses') -Destination $stage -Recurse
+$licenseDirectory = Join-Path $stage 'LICENSES'
+$ffmpegLicenseDirectory = Join-Path $licenseDirectory 'FFmpeg'
+$winpthreadsLicenseDirectory = Join-Path $licenseDirectory 'winpthreads'
+[IO.Directory]::CreateDirectory($ffmpegLicenseDirectory) | Out-Null
+[IO.Directory]::CreateDirectory($winpthreadsLicenseDirectory) | Out-Null
+foreach ($license in $ffmpegManifest.licenseFiles) {
+    $sourceLicense = Join-Path $ffmpegSource $license.file
+    if ((Get-FileHash -LiteralPath $sourceLicense -Algorithm SHA256).Hash -cne $license.sha256) {
+        throw "FFmpeg license file hash mismatch: $($license.file)"
+    }
+    Copy-Item -LiteralPath $sourceLicense -Destination $ffmpegLicenseDirectory
+}
+Copy-Item -LiteralPath $ffmpegManifestPath -Destination (
+    Join-Path $ffmpegLicenseDirectory 'build-manifest.json')
+$winpthreadsLicense = Join-Path $Msys2Root 'mingw32\share\licenses\winpthreads\COPYING'
+if ((Get-FileHash -LiteralPath $winpthreadsLicense -Algorithm SHA256).Hash -cne
+        $ffmpegManifest.staticSupport.licenseFileSha256) {
+    throw 'winpthreads license file hash mismatch.'
+}
+Copy-Item -LiteralPath $winpthreadsLicense -Destination $winpthreadsLicenseDirectory
 $symbolsPdb = Join-Path $symbols 'PipBoyVideoPlayer.pdb'
 & (Join-Path $PSScriptRoot 'sanitize-public-pdb.ps1') `
     -InputPdb $publicPdb `
@@ -126,12 +162,22 @@ $localMarkers = @(
         [IO.Path]::DirectorySeparatorChar,
         [IO.Path]::AltDirectorySeparatorChar)
 )
-Assert-NoLocalPathMarker `
-    -Path (Join-Path $pluginDirectory 'PipBoyVideoPlayer.dll') `
-    -Markers $localMarkers
-Assert-NoLocalPathMarker `
-    -Path $symbolsPdb `
-    -Markers $localMarkers
+Get-ChildItem -LiteralPath $stage -Recurse -File | ForEach-Object {
+    Assert-NoLocalPathMarker -Path $_.FullName -Markers $localMarkers
+}
+Assert-NoLocalPathMarker -Path $symbolsPdb -Markers $localMarkers
+
+$expectedDllPaths = @(
+    'NVSE\Plugins\PipBoyVideoPlayer.dll'
+) + @($ffmpegManifest.runtime | ForEach-Object {
+    "NVSE\Plugins\PipBoyVideoPlayer\bin\$($_.file)"
+})
+$expectedDllPaths = @($expectedDllPaths | Sort-Object)
+$actualDllPaths = @(Get-ChildItem -LiteralPath $stage -Filter '*.dll' -Recurse -File |
+    ForEach-Object { $_.FullName.Substring($stage.Length + 1) } | Sort-Object)
+if (($expectedDllPaths -join "`n") -cne ($actualDllPaths -join "`n")) {
+    throw "Staging DLL inventory changed. Expected $($expectedDllPaths -join ', '); got $($actualDllPaths -join ', ')."
+}
 
 $unexpected = Get-ChildItem -LiteralPath $stage -Recurse -File | Where-Object {
     $_.Extension -in @('.mp4', '.mov', '.m4v', '.mkv', '.webm', '.log', '.dmp')

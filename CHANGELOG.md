@@ -2,6 +2,9 @@
 
 ## 0.1.0 - Unreleased
 
+- Pinned a reproducible, minimal i686 FFmpeg 8.1.2 runtime for MOV, H.264, AAC, BGRA conversion, and audio resampling.
+- Added restricted private FFmpeg loading with exact path, version, configuration, architecture, import, hash, and package-inventory checks.
+- Added verified FFmpeg and winpthreads license material to the private release package.
 - Added the Win32 xNVSE plugin scaffold and strict FalloutNV 1.4.0.525 runtime check.
 - Added xNVSE lifecycle logging and a guarded texture-upload boundary through `kMessage_OnFramePresent`.
 - Added a UIO prefab with a named video rectangle, private engine image, visible layer probes, and a game-thread bridge.

@@ -9,6 +9,16 @@
   "signingKeyFingerprint": "FCF986EA15E6E293A5644F10B4322F04D67658D8",
   "sourceDateEpoch": 1781662671,
   "license": "LGPL-2.1-or-later",
+  "licenseFiles": [
+    {
+      "file": "LICENSE.md",
+      "sha256": "2E1D16C72FD74E12063776371DA757322F8B77589386532F4FD8634BDE7DE1AF"
+    },
+    {
+      "file": "COPYING.LGPLv2.1",
+      "sha256": "246041B6ECF9BC32D718A62C57877C78B5EB397B6467E74ED7AE2626AB189C30"
+    }
+  ],
   "toolVersions": {
     "gcc": "15.2.0",
     "nasm": "3.01",

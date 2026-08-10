@@ -105,6 +105,10 @@ GCC emitted upstream warnings in AAC spectral band replication, frame-worker nam
 
 The current five DLLs total 6,056,006 bytes on disk. This resolves build size, not runtime address-space cost. Phase 2 still needs a 1080p decode measurement inside the target VNV process.
 
+The plugin loader builds the runtime directory from the xNVSE game path and the fixed private suffix `Data\NVSE\Plugins\PipBoyVideoPlayer\bin`. It passes each absolute DLL name to `LoadLibraryExW` with `LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR` and `LOAD_LIBRARY_SEARCH_SYSTEM32`. It then checks the loaded module path, resolves version and configuration functions by name, and compares the five exact library versions with the build headers. It also rejects a configuration missing the minimal libraries or containing GPL, nonfree, or version 3 switches.
+
+The Win32 loader test rejects a relative directory, accepts the pinned runtime, verifies all five numeric versions, rejects a second load, unloads cleanly, and rejects an incomplete private directory. Packaging audits the source DLLs again, copies only the manifest entries, includes the verified license files, scans every staged file for local path markers, and requires the final DLL inventory to contain only the plugin and the five private libraries.
+
 ## Direct3D 9
 
 Microsoft's [`IDirect3DTexture9::LockRect` documentation](https://learn.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3dtexture9-lockrect) documents `D3DLOCK_DISCARD` for dynamic texture updates and notes the restrictions on default-pool textures. The [`D3DPOOL` documentation](https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dpool) states that default-pool resources must be released before `Reset` and recreated afterward.
