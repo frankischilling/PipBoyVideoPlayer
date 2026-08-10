@@ -54,7 +54,9 @@ try {
     }
     $guardText = [IO.File]::ReadAllText($guardIni)
     foreach ($expected in @(
+            '[Tweaks]',
             'bImprovedAutoSave = 0',
+            '[Save Manager]',
             'bSaveOnExitGame = 0',
             'iAutoSaveTimer = 0')) {
         if ($guardText -notmatch [Regex]::Escape($expected)) {
@@ -65,8 +67,27 @@ try {
     [IO.File]::WriteAllText(
         $guardIni,
         "; PBVP isolated compatibility profiles only.`r`n`r`n`r`n" +
+        "[Tweaks]`r`nbImprovedAutoSave = 0`r`n`r`n" +
+        "[Save Manager]`r`n" +
+        "bSaveOnExitGame = 0`r`niAutoSaveTimer = 0`r`n")
+    & $script -InstanceRoot $tempRoot -VerifyOnly
+
+    [IO.File]::WriteAllText(
+        $guardIni,
+        "; PBVP isolated compatibility profiles only.`r`n`r`n" +
         "[Tweaks]`r`nbImprovedAutoSave = 0`r`n" +
         "bSaveOnExitGame = 0`r`niAutoSaveTimer = 0`r`n")
+    $wrongSectionRefused = $false
+    try {
+        & $script -InstanceRoot $tempRoot -VerifyOnly
+    } catch {
+        if ($_.Exception.Message -notmatch 'unexpected setting or value') { throw }
+        $wrongSectionRefused = $true
+    }
+    if (-not $wrongSectionRefused) {
+        throw 'Profile verification accepted Save Manager keys under Tweaks.'
+    }
+    & $script -InstanceRoot $tempRoot -InstallSaveGuard -Confirm:$false
     & $script -InstanceRoot $tempRoot -VerifyOnly
 
     [IO.File]::AppendAllText($guardIni, "bUnexpectedSaveSetting = 0`r`n")
@@ -80,7 +101,8 @@ try {
         [IO.File]::WriteAllText(
             $guardIni,
             "; PBVP isolated compatibility profiles only.`r`n`r`n" +
-            "[Tweaks]`r`nbImprovedAutoSave = 0`r`n" +
+            "[Tweaks]`r`nbImprovedAutoSave = 0`r`n`r`n" +
+            "[Save Manager]`r`n" +
             "bSaveOnExitGame = 0`r`niAutoSaveTimer = 0`r`n")
     }
     if (-not $unexpectedGuardRefused) {

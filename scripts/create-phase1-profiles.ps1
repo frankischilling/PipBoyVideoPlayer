@@ -46,6 +46,8 @@ $saveGuardContent = @'
 ; PBVP isolated compatibility profiles only.
 [Tweaks]
 bImprovedAutoSave = 0
+
+[Save Manager]
 bSaveOnExitGame = 0
 iAutoSaveTimer = 0
 '@
@@ -187,43 +189,97 @@ function Test-SaveGuardMod {
     if (-not (Test-Path -LiteralPath $guardIni -PathType Leaf)) {
         throw "The Phase 1 save guard is missing: $guardIni"
     }
-    $expectedKeys = @{
-        bImprovedAutoSave = $false
-        bSaveOnExitGame = $false
-        iAutoSaveTimer = $false
+    $expectedSections = @{
+        'Tweaks' = @{
+            bImprovedAutoSave = $false
+        }
+        'Save Manager' = @{
+            bSaveOnExitGame = $false
+            iAutoSaveTimer = $false
+        }
     }
-    $sectionSeen = $false
+    $sectionsSeen = @{}
+    $currentSection = $null
     foreach ($rawLine in [IO.File]::ReadAllLines($guardIni)) {
         $line = $rawLine.Trim()
         if ($line.Length -eq 0 -or $line.StartsWith(';') -or $line.StartsWith('#')) {
             continue
         }
         if ($line -match '^\[(?<section>[^\]]+)\]$') {
-            if ($sectionSeen -or $Matches.section -cne 'Tweaks') {
+            $section = $Matches.section
+            if (-not $expectedSections.ContainsKey($section) -or
+                $sectionsSeen.ContainsKey($section)) {
                 throw 'The Phase 1 save guard has an unexpected section.'
             }
-            $sectionSeen = $true
+            $sectionsSeen[$section] = $true
+            $currentSection = $section
             continue
         }
-        if (-not $sectionSeen -or $line -notmatch '^(?<key>[^=]+?)\s*=\s*(?<value>.*)$') {
+        if ($null -eq $currentSection -or
+            $line -notmatch '^(?<key>[^=]+?)\s*=\s*(?<value>.*)$') {
             throw 'The Phase 1 save guard has an unexpected setting line.'
         }
         $key = $Matches.key.Trim()
         $value = $Matches.value.Trim()
-        if (-not $expectedKeys.ContainsKey($key) -or $expectedKeys[$key] -or $value -cne '0') {
+        $sectionKeys = $expectedSections[$currentSection]
+        if (-not $sectionKeys.ContainsKey($key) -or $sectionKeys[$key] -or
+            $value -cne '0') {
             throw 'The Phase 1 save guard has an unexpected setting or value.'
         }
-        $expectedKeys[$key] = $true
+        $sectionKeys[$key] = $true
     }
-    if (-not $sectionSeen -or @($expectedKeys.Values | Where-Object { -not $_ }).Count -ne 0) {
-        throw 'The Phase 1 save guard is missing a required setting.'
+    foreach ($section in $expectedSections.Keys) {
+        if (-not $sectionsSeen.ContainsKey($section) -or
+            @($expectedSections[$section].Values | Where-Object { -not $_ }).Count -ne 0) {
+            throw 'The Phase 1 save guard is missing a required section or setting.'
+        }
     }
+}
+
+function Test-LegacySaveGuardMod {
+    param([Parameter(Mandatory)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $false
+    }
+    $actual = @([IO.File]::ReadAllLines($Path) | ForEach-Object { $_.Trim() } |
+        Where-Object { $_.Length -ne 0 -and -not $_.StartsWith(';') -and
+            -not $_.StartsWith('#') })
+    $legacy = @(
+        '[Tweaks]',
+        'bImprovedAutoSave = 0',
+        'bSaveOnExitGame = 0',
+        'iAutoSaveTimer = 0'
+    )
+    if ($actual.Count -ne $legacy.Count) {
+        return $false
+    }
+    for ($index = 0; $index -lt $legacy.Count; $index++) {
+        if ($actual[$index] -cne $legacy[$index]) {
+            return $false
+        }
+    }
+    return $true
 }
 
 function Install-SaveGuardMod {
     $guardRoot = Resolve-ModChild -Name $saveGuardModName
     $guardIni = Join-Path $guardRoot $saveGuardRelativePath
     if (Test-Path -LiteralPath $guardRoot) {
+        try {
+            Test-SaveGuardMod
+            return
+        } catch {
+            if (-not (Test-LegacySaveGuardMod -Path $guardIni)) {
+                throw
+            }
+        }
+        if (-not $PSCmdlet.ShouldProcess($guardIni, 'Repair the legacy Phase 1 save guard')) {
+            return
+        }
+        [IO.File]::WriteAllText(
+            $guardIni,
+            $saveGuardContent.TrimEnd() + [Environment]::NewLine,
+            [Text.UTF8Encoding]::new($false))
         Test-SaveGuardMod
         return
     }
