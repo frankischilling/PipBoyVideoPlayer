@@ -227,6 +227,8 @@ The first measured run ended after four completed focus cycles because FalloutNV
 
 The crash report contains no PBVP frame. A March 14, 2026 crash from before PBVP development used the same NVIDIA driver version and the same final five `nvd3dum` call frames. That history makes the cause uncertain. It does not convert the failed measured run into a pass. The next test must repeat the same counter and Alt+Tab procedure with only the separate PBVP development mod disabled. PBVP must then be re-enabled for a matched test. Another driver crash in the control run is baseline evidence. A control pass followed by repeated PBVP failures requires further renderer isolation.
 
+The user requested one more PBVP-enabled attempt before the control. That retry crashed after nine completed focus cycles. PBVP had completed one managed-texture upload at 27.90 microseconds and logged no upload failure. The new CrashLogger trace exactly matches all six NVIDIA driver frames in the March pre-PBVP report, starting at `0x113C8CAA` and ending at `0x1177FCA3`. Two measured PBVP-enabled failures now make the disabled control mandatory.
+
 ## Required profiles
 
 | Profile | Purpose |
