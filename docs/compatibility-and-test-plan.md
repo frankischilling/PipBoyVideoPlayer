@@ -413,6 +413,15 @@ $rtssProfile = Join-Path ${env:ProgramFiles(x86)} `
 
 The script accepts only the five resolutions and four frame caps in the Phase 1 matrix. It updates `fallout.ini`, `falloutprefs.ini`, and `falloutcustom.ini` only inside the selected PBVP profile. It also updates the existing RTSS application profile. The first case saves all four original files. Later cases for the same profile reuse that baseline.
 
+The same script accepts the `PBVP Phase 4 Long Playback` profile and a 10 FPS cap for the Phase 4 low-FPS check. It saves the three profile INIs and RTSS profile before changing them, refuses profiles with saves, and restores the original bytes after the run. The four Phase 1 frame-cap rows remain 30, 60, 90, and 120 FPS.
+
+Run the 30 FPS long fixture for at least five minutes at the 10 FPS cap, then close Fallout normally. The low-FPS checker requires an audio clock near 300 seconds, 2,500 to 3,500 presented frames, at least 5,000 dropped frames, zero underruns, less than 128 MiB of private-memory growth, 8 to 12 visible callbacks per second, complete texture uploads, and ordered shutdown records.
+
+```powershell
+.\scripts\check-phase4-low-fps-log.ps1 `
+  -LogPath 'C:\path\to\PipBoyVideoPlayer.log'
+```
+
 Restore the files before testing a different profile:
 
 ```powershell

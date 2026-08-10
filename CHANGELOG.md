@@ -18,6 +18,7 @@
 - Passed the short live allocator retest with about 56 seconds of uninterrupted video, 1,659 successful uploads, and no playback or allocation error.
 - Passed the uninterrupted live 30-minute synchronization test with 28.125 milliseconds of audio-to-video error, zero underruns, 41,811,968 bytes of peak private-memory growth, and 150.40 microseconds maximum texture upload time.
 - Aligned the long-log checker's final clock window with the documented 50-millisecond synchronization tolerance and added early, late, and excess-drift regressions.
+- Added a reversible 10 FPS case and strict five-minute log checker for live low-FPS frame dropping without cumulative audio-clock drift.
 - Added checked audio-sample and QueryPerformanceCounter clocks with pause, resume, seek-origin, 30-minute mapping, and overflow tests.
 - Added a bounded system XAudio2 2.9 stream with a fixed PCM pool, atomics-only callbacks, play, stop, pause, resume, mute, volume, end of stream, and default-device reconstruction.
 - Added tracked COM ownership on the audio thread after the first native mastering-voice test exposed the missing initialization step.
