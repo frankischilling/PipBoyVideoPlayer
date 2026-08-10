@@ -266,7 +266,7 @@ Rejected alternatives: do not shrink the accepted viewport, move it horizontally
 
 Consequence: the next candidate moves the panel up 52 logical units. On the previously measured 1706.67 by 960 canvas, its expected rectangle changes from `42,375` through `426,591` to `42,323` through `426,539`. The candidate needs a Base visual check and an Extended regression check before it becomes the shared Phase 1 position.
 
-Follow-up evidence: the user tested the raised candidate in the same Base VNV windowed configuration and reported that it looked good. The panel no longer blocks the Base map buttons. The Base half of the shared-position check now passes. The Extended regression remains open.
+Follow-up evidence: the user tested the raised candidate in the same Base VNV windowed configuration and reported that it looked good. The panel no longer blocks the Base map buttons. A later run with the full Extended UI stack also looked good. The raised 384 by 216 panel is now the shared Phase 1 position for these two tested profiles.
 
 ### Verified reset hook only
 
@@ -392,7 +392,15 @@ Follow-up evidence: the first Base test created no save data, but it did not ver
 
 Updated consequence: both profile setup and display-case mutation now refuse to run while the selected instance's Mod Organizer process is active. Close MO2, enable or repair the guard, reopen MO2, and verify its checked state before the next in-game exit.
 
-Verification: after the repair, the Base profile retained one enabled guard entry and no disabled duplicate. A normal in-game exit left its local `saves` directory empty. This accepts the guard for isolated Phase 1 sessions while keeping the release-candidate save-safety matrix open.
+Verification: after the repair, the Base profile retained one enabled guard entry and no disabled duplicate. A normal in-game exit left its local `saves` directory empty. That result verifies only the Base preset, which already disables improved autosaves in its main INI.
+
+Extended result: the full Extended regression retained one enabled guard entry and all three guard values at zero, but normal exit still created a named `.fos` save and its `.nvse` co-save. Both files were new output in the isolated profile. They were moved together to the ignored quarantine and remain recoverable. No normal profile or existing save was touched.
+
+Updated decision: keep the profile-only multi-INI design, but map each override to the section used by Stewie Tweaks. `bImprovedAutoSave` belongs under `[Tweaks]`. `bSaveOnExitGame` and `iAutoSaveTimer` belong under `[Save Manager]`. The current one-section file is not accepted for another Extended run.
+
+Reason: Stewie Tweaks resolves settings by section and key. The installed 9.80 readme documents multi-INI replacement, and the active Extended INI places the two Save Manager options in their own section. The earlier guard put every key under `[Tweaks]`, so it did not replace those two Extended values.
+
+Consequence: profile verification must require both sections and reject a save-related key in the wrong section. The corrected guard needs a fresh full Extended exit with an empty local save directory before isolated profile safety is accepted.
 
 ### Separate public and private symbols
 

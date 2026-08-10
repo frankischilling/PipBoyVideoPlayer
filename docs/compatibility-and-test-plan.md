@@ -255,9 +255,19 @@ The first Base UI run displayed the checkerboard and otherwise looked and ran co
 
 MO2 created an empty local `saves` directory, but no save or co-save file appeared. Later inspection found that the open MO2 process had written the new save-guard mod as disabled when the user switched profiles. This run is not evidence that the guard worked, though it confirms that no save data was created. The guard still needs an in-game exit check after it is enabled with MO2 closed. Test tools now allow an empty MO2-created directory and continue to refuse any profile that contains save data.
 
-Follow-up run: the raised candidate increased the bottom inset from 12 to 64 logical units without changing the panel size or horizontal anchor. The user reported that the new position looked good in the Base UI. This accepts the raised position for the tested Base VNV configuration. The same position still needs an Extended regression check before it can replace the earlier Extended value.
+Follow-up run: the raised candidate increased the bottom inset from 12 to 64 logical units without changing the panel size or horizontal anchor. The user reported that the new position looked good in the Base UI. This accepts the raised position for the tested Base VNV configuration.
 
 The repaired save guard remained enabled for the follow-up run. After a normal game exit, the Base profile's local `saves` directory contained no files or subdirectories. This is the first in-game confirmation that the isolated multi-INI guard prevents save-on-exit output. It does not replace the later release-candidate save and uninstall tests.
+
+### Extended raised-placement regression
+
+Date: August 10, 2026
+
+Profile: PBVP Phase 1 Extended, native Direct3D 9, windowed 1920x1080, VSync on, RTSS limit unchanged
+
+The full Extended UI regression used the same 64-unit bottom inset and unchanged 384 by 216 panel. The user reported that it looked good. This accepts the raised position for both tested UI stacks.
+
+The save-isolation result failed. Normal exit created one named `.fos` save and its `.nvse` co-save inside the isolated profile. The pair was moved to the ignored quarantine and remains recoverable. Inspection found that the guard placed the exit-save and timer keys under `[Tweaks]`, while the active Stewie Tweaks INI defines them under `[Save Manager]`. A corrected section-aware guard and another clean Extended exit are required.
 
 ## Required profiles
 
@@ -306,7 +316,7 @@ Existing PBVP profiles created before the save guard can be updated once:
 
 The normal creation command refuses to replace an existing target. If a later project update adds another isolated profile, `-CreateMissing` validates every existing target and creates only the missing profiles. The automated test builds a temporary MO2 fixture, confirms that saves are not copied, verifies each disabled UI layer, checks the replacement refusal, recreates one missing profile without touching the others, and verifies save-guard installation and repair. Verification accepts an empty `saves` directory created by MO2 but refuses the profile as soon as that directory contains a file or subdirectory.
 
-The first windowed Extended run exposed the source profile's enabled save-on-exit setting. It created one `.fos` file and its `.nvse` co-save inside the isolated profile at shutdown. Both files were new test output. They were moved together to the ignored `build-host/quarantine` area and remain recoverable. No original VNV save was read, changed, or removed. The dedicated save guard prevents the same side effect in later runs without changing the shared Stewie Tweaks INI.
+The first windowed Extended run exposed the source profile's enabled save-on-exit setting. It created one `.fos` file and its `.nvse` co-save inside the isolated profile at shutdown. Both files were new test output. They were moved together to the ignored `build-host/quarantine` area and remain recoverable. No original VNV save was read, changed, or removed. A later Extended run proved that the first guard layout did not override two `[Save Manager]` keys. The corrected guard must preserve the same profile-only design and use each setting's documented section.
 
 ### Reversible display and frame-rate cases
 
