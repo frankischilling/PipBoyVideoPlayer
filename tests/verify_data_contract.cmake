@@ -49,6 +49,20 @@ require_drawable_depth(PBVP_VideoSurface 10)
 require_drawable_depth(PBVP_LayerProbeBackground 11)
 require_drawable_depth(PBVP_LayerProbe 12)
 
+string(FIND "${prefab_text}"
+    "<copy src=\"parent\" trait=\"height\" />\n                <sub src=\"me\" trait=\"height\" />\n                <sub> 12 </sub>"
+    lower_left_inset_offset)
+if(lower_left_inset_offset EQUAL -1)
+    message(FATAL_ERROR "UI status background must stay anchored to the lower-left inset")
+endif()
+
+string(FIND "${prefab_text}"
+    "<copy src=\"sibling(PBVP_LayerProbeBackground)\" trait=\"y\" />"
+    probe_text_anchor_offset)
+if(probe_text_anchor_offset EQUAL -1)
+    message(FATAL_ERROR "UI status text must stay anchored to its background")
+endif()
+
 string(FIND "${prefab_text}" "Interface\\PipBoyVideoPlayer\\Surface.dds" surface_path_offset)
 if(surface_path_offset EQUAL -1)
     message(FATAL_ERROR "UI prefab does not use the private generated surface texture")

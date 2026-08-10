@@ -125,6 +125,12 @@ The follow-up VNV Extended run kept the green checkerboard, black probe, and `PB
 
 This accepts explicit drawable depths 10 through 12 for the active fullscreen 1920x1080 Vanilla UI Plus stack. It does not yet prove input behavior, device recreation, other resolutions or display modes, base VNV, or DXVK. Those checks remain open in the matrix below.
 
+Sixth run: input and repeat-cycle checks
+
+The user confirmed that keyboard and mouse input still worked while the engine-owned checkerboard was visible. Five Alt+Tab cycles with Data open and ten Pip-Boy close and reopen cycles looked correct. A controller was not connected, so controller navigation and input-method switching were not tested.
+
+The session logged 19 successful surface uploads and no plugin errors. No `NiDX9Renderer::Recreate` callback appeared, so the Alt+Tab result verifies visual persistence but not the forced device-recreation path. The user also requested that the temporary status strip move to the lower-left of the playback area so it does not sit over the top of radio station entries.
+
 ## Required profiles
 
 | Profile | Purpose |

@@ -10,6 +10,7 @@
 - Added guarded checks for the reviewed `TileImage`, `TileShaderProperty`, `NiSourceTexture`, and `NiDX9SourceTextureData` layouts.
 - Added diagnostics for the direct image texture, shader property, and shader source texture.
 - Assigned the injected surface and probe drawables explicit depths between normal MapMenu page content and the existing headline and tab controls.
+- Moved the diagnostic status strip to the lower-left inset of the video area.
 - Added a Direct3D 9 checkerboard upload that uses a temporary COM reference and leaves drawing to Gamebryo.
 - Added device-profile, surface-profile, texture-upload, thread-identity, and device-recreation diagnostics.
 - Added one-time diagnostics for game-thread UI polling, MapMenu lookup, frame presentation, and D3D device discovery.

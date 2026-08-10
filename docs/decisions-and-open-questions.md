@@ -194,6 +194,18 @@ Rejected alternatives: repeated texture uploads would not change the draw order 
 
 Consequence: the next run kept the checkerboard, black probe, and text probe visible together, and the user reported that the result looked good. This accepts the depth rule for the active VNV Extended stack. Native input, other UI profiles, resolutions, display modes, and DXVK remain separate acceptance checks.
 
+### Lower-left status overlay
+
+Date: August 9, 2026
+
+Decision: anchor the temporary black status strip 12 units from the left and bottom edges of `PBVP_VideoRect`. Position its text 10 units from the strip's left edge and 3 units from its top edge. Keep both positions derived from named sibling or parent traits instead of duplicating absolute screen coordinates.
+
+Evidence: the first successful steady presentation placed the diagnostic strip at the upper-left of the video area. Keyboard and mouse input remained usable, but the user reported that this placement got in the way of the radio station list and preferred the lower-left area.
+
+Rejected alternatives: the status overlay will not become a permanent panel beside the picture. The final player shows it only on the Videos page and fades it during playback. Ordinary Radio, Map, Quests, and Notes pages must not retain any PBVP playback layer.
+
+Consequence: the next Phase 1 package moves only the diagnostic strip. The verified video rectangle and draw depths remain unchanged. A manual check must confirm the new placement and unchanged input behavior.
+
 ### Verified reset hook only
 
 Date: August 9, 2026

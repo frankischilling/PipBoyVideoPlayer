@@ -40,6 +40,8 @@ crop the source, but it must never draw over the physical Pip-Boy frame. UI
 variants and handheld replacers may supply different named bounds through their
 prefabs.
 
+The title, state, and control overlay starts at the lower-left inset of the playback stage. Its position is derived from the named video rectangle so it follows UI scaling and replacement layouts. The overlay fades when playback is stable. It exists only while the Videos page owns focus, so it cannot cover Radio, Map, Quests, or Notes content.
+
 ## Controls
 
 Default actions:
