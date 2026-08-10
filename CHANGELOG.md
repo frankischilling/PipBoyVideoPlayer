@@ -33,3 +33,4 @@
 - Added guarded creation and verification of four save-free Phase 1 MO2 profiles for base VNV, Vanilla UI Plus, Extended, and Extended without Pip-Boy UI Tweaks.
 - Added a reversible Phase 1 case configurator for the documented resolutions, display modes, VSync states, and RTSS frame caps.
 - Added bounded visible-frame cadence samples and an independent log check for the expected game FPS.
+- Added path-neutral public symbol packaging with exact PDB identity, public-symbol, FPO, section-contribution, and archive-content checks.

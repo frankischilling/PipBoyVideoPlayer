@@ -93,6 +93,11 @@ if(package_guard_offset EQUAL -1)
     message(FATAL_ERROR "Package script does not reject the private recreation test build")
 endif()
 
+string(FIND "${package_text}" "sanitize-public-pdb.ps1" symbol_sanitizer_offset)
+if(symbol_sanitizer_offset EQUAL -1)
+    message(FATAL_ERROR "Package script does not prepare path-neutral public symbols")
+endif()
+
 file(READ "${PBVP_SOURCE_DIR}/CMakeLists.txt" cmake_text)
 string(FIND "${cmake_text}"
     "option(PBVP_ENABLE_RECREATE_TEST \"Enable the private one-shot engine recreation test\" OFF)"

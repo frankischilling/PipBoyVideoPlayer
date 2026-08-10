@@ -33,6 +33,10 @@ if(MSVC)
     target_compile_options(pbvp_core PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
 endif()
 
+if(PBVP_BUILD_TESTS)
+    find_program(PBVP_POWERSHELL_EXECUTABLE NAMES pwsh powershell REQUIRED)
+endif()
+
 if(PBVP_BUILD_PLUGIN)
     if(NOT WIN32 OR NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
         message(FATAL_ERROR "The xNVSE plugin requires a Microsoft Win32/x86 generator. Configure with -A Win32.")
@@ -77,7 +81,9 @@ if(PBVP_BUILD_PLUGIN)
         "/FI${CMAKE_SOURCE_DIR}/include/pbvp/xnvse_prefix.hpp")
     target_link_options(PipBoyVideoPlayer PRIVATE
         /DEF:${CMAKE_SOURCE_DIR}/src/plugin/exports.def
-        /MACHINE:X86 /DYNAMICBASE /NXCOMPAT /GUARD:CF /DEBUG:FULL)
+        /MACHINE:X86 /DYNAMICBASE /NXCOMPAT /GUARD:CF /DEBUG:FULL
+        "/PDBALTPATH:PipBoyVideoPlayer.pdb"
+        "$<$<CONFIG:Release>:/PDBSTRIPPED:$<TARGET_PDB_FILE_DIR:PipBoyVideoPlayer>/PipBoyVideoPlayer-public.pdb>")
     set_target_properties(PipBoyVideoPlayer PROPERTIES
         OUTPUT_NAME PipBoyVideoPlayer
         MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
@@ -98,11 +104,23 @@ if(PBVP_BUILD_PLUGIN)
         target_compile_options(pbvp_hook_conflict_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
         set_target_properties(pbvp_hook_conflict_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
         add_test(NAME pbvp_hook_conflict_test COMMAND pbvp_hook_conflict_test)
+
+        find_program(PBVP_LLVM_PDBUTIL_EXECUTABLE NAMES llvm-pdbutil REQUIRED)
+        add_test(
+            NAME pbvp_public_pdb_sanitizer_test
+            COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+                -NoProfile
+                -ExecutionPolicy Bypass
+                -File ${CMAKE_SOURCE_DIR}/tests/test-public-pdb-sanitizer.ps1
+                -SanitizerPath ${CMAKE_SOURCE_DIR}/scripts/sanitize-public-pdb.ps1
+                -InputPdb $<TARGET_PDB_FILE_DIR:PipBoyVideoPlayer>/PipBoyVideoPlayer-public.pdb
+                -BinaryPath $<TARGET_FILE:PipBoyVideoPlayer>
+                -LlvmPdbUtil ${PBVP_LLVM_PDBUTIL_EXECUTABLE})
+        set_tests_properties(pbvp_public_pdb_sanitizer_test PROPERTIES CONFIGURATIONS Release)
     endif()
 endif()
 
 if(PBVP_BUILD_TESTS)
-    find_program(PBVP_POWERSHELL_EXECUTABLE NAMES pwsh powershell REQUIRED)
     add_test(
         NAME pbvp_phase1_log_checker_test
         COMMAND ${PBVP_POWERSHELL_EXECUTABLE}

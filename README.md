@@ -10,13 +10,13 @@ Status: Phase 1 render and UI feasibility
 
 The current diagnostic build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, installs a UIO prefab, and probes the engine's Direct3D recreation function. Once the Pip-Boy is open, it validates the live UIO image, engine texture objects, Direct3D device, and callback thread before uploading a generated checkerboard. Any unknown object type, function entry, or thread arrangement disables the update instead of guessing.
 
-The host and Win32 automated tests pass. Two separate overlay draw points were rejected because they rendered above the Pip-Boy UI. The engine-owned image path now resolves the UIO tile, verifies the shader source texture, and uploads a checkerboard in about 22 microseconds. Explicit drawable depths keep the checkerboard visible inside the Pip-Boy with the black and text probes above it in the active VNV Extended UI stack. Keyboard and mouse input, five Alt+Tab cycles, and ten Pip-Boy reopen cycles passed on that profile. Controller input, forced device recreation, resolution coverage, the base VNV profile, and DXVK support are not verified yet.
+The host and Win32 automated tests pass. Two separate overlay draw points were rejected because they rendered above the Pip-Boy UI. The engine-owned image path now resolves the UIO tile, verifies the shader source texture, and uploads a checkerboard in 27.30 microseconds in the accepted 1920x1080 run. Explicit drawable depths keep the checkerboard visible inside the Pip-Boy with the black and text probes above it in the active VNV Extended UI stack. Keyboard and mouse input, five Alt+Tab cycles, and ten Pip-Boy reopen cycles passed on that profile. Controller input, forced device recreation, resolution coverage, the base VNV profile, and DXVK support are not verified yet.
 
 ## Build
 
 The repository follows the same local layout and script conventions as RadioCaptions. Downloaded sources stay under the ignored `external` directory, generated projects stay under `build-vs` or `build-host`, staging uses `stage`, and archives use `dist`.
 
-Required tools are CMake, Visual Studio with the x86 C++ workload, PowerShell, and 7-Zip. Run these commands from a PowerShell prompt:
+Required tools are CMake, Visual Studio with the x86 C++ workload, PowerShell, and 7-Zip. Release packaging also requires LLVM 22.1.0 so the symbol check uses a pinned `llvm-pdbutil` and matching `llvm-readobj`. Run these commands from a PowerShell prompt:
 
 ```powershell
 .\scripts\fetch-dependencies.ps1

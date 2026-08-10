@@ -6,6 +6,7 @@ The plugin is a 32-bit Windows DLL. The initial toolchain should use:
 
 - Visual Studio 2022 with the current v143 x86 compiler;
 - CMake presets for repeatable developer and release builds;
+- LLVM 22.1.0 `llvm-pdbutil` for validating public release symbols;
 - the Windows SDK and Direct3D 9 headers and import library;
 - XAudio2 2.7 from the legacy DirectX SDK if the audio spike selects it;
 - xNVSE plugin headers pinned to a reviewed commit;
@@ -76,7 +77,9 @@ Development artifacts should produce two archives:
 
 Personal media is never part of either archive.
 
-The linker writes only the PDB filename into the DLL. The symbols archive renames the stripped output to that expected filename. Package checks inspect binary contents for repository, build, temporary, and user-profile paths. Checking archive entry names alone is insufficient.
+The linker writes the explicit filename `PipBoyVideoPlayer.pdb` into the DLL. The raw stripped PDB still contains the absolute names of contributing object files and libraries. Before packaging, a format-aware cleanup reads the DBI logical stream, replaces each absolute module or object path with an equal-length path-neutral name, and writes the same-size stream back to its existing MSF blocks. It also clears unreferenced blocks and unused block tails that may retain stale linker data. It does not resize records or rebuild the PDB. The symbols archive renames the cleaned output to the filename expected by the DLL.
+
+The package check requires the cleaned PDB to retain the original GUID, age, stripped status, complete public symbol set, FPO data, and section contributions. It also scans every logical PDB stream, the raw PDB bytes, and the DLL for absolute drive paths and known repository, build, temporary, and user-profile markers. Checking archive entry names alone is insufficient.
 
 The private Phase 1 recreation test uses a separate build directory and development-mod install script. CMake marks that directory as armed. The package script checks the marker and refuses to create either archive from it. Running the normal configure command explicitly disables the test and removes the marker from the normal build directory.
 

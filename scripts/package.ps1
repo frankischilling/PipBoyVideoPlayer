@@ -52,12 +52,19 @@ $root = Split-Path -Parent $PSScriptRoot
 $build = (Resolve-Path -LiteralPath $BuildDirectory).Path
 $binary = Join-Path $build "$Configuration\PipBoyVideoPlayer.dll"
 $pdb = Join-Path $build "$Configuration\PipBoyVideoPlayer.pdb"
+$publicPdb = Join-Path $build "$Configuration\PipBoyVideoPlayer-public.pdb"
 $recreateTestMarker = Join-Path $build 'pbvp-recreate-test-enabled.txt'
 if (Test-Path -LiteralPath $recreateTestMarker) {
     throw 'Packaging refused the private one-shot recreation test build. Reconfigure the normal build first.'
 }
 if (-not (Test-Path -LiteralPath $binary)) { throw "Missing build output: $binary" }
 if (-not (Test-Path -LiteralPath $pdb)) { throw "Missing symbols: $pdb" }
+if ($Configuration -ne 'Release') {
+    throw 'Packaging requires the Release configuration and its stripped public PDB.'
+}
+if (-not (Test-Path -LiteralPath $publicPdb)) {
+    throw "Missing stripped public symbols: $publicPdb"
+}
 
 $stageRoot = [IO.Path]::GetFullPath((Join-Path $root 'stage'))
 $stage = Join-Path $stageRoot 'PipBoyVideoPlayer'
@@ -79,14 +86,56 @@ Write-PbvpSurfaceDds -Path $surfacePath
 $pluginDirectory = Join-Path $stage 'NVSE\Plugins'
 [IO.Directory]::CreateDirectory($pluginDirectory) | Out-Null
 Copy-Item -LiteralPath $binary -Destination (Join-Path $pluginDirectory 'PipBoyVideoPlayer.dll')
-Copy-Item -LiteralPath $pdb -Destination (Join-Path $pluginDirectory 'PipBoyVideoPlayer.pdb')
 foreach ($document in @('README.md', 'CHANGELOG.md', 'THIRD_PARTY_NOTICES.md')) {
     Copy-Item -LiteralPath (Join-Path $root $document) -Destination $stage
 }
 Copy-Item -LiteralPath (Join-Path $root 'docs') -Destination $stage -Recurse
 Copy-Item -LiteralPath (Join-Path $root 'licenses') -Destination $stage -Recurse
-Copy-Item -LiteralPath $pdb -Destination $symbols
+$symbolsPdb = Join-Path $symbols 'PipBoyVideoPlayer.pdb'
+& (Join-Path $PSScriptRoot 'sanitize-public-pdb.ps1') `
+    -InputPdb $publicPdb `
+    -OutputPdb $symbolsPdb `
+    -BinaryPath $binary
 Copy-Item -LiteralPath (Join-Path $root 'README.md') -Destination $symbols
+
+function Assert-NoLocalPathMarker {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string[]]$Markers
+    )
+
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $views = @(
+        [Text.Encoding]::ASCII.GetString($bytes),
+        [Text.Encoding]::Unicode.GetString($bytes),
+        [Text.Encoding]::BigEndianUnicode.GetString($bytes)
+    )
+    foreach ($marker in $Markers) {
+        if ([string]::IsNullOrWhiteSpace($marker)) { continue }
+        foreach ($form in @($marker, $marker.Replace('\', '/'))) {
+            foreach ($view in $views) {
+                if ($view.IndexOf($form, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                    throw "Packaged binary contains a local path marker: $Path"
+                }
+            }
+        }
+    }
+}
+
+$localMarkers = @(
+    $root,
+    $build,
+    $env:USERPROFILE,
+    [IO.Path]::GetTempPath().TrimEnd(
+        [IO.Path]::DirectorySeparatorChar,
+        [IO.Path]::AltDirectorySeparatorChar)
+)
+Assert-NoLocalPathMarker `
+    -Path (Join-Path $pluginDirectory 'PipBoyVideoPlayer.dll') `
+    -Markers $localMarkers
+Assert-NoLocalPathMarker `
+    -Path $symbolsPdb `
+    -Markers $localMarkers
 
 $unexpected = Get-ChildItem -LiteralPath $stage -Recurse -File | Where-Object {
     $_.Extension -in @('.mp4', '.mov', '.m4v', '.mkv', '.webm', '.log', '.dmp')

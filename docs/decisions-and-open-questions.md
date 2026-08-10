@@ -302,9 +302,13 @@ Decision: keep the full PDB as a private local build artifact. Generate a second
 
 Evidence: a binary-content scan found the full local build path to `PipBoyVideoPlayer.pdb` in the normal DLL. The full PDB also contains repository, build, and Windows user-profile temporary paths. This disproves the earlier clean-package result, which checked archive entries and ordinary text but did not inspect binary contents. Microsoft documents `/PDBALTPATH` for writing a path-independent PDB reference into the image and `/PDBSTRIPPED` for creating a second PDB with public symbols and stack-walking records.
 
-Rejected alternatives: do not ship the full PDB in either archive, leave an absolute CodeView path in the DLL, or call an archive clean after checking filenames alone. Do not discard symbols entirely because crash diagnosis still needs matching public symbols and frame records.
+A current linker test showed that `/PDBSTRIPPED` retains 493 absolute `Module` and `ObjFile` fields. An LLVM 22.1.0 YAML round trip removed those paths and preserved all 4,114 public name, flag, and address tuples, but a deeper check found that it dropped the FPO and section-contribution streams. That result rejects PDB reconstruction as a release method. A Visual Studio generator test also showed that passing `%_PDB%` through CMake produced the literal name `%%%PipBoyVideoPlayer.pdb%%%`. The linker option therefore uses the explicit stable filename instead of the percent placeholder.
 
-Consequence: the earlier Phase 1 archives are not clean-package candidates. Packaging must select the stripped PDB, rename it to the DLL's expected PDB filename inside the symbols archive, and reject known local path prefixes in binary as well as text files.
+A second test replaced the absolute names inside the DBI logical stream with equal-length path-neutral names and wrote the stream back to the same MSF blocks. It also cleared six unreferenced blocks and the unused tails of referenced blocks, where stale paths remained outside the live stream lengths. The output kept the original byte size, GUID, age, stripped status, public-symbol dump, FPO dump, and section-contribution dump. It contained no drive-qualified path and loaded through LLVM's DIA-compatible reader.
+
+Rejected alternatives: do not ship the full PDB in either archive, publish the raw stripped PDB, rebuild the PDB through YAML, resize its DBI records, leave an absolute CodeView path in the DLL, or call an archive clean after checking filenames alone. Do not discard symbols entirely because crash diagnosis still needs matching public symbols and frame records.
+
+Consequence: the earlier Phase 1 archives are not clean-package candidates. Packaging must apply the equal-length DBI cleanup, use the pinned LLVM tool to compare identity and diagnostic streams with the linker output, rename the result to the DLL's expected PDB filename, and reject absolute drive paths and known local path prefixes in packaged binaries.
 
 ### Private development licensing
 
