@@ -10,7 +10,7 @@ Status: Phase 1 render and UI feasibility
 
 The current diagnostic build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, installs a UIO prefab, and probes the engine's Direct3D recreation function. Once the Pip-Boy is open, it validates the live UIO image, engine texture objects, Direct3D device, and callback thread before uploading a generated checkerboard. Any unknown object type, function entry, or thread arrangement disables the update instead of guessing.
 
-The host and Win32 automated tests pass. Two separate overlay draw points were rejected because they rendered above the Pip-Boy UI. The engine-owned image path now resolves the UIO tile, verifies the shader source texture, and uploads a checkerboard in about 22 microseconds. The first successful upload flashed during the Items-to-Data transition, then the normal MapMenu content covered it. The current candidate places the injected root above page content and below the headline and tab controls. Device recreation, resolution coverage, and DXVK support are not verified yet.
+The host and Win32 automated tests pass. Two separate overlay draw points were rejected because they rendered above the Pip-Boy UI. The engine-owned image path now resolves the UIO tile, verifies the shader source texture, and uploads a checkerboard in about 22 microseconds. Giving only the injected root a higher depth did not keep its drawable children above completed MapMenu content. The current candidate assigns explicit depths to the surface and probes, all below the native headline and tab controls. Device recreation, resolution coverage, and DXVK support are not verified yet.
 
 ## Build
 

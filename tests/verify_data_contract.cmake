@@ -35,6 +35,20 @@ if(root_stack_offset EQUAL -1)
     message(FATAL_ERROR "UI prefab root must remain above page content and below native controls")
 endif()
 
+function(require_drawable_depth drawable_name drawable_depth)
+    string(REGEX MATCH
+        "name=\"${drawable_name}\">[\r\n\t ]*<visible> 1 </visible>[\r\n\t ]*<alpha> [0-9]+ </alpha>[\r\n\t ]*<depth> ${drawable_depth} </depth>"
+        drawable_depth_match
+        "${prefab_text}")
+    if(drawable_depth_match STREQUAL "")
+        message(FATAL_ERROR "${drawable_name} must retain its reviewed draw depth")
+    endif()
+endfunction()
+
+require_drawable_depth(PBVP_VideoSurface 10)
+require_drawable_depth(PBVP_LayerProbeBackground 11)
+require_drawable_depth(PBVP_LayerProbe 12)
+
 string(FIND "${prefab_text}" "Interface\\PipBoyVideoPlayer\\Surface.dds" surface_path_offset)
 if(surface_path_offset EQUAL -1)
     message(FATAL_ERROR "UI prefab does not use the private generated surface texture")

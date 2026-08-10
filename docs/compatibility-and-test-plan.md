@@ -113,6 +113,12 @@ The shader-source build resolved a 256x256 `A8R8G8B8` managed texture, verified 
 
 This result verifies the engine-owned upload path and rejects the prefab root's default sibling depth. The active Vanilla UI Plus MapMenu places map content as high as depth 8, headline cards at depth 15, and the tab line at depth 22. The next candidate sets `PBVP_Root` to depth 10 so the surface clears ordinary page content without covering the existing headline and tab controls.
 
+Fourth run: parent-only depth rejected
+
+Setting `PBVP_Root` to depth 10 did not change the steady result. Opening the Pip-Boy directly to Data showed no PBVP layer. Switching away and back exposed the checkerboard briefly, with `PBVP UI LAYER` correctly above it, before both disappeared behind the completed page. The log recorded a valid surface and successful uploads from 21.8 to 31.1 microseconds on each return to MapMenu.
+
+Vanilla UI Plus assigns depth to drawable children rather than relying on a container to carry it. Its map-marker shadow, for example, explicitly copies the parent image depth and subtracts `0.02`. The next candidate keeps the root at depth 10 and assigns explicit depths 10, 11, and 12 to the surface, black probe, and text probe. This is an inference from the active XML and still requires an in-game check.
+
 ## Required profiles
 
 | Profile | Purpose |

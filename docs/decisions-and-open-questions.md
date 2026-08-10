@@ -180,7 +180,19 @@ Pip-Flicks 3000 provides a useful behavioral comparison but not a drop-in placem
 
 Rejected alternatives: a frame-wide overlay already failed the layer-order test. Setting the PBVP root above depth 15 could obscure existing navigation. Copying the Pip-Flicks ESP, scripts, frames, audio, or assets is unnecessary and would change PBVP's architecture and distribution obligations.
 
-Consequence: the next run must keep the checkerboard visible after the Data transition, retain the normal headline and tab controls, and leave input usable. A successful result verifies only the active VNV Extended UI stack; other UI profiles still require separate tests.
+Consequence: the next run kept the same transient flash. Parent depth alone is rejected as a complete placement rule.
+
+### Explicit drawable depths
+
+Date: August 9, 2026
+
+Decision: retain depth 10 on `PBVP_Root`, then assign the actual video surface, black probe, and text probe depths 10, 11, and 12. All PBVP drawables remain below native headline cards at depth 15 and the tab line at depth 22. The PBVP containers remain non-targetable so this test does not consume input.
+
+Evidence: the parent-only depth candidate still disappeared after the Data transition. The surface and label appeared together during each brief transition, with the label correctly above the checkerboard. The runtime log showed a valid texture and a successful upload on every MapMenu return. The active Vanilla UI Plus XML gives drawable children explicit depths and explicitly derives a shadow child's depth from its parent image instead of relying on a container ancestor.
+
+Rejected alternatives: repeated texture uploads would not change the draw order and would add unnecessary per-frame work. A native overlay remains rejected because it covered the Pip-Boy. Raising PBVP above depth 15 could hide headline or tab controls.
+
+Consequence: the next run must prove that all three PBVP drawables remain visible after the transition while the native headline, tabs, and controls remain visible and usable.
 
 ### Verified reset hook only
 
