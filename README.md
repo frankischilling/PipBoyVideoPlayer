@@ -10,7 +10,7 @@ Status: Phase 1 render and UI feasibility
 
 The current diagnostic build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, installs a UIO prefab, and probes the engine's Direct3D recreation function. Once the Pip-Boy is open, it validates the live UIO image, engine texture objects, Direct3D device, and callback thread before uploading a generated checkerboard. Any unknown object type, function entry, or thread arrangement disables the update instead of guessing.
 
-The host and Win32 automated tests pass. Two separate overlay draw points were rejected because they rendered above the Pip-Boy UI. The first engine-owned image run confirmed the UIO tile and shared callback thread, but the image had no live texture. The current build uses a bounded game-thread filename refresh through xNVSE's reviewed tile setter and records comparison fields from a known Pip-Boy image. Device recreation, resolution coverage, and DXVK support are not verified yet.
+The host and Win32 automated tests pass. Two separate overlay draw points were rejected because they rendered above the Pip-Boy UI. Two engine-owned image runs confirmed the UIO tile and shared callback thread, but the direct `TileImage` texture member stayed null. A filename refresh did not change that result. The current candidate follows the engine's `TileShaderProperty` source-texture path with exact vtable checks. Device recreation, resolution coverage, and DXVK support are not verified yet.
 
 ## Build
 

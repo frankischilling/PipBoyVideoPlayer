@@ -17,6 +17,7 @@ namespace {
 constexpr std::uintptr_t kTileMenuArrayPointer = 0x011F350Cu;
 constexpr std::uintptr_t kMenuVisibilityArray = 0x011F308Fu;
 constexpr std::uintptr_t kTileImageVtable = 0x0106F01Cu;
+constexpr std::uintptr_t kTileShaderPropertyVtable = 0x010B9D28u;
 constexpr std::uintptr_t kNiSourceTextureVtable = 0x0109B9ECu;
 constexpr std::uintptr_t kNiDx9SourceTextureDataVtable = 0x010ED37Cu;
 constexpr std::uint32_t kMenuTypeMin = 0x3E9u;
@@ -26,12 +27,9 @@ constexpr std::uint32_t kValueY = ::Tile::kTileValue_y;
 constexpr std::uint32_t kValueVisible = ::Tile::kTileValue_visible;
 constexpr std::uint32_t kValueHeight = ::Tile::kTileValue_height;
 constexpr std::uint32_t kValueWidth = ::Tile::kTileValue_width;
-constexpr std::uint32_t kValueFilename = ::Tile::kTileValue_filename;
 constexpr std::size_t kMaxTileValues = 4096;
 constexpr std::size_t kMaxTilesVisited = 512;
 constexpr std::size_t kMaxParentDepth = 64;
-constexpr std::uint32_t kMaxSurfaceRefreshes = 8u;
-constexpr char kSurfaceFilename[] = "Interface\\PipBoyVideoPlayer\\Surface.dds";
 
 enum class ResolveStatus : std::uint32_t {
     kMapHidden = 1u,
@@ -91,9 +89,15 @@ struct Tile {
 struct TileImage {
     Tile tile;
     float unknown_38;
-    void* texture;
+    void* direct_texture;
     void* shader_property;
     std::uint8_t unknown_44[4];
+};
+
+struct TileShaderPropertyLayout {
+    std::uint8_t unknown_00[0x60];
+    void* source_texture;
+    void* alpha_texture;
 };
 
 struct NiTextureLayout {
@@ -111,7 +115,10 @@ static_assert(offsetof(Tile, values) == 0x14);
 static_assert(offsetof(Tile, name) == 0x20);
 static_assert(offsetof(Tile, parent) == 0x28);
 static_assert(sizeof(TileImage) == 0x48);
-static_assert(offsetof(TileImage, texture) == 0x3C);
+static_assert(offsetof(TileImage, direct_texture) == 0x3C);
+static_assert(offsetof(TileImage, shader_property) == 0x40);
+static_assert(offsetof(TileShaderPropertyLayout, source_texture) == 0x60);
+static_assert(offsetof(TileShaderPropertyLayout, alpha_texture) == 0x64);
 static_assert(offsetof(NiTextureLayout, renderer_data) == 0x24);
 static_assert(offsetof(NiDx9TextureDataLayout, d3d_base_texture) == 0x64);
 
@@ -174,52 +181,6 @@ Tile* FindDescendant(Tile* root, const char* name) noexcept {
         }
     }
     return nullptr;
-}
-
-TileImage* FindFirstTexturedImage(Tile* root, const Tile* excluded) noexcept {
-    if (root == nullptr) {
-        return nullptr;
-    }
-    std::array<Tile*, kMaxTilesVisited> pending{};
-    std::size_t pending_count = 0;
-    pending[pending_count++] = root;
-    std::size_t visited = 0;
-
-    while (pending_count > 0 && visited++ < kMaxTilesVisited) {
-        Tile* current = pending[--pending_count];
-        if (current != excluded &&
-            reinterpret_cast<std::uintptr_t>(current->vtable) == kTileImageVtable) {
-            auto* image = reinterpret_cast<TileImage*>(current);
-            if (image->texture != nullptr) {
-                return image;
-            }
-        }
-
-        ListNode* list_node = &current->children;
-        std::size_t sibling_guard = 0;
-        while (list_node != nullptr && sibling_guard++ < kMaxTilesVisited) {
-            auto* child_node = static_cast<ChildNode*>(list_node->data);
-            if (child_node != nullptr && child_node->child != nullptr &&
-                pending_count < pending.size()) {
-                pending[pending_count++] = child_node->child;
-            }
-            list_node = list_node->next;
-        }
-    }
-    return nullptr;
-}
-
-bool StringValueEquals(const TileValue* value, const char* expected) noexcept {
-    if (value == nullptr || value->string == nullptr || expected == nullptr) {
-        return false;
-    }
-    const std::size_t expected_length = std::strlen(expected);
-    for (std::size_t index = 0; index <= expected_length; ++index) {
-        if (value->string[index] != expected[index]) {
-            return false;
-        }
-    }
-    return true;
 }
 
 const char* ResolveStatusName(const ResolveStatus status) noexcept {
@@ -345,10 +306,12 @@ const char* UiSurfaceStatusName(const UiSurfaceStatus status) noexcept {
             return "PBVP_VideoSurface unavailable";
         case UiSurfaceStatus::wrong_tile_type:
             return "PBVP_VideoSurface is not a reviewed TileImage";
-        case UiSurfaceStatus::texture_unavailable:
-            return "TileImage texture unavailable";
-        case UiSurfaceStatus::wrong_texture_type:
-            return "TileImage texture is not a reviewed NiSourceTexture";
+        case UiSurfaceStatus::source_texture_unavailable:
+            return "TileImage source texture unavailable";
+        case UiSurfaceStatus::wrong_shader_property_type:
+            return "TileImage shader property has an unknown type";
+        case UiSurfaceStatus::wrong_source_texture_type:
+            return "TileImage source texture is not a reviewed NiSourceTexture";
         case UiSurfaceStatus::renderer_data_unavailable:
             return "NiTexture renderer data unavailable";
         case UiSurfaceStatus::wrong_renderer_data_type:
@@ -383,7 +346,6 @@ void UiBridge::UpdateOnGameThread() noexcept {
                 snapshot.ui_extent.width, snapshot.ui_extent.height);
             found_logged_ = true;
         }
-        RefreshSurfaceTextureOnGameThread();
     } else {
         snapshot.visible = false;
         if (status != ResolveStatus::kMapHidden) {
@@ -399,66 +361,6 @@ void UiBridge::UpdateOnGameThread() noexcept {
         }
     }
     Publish(snapshot);
-}
-
-void UiBridge::RefreshSurfaceTextureOnGameThread() noexcept {
-    __try {
-        auto*** menu_array_pointer = reinterpret_cast<Tile***>(kTileMenuArrayPointer);
-        if (menu_array_pointer == nullptr || *menu_array_pointer == nullptr) {
-            return;
-        }
-        Tile* menu_root = (*menu_array_pointer)[kMapMenuType - kMenuTypeMin];
-        if (menu_root == nullptr) {
-            return;
-        }
-        Tile* surface = FindDescendant(menu_root, "PBVP_VideoSurface");
-        if (surface == nullptr ||
-            reinterpret_cast<std::uintptr_t>(surface->vtable) != kTileImageVtable) {
-            return;
-        }
-        auto* image = reinterpret_cast<TileImage*>(surface);
-        if (image->texture != nullptr ||
-            last_refreshed_surface_ == reinterpret_cast<std::uintptr_t>(surface)) {
-            return;
-        }
-        if (surface_refresh_count_ >= kMaxSurfaceRefreshes) {
-            if (!surface_refresh_limit_logged_) {
-                PBVP_LOG_WARN("Private UI surface filename refresh limit reached");
-                surface_refresh_limit_logged_ = true;
-            }
-            return;
-        }
-
-        TileValue* filename = FindValue(surface, kValueFilename);
-        if (filename == nullptr) {
-            PBVP_LOG_WARN("PBVP_VideoSurface has no filename trait to refresh");
-            last_refreshed_surface_ = reinterpret_cast<std::uintptr_t>(surface);
-            return;
-        }
-        const bool filename_matches = StringValueEquals(filename, kSurfaceFilename);
-        TileImage* reference = FindFirstTexturedImage(menu_root, surface);
-        PBVP_LOG_INFO(
-            "UI image field check before filename refresh: target[3C]=0x%08X target[40]=0x%08X reference[3C]=0x%08X reference[40]=0x%08X",
-            static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(image->texture)),
-            static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(image->shader_property)),
-            static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(
-                reference != nullptr ? reference->texture : nullptr)),
-            static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(
-                reference != nullptr ? reference->shader_property : nullptr)));
-
-        last_refreshed_surface_ = reinterpret_cast<std::uintptr_t>(surface);
-        ++surface_refresh_count_;
-        auto* game_tile = reinterpret_cast<::Tile*>(surface);
-        if (filename_matches) {
-            CALL_MEMBER_FN(game_tile, SetStringValue)(kValueFilename, "", true);
-        }
-        CALL_MEMBER_FN(game_tile, SetStringValue)(kValueFilename, kSurfaceFilename, true);
-        PBVP_LOG_INFO(
-            "Private UI surface filename refreshed on the game thread; prior filename=%s request=%u",
-            filename_matches ? "expected" : "different", surface_refresh_count_);
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        PBVP_LOG_ERROR("Guarded private UI surface filename refresh failed");
-    }
 }
 
 UiSurfaceSnapshot UiBridge::ResolveSurfaceOnSharedThread(
@@ -495,22 +397,45 @@ UiSurfaceSnapshot UiBridge::ResolveSurfaceOnSharedThread(
             return output;
         }
         auto* image = reinterpret_cast<TileImage*>(surface);
-        output.surface_texture_member = reinterpret_cast<std::uintptr_t>(image->texture);
-        output.surface_shader_member = reinterpret_cast<std::uintptr_t>(image->shader_property);
-        auto* texture = static_cast<NiTextureLayout*>(image->texture);
-        if (texture == nullptr) {
-            TileImage* reference = FindFirstTexturedImage(menu_root, surface);
-            if (reference != nullptr) {
-                output.reference_texture_member =
-                    reinterpret_cast<std::uintptr_t>(reference->texture);
-                output.reference_shader_member =
-                    reinterpret_cast<std::uintptr_t>(reference->shader_property);
-            }
-            output.status = UiSurfaceStatus::texture_unavailable;
-            return output;
+        output.direct_texture = reinterpret_cast<std::uintptr_t>(image->direct_texture);
+        output.shader_property = reinterpret_cast<std::uintptr_t>(image->shader_property);
+        if (image->direct_texture != nullptr) {
+            output.direct_texture_vtable =
+                *reinterpret_cast<const std::uintptr_t*>(image->direct_texture);
         }
-        if (*reinterpret_cast<const std::uintptr_t*>(texture) != kNiSourceTextureVtable) {
-            output.status = UiSurfaceStatus::wrong_texture_type;
+
+        NiTextureLayout* texture = nullptr;
+        if (image->shader_property != nullptr) {
+            output.shader_property_vtable =
+                *reinterpret_cast<const std::uintptr_t*>(image->shader_property);
+            if (output.shader_property_vtable != kTileShaderPropertyVtable) {
+                output.status = UiSurfaceStatus::wrong_shader_property_type;
+                return output;
+            }
+            auto* shader_property =
+                static_cast<TileShaderPropertyLayout*>(image->shader_property);
+            output.shader_source_texture =
+                reinterpret_cast<std::uintptr_t>(shader_property->source_texture);
+            if (shader_property->source_texture != nullptr) {
+                output.shader_source_texture_vtable =
+                    *reinterpret_cast<const std::uintptr_t*>(shader_property->source_texture);
+                if (output.shader_source_texture_vtable != kNiSourceTextureVtable) {
+                    output.status = UiSurfaceStatus::wrong_source_texture_type;
+                    return output;
+                }
+                texture = static_cast<NiTextureLayout*>(shader_property->source_texture);
+            }
+        }
+
+        if (texture == nullptr && image->direct_texture != nullptr) {
+            if (output.direct_texture_vtable != kNiSourceTextureVtable) {
+                output.status = UiSurfaceStatus::wrong_source_texture_type;
+                return output;
+            }
+            texture = static_cast<NiTextureLayout*>(image->direct_texture);
+        }
+        if (texture == nullptr) {
+            output.status = UiSurfaceStatus::source_texture_unavailable;
             return output;
         }
         auto* renderer_data = static_cast<NiDx9TextureDataLayout*>(texture->renderer_data);
@@ -567,7 +492,6 @@ void UiBridge::Clear() noexcept {
     found_logged_ = false;
     map_visible_logged_ = false;
     last_failure_ = 0u;
-    last_refreshed_surface_ = 0u;
 }
 
 void UiBridge::Publish(const UiRectSnapshot& snapshot) noexcept {

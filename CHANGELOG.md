@@ -7,9 +7,8 @@
 - Added a UIO prefab with a named video rectangle, private engine image, visible layer probes, and a game-thread bridge.
 - Added the unconditional UIO registration condition required to inject the prefab.
 - Added a deterministic 256x256 BGRA DDS generator for the private video surface.
-- Added guarded checks for the reviewed `TileImage`, `NiSourceTexture`, and `NiDX9SourceTextureData` layouts.
-- Added a bounded game-thread filename refresh through the reviewed xNVSE tile setter when the private image has no texture.
-- Added target and reference image-field diagnostics for distinguishing a failed filename load from a wrong native offset.
+- Added guarded checks for the reviewed `TileImage`, `TileShaderProperty`, `NiSourceTexture`, and `NiDX9SourceTextureData` layouts.
+- Added diagnostics for the direct image texture, shader property, and shader source texture.
 - Added a Direct3D 9 checkerboard upload that uses a temporary COM reference and leaves drawing to Gamebryo.
 - Added device-profile, surface-profile, texture-upload, thread-identity, and device-recreation diagnostics.
 - Added one-time diagnostics for game-thread UI polling, MapMenu lookup, frame presentation, and D3D device discovery.

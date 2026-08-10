@@ -101,6 +101,12 @@ The first run displayed `PBVP UI LAYER` near the upper-left of the Pip-Boy. The 
 
 The packaged DDS passed the 32-bit DirectX 9 image-info call used by this game build. The next candidate clears and restores the same private filename through `Tile::SetStringValue` after MapMenu becomes live. It will also report whether a known probe image has a non-null field at the reviewed texture offset.
 
+Second run: filename refresh rejected
+
+The follow-up build found the expected filename, cleared and restored it once through `Tile::SetStringValue`, and exited cleanly. The visible result did not change. The user saw `PBVP UI LAYER`, the normal frame, and usable controls, but no dark purple surface or green checkerboard. Before the refresh and at the upload boundary, `TileImage + 0x3C` was null and `+0x40` held the same non-null object.
+
+The null direct member did not prove that the image lacked a render texture. Maintained JIP LN NVSE layouts identify `+0x40` as `TileShaderProperty` and its source texture at offset `0x60`. Psycho's decompiled `TileImage` node-building path also sends `+0x40` through the render-object setup. The next candidate removes the refresh and verifies that shader-property chain with exact vtables before attempting an upload.
+
 ## Required profiles
 
 | Profile | Purpose |

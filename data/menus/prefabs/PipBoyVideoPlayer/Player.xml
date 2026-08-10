@@ -41,7 +41,7 @@
             <red> 0 </red>
             <green> 0 </green>
             <blue> 0 </blue>
-            <filename> Interface\Shared\solid.dds </filename>
+            <filename> Interface\Shared\Background\solid_black.dds </filename>
         </image>
 
         <text name="PBVP_LayerProbe">

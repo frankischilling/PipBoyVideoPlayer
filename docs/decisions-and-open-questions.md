@@ -154,7 +154,19 @@ Evidence: the first engine-image run showed `PBVP UI LAYER`, the normal Pip-Boy 
 
 Rejected alternatives: the plugin will not write an engine reference-counted field, reuse a shared UI texture, or call the less-understood `TileImage::SetTexture` routine. Changing the DDS header without evidence would not address the verified DirectX result.
 
-Consequence: the next build will verify the filename trait, issue one bounded refresh per live surface, and compare the private image with a known UIO probe image when loading still fails. If the engine still leaves the reference null, the log will distinguish a filename propagation failure from a wrong native field interpretation.
+Consequence: this candidate was tested once and rejected by the follow-up run described below.
+
+### Tile shader source texture path
+
+Date: August 9, 2026
+
+Decision: remove the filename refresh and resolve the image used for drawing through `TileImage::shaderProp` at offset `0x40`, followed by `TileShaderProperty::srcTexture` at offset `0x60`. The bridge must verify the exact `TileShaderProperty` and `NiSourceTexture` vtables before following either object. It may use the direct `TileImage::texture` member at offset `0x3C` only when that member is non-null and has the exact `NiSourceTexture` vtable.
+
+Evidence: the filename-refresh build produced the same visible result as the first engine-image build. The user saw `PBVP UI LAYER` and usable Pip-Boy controls, but no private surface or checkerboard. The log recorded a null `TileImage + 0x3C` member and a stable non-null `+0x40` member before and after the refresh. Psycho's maintained decompilation of the `TileImage` node-building routine passes `+0x40` into the engine's render-object setup. JIP LN NVSE identifies that member as `TileShaderProperty`, gives its vtable as `0x010B9D28`, and places the visible source texture at `TileShaderProperty + 0x60`.
+
+Rejected alternatives: `+0x40` is not a texture and will not be cast as one. The plugin will not write either engine field or call a texture replacement routine. Keeping the filename refresh would add game-object mutation without addressing the field that Gamebryo uses for drawing.
+
+Consequence: the next build will follow the shader property's source texture only after both object types match. Its diagnostic record will include the direct texture, shader property, shader source texture, and their vtables. Any mismatch leaves the Pip-Boy usable and disables the upload.
 
 ### Verified reset hook only
 

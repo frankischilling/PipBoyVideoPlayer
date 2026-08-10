@@ -22,8 +22,9 @@ enum class UiSurfaceStatus : std::uint32_t {
     menu_unavailable,
     image_unavailable,
     wrong_tile_type,
-    texture_unavailable,
-    wrong_texture_type,
+    source_texture_unavailable,
+    wrong_shader_property_type,
+    wrong_source_texture_type,
     renderer_data_unavailable,
     wrong_renderer_data_type,
     d3d_texture_unavailable,
@@ -32,10 +33,12 @@ enum class UiSurfaceStatus : std::uint32_t {
 
 struct UiSurfaceSnapshot {
     std::uintptr_t d3d_texture{};
-    std::uintptr_t surface_texture_member{};
-    std::uintptr_t surface_shader_member{};
-    std::uintptr_t reference_texture_member{};
-    std::uintptr_t reference_shader_member{};
+    std::uintptr_t direct_texture{};
+    std::uintptr_t direct_texture_vtable{};
+    std::uintptr_t shader_property{};
+    std::uintptr_t shader_property_vtable{};
+    std::uintptr_t shader_source_texture{};
+    std::uintptr_t shader_source_texture_vtable{};
     UiSurfaceStatus status{UiSurfaceStatus::image_unavailable};
 };
 
@@ -52,7 +55,6 @@ public:
 
 private:
     UiBridge() = default;
-    void RefreshSurfaceTextureOnGameThread() noexcept;
     void Publish(const UiRectSnapshot& snapshot) noexcept;
 
     std::atomic<std::uint32_t> sequence_{0};
@@ -69,9 +71,6 @@ private:
     bool map_visible_logged_{};
     std::uint32_t last_failure_{};
     bool found_logged_{};
-    std::uintptr_t last_refreshed_surface_{};
-    std::uint32_t surface_refresh_count_{};
-    bool surface_refresh_limit_logged_{};
 };
 
 } // namespace pbvp
