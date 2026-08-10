@@ -165,7 +165,9 @@ The host and Win32 suites verify the audited `NiDX9Renderer::Recreate` return va
 
 Automated hook conflict classification
 
-The host and Win32 suites verify safe refusal for x86 relative jumps, absolute indirect jumps, push and return stubs, register jumps, and jumps after common hotpatch prefixes. A byte sequence that is neither a reviewed original entry nor a recognized redirect remains unknown and is also refused. This proves the pure classification gate. A live conflict test still needs a controlled fixture because the development profile must not patch another installed plugin.
+The host and Win32 suites verify safe refusal for x86 relative jumps, absolute indirect jumps, push and return stubs, register jumps, and jumps after common hotpatch prefixes. A byte sequence that is neither a reviewed original entry nor a recognized redirect remains unknown and is also refused.
+
+The Win32 integration fixture uses the pinned MinHook build to redirect a function inside the test process. The probe classifies the patched entry as occupied. The fixture then removes the hook and confirms that the original function works again. This exercises a live redirect without patching Fallout or another installed plugin. An in-game occupied-target check remains unnecessary unless another graphics plugin supplies a controlled and reversible fixture.
 
 ### Repeatable diagnostic log check
 
