@@ -18,8 +18,10 @@ add_library(pbvp_core STATIC
     src/core/frame_cadence.cpp
     src/core/media_limits.cpp
     src/core/playback_clock.cpp
+    src/core/playback_state.cpp
     src/core/rect_math.cpp
-    src/core/texture_contract.cpp)
+    src/core/texture_contract.cpp
+    src/core/video_scheduler.cpp)
 target_include_directories(pbvp_core PUBLIC include)
 target_compile_features(pbvp_core PUBLIC cxx_std_20)
 target_compile_definitions(pbvp_core PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
@@ -272,8 +274,10 @@ if(PBVP_BUILD_TESTS)
         tests/frame_cadence_tests.cpp
         tests/media_limits_tests.cpp
         tests/playback_clock_tests.cpp
+        tests/playback_state_tests.cpp
         tests/rect_math_tests.cpp
         tests/texture_contract_tests.cpp
+        tests/video_scheduler_tests.cpp
         tests/test_main.cpp)
     target_link_libraries(pbvp_tests PRIVATE pbvp_core)
     target_compile_features(pbvp_tests PRIVATE cxx_std_20)
