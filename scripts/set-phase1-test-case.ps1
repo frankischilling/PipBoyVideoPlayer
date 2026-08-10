@@ -144,7 +144,9 @@ if (@($enabledMods | Where-Object {
 }
 if (@($enabledMods | Where-Object {
         $_ -eq '+Pip-Boy Video Player - Phase 1 Save Guard'
-    }).Count -ne 1) {
+    }).Count -ne 1 -or @($enabledMods | Where-Object {
+        $_ -eq '-Pip-Boy Video Player - Phase 1 Save Guard'
+    }).Count -ne 0) {
     throw 'The Phase 1 save guard is not enabled exactly once in the selected profile.'
 }
 

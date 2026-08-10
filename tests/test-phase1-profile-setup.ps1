@@ -126,13 +126,29 @@ try {
         $targetModList = Join-Path $profiles "$target\modlist.txt"
         $lines = [Collections.Generic.List[string]]::new()
         foreach ($line in Get-Content -LiteralPath $targetModList) {
-            if ($line -ne "+$guardName") { $lines.Add($line) }
+            if ($line -eq "+$guardName") {
+                $lines.Add("-$guardName")
+            } else {
+                $lines.Add($line)
+            }
         }
         [IO.File]::WriteAllLines($targetModList, $lines)
     }
     Remove-Item -LiteralPath (Join-Path $mods $guardName) -Recurse -Force
     & $script -InstanceRoot $tempRoot -InstallSaveGuard -Confirm:$false
     & $script -InstanceRoot $tempRoot -VerifyOnly
+    foreach ($target in @(
+            'PBVP Phase 1 Base',
+            'PBVP Phase 1 VUI Plus',
+            'PBVP Phase 1 Extended',
+            'PBVP Phase 1 Extended No Pip-Boy Tweaks')) {
+        $targetModList = @(Get-Content -LiteralPath (
+            Join-Path $profiles "$target\modlist.txt"))
+        if ($targetModList -contains "-$guardName" -or
+            @($targetModList | Where-Object { $_ -eq "+$guardName" }).Count -ne 1) {
+            throw "The disabled save guard was not repaired in $target."
+        }
+    }
 
     $vuiList = @(Get-Content -LiteralPath (
         Join-Path $profiles 'PBVP Phase 1 VUI Plus\modlist.txt'))

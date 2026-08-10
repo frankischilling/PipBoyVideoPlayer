@@ -120,6 +120,30 @@ function Write-ModList {
     [IO.File]::WriteAllLines($Path, $Lines, [Text.UTF8Encoding]::new($false))
 }
 
+function Enable-ModExactlyOnce {
+    param(
+        [Parameter(Mandatory)][Collections.Generic.List[string]]$Lines,
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][int]$InsertAt
+    )
+    $indices = @()
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index] -eq "+$Name" -or $Lines[$index] -eq "-$Name") {
+            $indices += $index
+        }
+    }
+    if ($indices.Count -eq 0) {
+        $Lines.Insert($InsertAt, "+$Name")
+        return $InsertAt
+    }
+    $keep = $indices[0]
+    $Lines[$keep] = "+$Name"
+    for ($match = $indices.Count - 1; $match -ge 1; $match--) {
+        $Lines.RemoveAt($indices[$match])
+    }
+    return $keep
+}
+
 function Add-TestMods {
     param([Parameter(Mandatory)][string]$Path)
     $lines = Read-ModList -Path $Path
@@ -129,13 +153,10 @@ function Add-TestMods {
         $lines.Insert($insertAt, '# PBVP Phase 1 test profile. Existing VNV profiles remain unchanged.')
         $insertAt++
     }
-    if (-not $lines.Contains("+$saveGuardModName")) {
-        $lines.Insert($insertAt, "+$saveGuardModName")
-        $insertAt++
-    }
-    if (-not $lines.Contains('+Pip-Boy Video Player - Dev')) {
-        $lines.Insert($insertAt, '+Pip-Boy Video Player - Dev')
-    }
+    $guardIndex = Enable-ModExactlyOnce `
+        -Lines $lines -Name $saveGuardModName -InsertAt $insertAt
+    [void](Enable-ModExactlyOnce `
+        -Lines $lines -Name 'Pip-Boy Video Player - Dev' -InsertAt ($guardIndex + 1))
     Write-ModList -Path $Path -Lines $lines
 }
 
@@ -234,7 +255,8 @@ function Test-Profile {
     if (@($lines | Where-Object { $_ -eq '+Pip-Boy Video Player - Dev' }).Count -ne 1) {
         throw "Development mod is not enabled exactly once: $($Specification.Target)"
     }
-    if (@($lines | Where-Object { $_ -eq "+$saveGuardModName" }).Count -ne 1) {
+    if (@($lines | Where-Object { $_ -eq "+$saveGuardModName" }).Count -ne 1 -or
+        @($lines | Where-Object { $_ -eq "-$saveGuardModName" }).Count -ne 0) {
         throw "Phase 1 save guard is not enabled exactly once: $($Specification.Target)"
     }
     Test-MultiIniSupport -ModListPath $modList
