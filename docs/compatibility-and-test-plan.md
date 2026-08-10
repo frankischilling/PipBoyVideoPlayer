@@ -223,6 +223,10 @@ The counter waits for one FalloutNV process, then polls the foreground window's 
 
 The user later performed what they estimated as more than 44 additional Alt+Tab cycles on the hook-free build. The checkerboard remained usable, and the session log passed with 21,933 callbacks, ten successful surface uploads, zero upload failures, and a normal shutdown. Uploads ranged from 24.60 to 47.70 microseconds. This is a clean extended stress result, but the estimate is not an exact 50-cycle measurement. The external counter must supply that final acceptance record.
 
+The first measured run ended after four completed focus cycles because FalloutNV crashed. The counter recorded `EndReason` as `process-exit`, an incomplete final focus loss, and a missed 50-cycle target. The plugin log recorded three successful managed-texture uploads from 45.50 to 50.20 microseconds and no upload failure, but it ended without the renderer or shutdown summary. CrashLogger reported an access violation on an NVIDIA Direct3D worker thread.
+
+The crash report contains no PBVP frame. A March 14, 2026 crash from before PBVP development used the same NVIDIA driver version and the same final five `nvd3dum` call frames. That history makes the cause uncertain. It does not convert the failed measured run into a pass. The next test must repeat the same counter and Alt+Tab procedure with only the separate PBVP development mod disabled. PBVP must then be re-enabled for a matched test. Another driver crash in the control run is baseline evidence. A control pass followed by repeated PBVP failures requires further renderer isolation.
+
 ## Required profiles
 
 | Profile | Purpose |
