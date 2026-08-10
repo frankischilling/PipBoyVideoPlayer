@@ -499,6 +499,8 @@ The third attempt captured `video_pixel_buffer`. The 1280 by 720 container opene
 
 The bounded-output native build passed its first gate. A 1080p source produced 512 by 288 queued frames, and all three decoder slots held 1,769,472 bytes. The real long fixture stayed in playback for five seconds with 150 decoded frames, 143 delivered frames, six late drops, 245,760 submitted audio samples, a 4,940,000-microsecond clock, and no failure site. This is native process evidence only. The short in-game startup check remains open.
 
+The first bounded-output in-game attempt played and uploaded video for about four seconds, then failed at `video_pixel_buffer` again. The 589,824-byte payload failed while the process had a 1,547,436,032-byte contiguous free region. This rejects payload size and virtual address-space exhaustion as sufficient explanations. The next candidate moves only video pixel storage from the C++ heap to checked `VirtualAlloc` regions. It must pass a new short live run before the 30-minute row resumes.
+
 ## UI matrix
 
 Test these layouts independently:

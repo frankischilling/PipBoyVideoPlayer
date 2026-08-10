@@ -502,6 +502,20 @@ Consequence: update the decoder, high-resolution memory test, performance measur
 
 Implementation evidence: the x86 decoder now produces 512 by 288 frames for a 1080p source. Three queued frames occupy 1,769,472 bytes. The complete 1080p regression passed, and the real long fixture stayed in playback for a five-second native run with no error or failure site. The in-game startup check remains open.
 
+### Allocate video payloads outside the game heap
+
+Date: August 10, 2026
+
+Decision: allocate video pixel vectors with a Windows `VirtualAlloc` allocator and release them with `VirtualFree`. Keep the existing vector interface, move-only frame handoff, frame counts, and byte limits. Audio sample vectors remain on their current allocator because the live audio path did not fail.
+
+Reason: video payloads are large, short-lived blocks that cross the decoder, game-thread scheduler, and render mailbox. A virtual-memory allocator gives each payload its own committed region and does not depend on the game process's C++ heap state. The allocator still throws a contained allocation error if Windows refuses the request.
+
+Evidence: the first bounded-output live run played for about four seconds, then a 589,824-byte video pixel allocation failed. Process private memory was 1,542,602,752 bytes, the largest free region was 1,547,436,032 bytes, and total free virtual memory was 1,606,086,656 bytes. Reducing the payload by 84 percent did not make repeated C++ heap allocation reliable.
+
+Rejected alternatives: do not reduce the source or intermediate resolution again, increase queue limits, hide the error, or move allocation to the render thread. Do not use FFmpeg's allocator because queued frames can outlive decoder contexts and must not depend on FFmpeg library lifetime.
+
+Consequence: add a typed allocator with checked byte arithmetic, use it only for `DecodedVideoFrame` pixel storage, test repeated allocation and move ownership, and repeat the short live startup test before restarting the 30-minute run.
+
 ### System XAudio2 2.9 runtime
 
 Date: August 10, 2026
