@@ -48,11 +48,11 @@ When the decoder is ahead, it waits. When rendering is late, the presentation si
 
 ### Audio queue and output
 
-The decode worker resamples audio to a fixed PCM format selected during stream setup. An audio feeder maintains a small XAudio2 buffer queue. Completed buffers return to a pool through voice callbacks; callback code only signals state and does not allocate, log, decode, or touch game objects.
+The decode worker resamples audio to a fixed PCM format selected during stream setup. An audio feeder maintains a small XAudio2 buffer queue from a fixed pool. Completed buffers return to that pool through voice callbacks. Each callback performs only atomic state or counter updates. It does not allocate, log, decode, acquire a PBVP mutex, call game code, or perform blocking work.
 
 XAudio2 `SamplesPlayed` is the master clock once playback starts. The clock subtracts known pre-roll and seek offsets. For silent videos, a QueryPerformanceCounter timeline becomes the master.
 
-The player owns its XAudio2 engine and voices unless an implementation spike finds a safe game audio interface with equivalent timing data. Using a separate engine avoids altering Fallout's audio objects. The player volume follows its own setting in the first release; integration with game effect-volume settings is a later decision.
+The player owns a system XAudio2 2.9 engine, mastering voice, source voice, callback target, and buffer pool. Using a separate engine avoids altering Fallout's audio objects. The source voice uses the default output device so Windows can follow ordinary device changes. The player volume follows its own setting in the first release; integration with game effect-volume settings is a later decision.
 
 ### Renderer
 
@@ -89,9 +89,9 @@ If those statements cannot be proven, the project needs a different presentation
 | Menu tiles and game objects | Game thread | Workers publish plain data only |
 | Player state machine | Game thread | Workers post events without changing state directly |
 
-Current code may hold only one PBVP mutex at a time. A caller must release any player, command, or queue lock before it waits on a queue. Queue methods do not call external code while locked. XAudio2 callbacks acquire no PBVP mutex. Any future need to hold two locks at once requires a documented order and a focused deadlock test before implementation.
+Current code may hold only one PBVP mutex at a time. A caller must release any player, command, or queue lock before it waits on a queue. Queue methods do not call external code while locked. XAudio2 callbacks acquire no PBVP mutex. The audio owner calls XAudio2 only from its owning thread and observes callback results through atomics. Any future need to hold two locks at once requires a documented order and a focused deadlock test before implementation.
 
-No callback may wait on the game thread. Shutdown signals workers, stops audio, joins the decode worker, and then releases libraries and hooks.
+No callback may wait on the game thread. A completed XAudio2 buffer is not reused until its `OnBufferEnd` notification arrives. Pause stops the source voice without flushing it. Seek and stop halt the source voice and flush pending buffers, then the owner waits outside any PBVP lock until XAudio2 reports no queued buffers. Shutdown destroys the source voice before releasing its callback target or buffer pool. XAudio2 documents that `DestroyVoice` returns only after audio processing is idle, so no callback or buffer read can reach those targets afterward. Shutdown then joins the decode worker before releasing libraries and hooks.
 
 ## Error containment
 

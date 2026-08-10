@@ -8,7 +8,7 @@ The plugin is a 32-bit Windows DLL. The checked build uses:
 - CMake presets for repeatable developer and release builds;
 - LLVM 22.1.0 `llvm-pdbutil` for validating public release symbols;
 - the Windows SDK and Direct3D 9 headers and import library;
-- XAudio2 2.7 from the legacy DirectX SDK if the audio spike selects it;
+- XAudio2 2.9 from the Windows SDK and the matching Windows system runtime;
 - xNVSE plugin headers pinned to a reviewed commit;
 - FFmpeg 8.1.2 built for i686 with MSYS2 GCC 15.2.0;
 - NASM 3.01, GNU Make 4.4.1, and pkgconf 2.5.1 for the FFmpeg build.
@@ -40,6 +40,8 @@ The exact configure arguments are stored in the manifest and applied by `scripts
 The runtime contains only `avcodec-62.dll`, `avformat-62.dll`, `avutil-60.dll`, `swresample-6.dll`, and `swscale-9.dll`. Every file is an i386 PE image. The manifest records each SHA-256 hash and exact import set. Two clean builds on August 10, 2026 produced the same hashes. The automated audit rejects a changed hash, wrong architecture, changed import, extra DLL, or private local path.
 
 These DLLs belong in the private `PipBoyVideoPlayer\bin` directory. The plugin must construct absolute dependency paths and use restricted Windows DLL search APIs. FFmpeg DLLs must not be copied into the game root or the shared `Data\NVSE\Plugins` directory.
+
+PBVP links the x86 Windows SDK `xaudio2.lib` import library and uses the system `XAudio2_9.dll` supplied by Windows 10 and Windows 11. The release does not include an XAudio2 DLL or the legacy DirectX SDK runtime. The package audit must reject any bundled `XAudio2*.dll` file.
 
 ## Proposed release layout
 

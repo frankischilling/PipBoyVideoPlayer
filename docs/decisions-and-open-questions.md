@@ -460,6 +460,30 @@ Decision: use XAudio2's played-sample cursor as the master clock when audio is p
 
 Reason: synchronizing video to consumed audio prevents a slow game frame rate from causing cumulative drift.
 
+### System XAudio2 2.9 runtime
+
+Date: August 10, 2026
+
+Decision: use the Windows 10 and Windows 11 system XAudio2 2.9 runtime through the x86 Windows SDK import library. Create a separate PBVP engine and voices on the default output device. Do not package an XAudio2 DLL.
+
+Evidence: the target system has Windows SDK 10.0.26100.0 with the x86 `xaudio2.lib`, and its 32-bit system directory provides `XAudio2_9.dll`. The current SDK desktop entry point restricts loading to the system directory. Microsoft's version documentation makes XAudio2 2.9 the current system component for the project's existing Windows 10 and Windows 11 support range. Its voice state exposes `SamplesPlayed`, and the default-device path supports ordinary device switching through the Windows audio stack.
+
+Rejected alternatives: do not add the legacy DirectX SDK solely for XAudio2 2.7, ship an XAudio2 runtime beside the plugin, load an arbitrary DLL path, or alter Fallout's audio engine objects. Dynamic selection between 2.7, 2.8, and 2.9 would add untested behavior outside the supported operating systems.
+
+Consequence: the runtime archive gains no audio DLL. The build and package checks must use the x86 system import and reject a bundled `XAudio2*.dll`. Phase 3 must still test engine creation, default-device failure, pause, seek, end of stream, and sample-origin accounting on the target machine.
+
+### XAudio2 callback and buffer lifetime
+
+Date: August 10, 2026
+
+Decision: preallocate a fixed PCM buffer pool. Voice callbacks may only update atomics that identify completed buffers, stream end, or an audio error. They may not allocate, log, block, acquire a PBVP mutex, decode, or touch game objects.
+
+Evidence: Microsoft requires submitted audio memory to remain valid until `OnBufferEnd` or voice destruction. `Stop` is asynchronous and preserves queued audio. `FlushSourceBuffers` removes pending buffers but can return their callbacks out of order. `DestroyVoice` waits for audio processing to become idle and guarantees that callbacks and buffer reads have ended before it returns.
+
+Rejected alternatives: do not allocate or free from a callback, perform decoder work there, reuse a flushed slot before its completion is observed, hold a player lock while draining XAudio2, or release a callback target before destroying its source voice.
+
+Consequence: each submitted slot remains stable until its own completion. Pause uses `Stop` without a flush. Seek and stop halt and flush the source voice, then drain completions outside PBVP locks. Shutdown destroys the source voice before releasing the callback target and pool. The audio owner must create a new sample origin after a flushed seek because the source voice counter no longer describes the old media position.
+
 ### Bounded software decode
 
 Date: August 10, 2026
@@ -553,10 +577,9 @@ Reason: the player should be safe to add or remove and should not leave missing 
 
 ## Open questions before phase three
 
-1. Is XAudio2 2.7 the right compatibility target, or should the plugin select 2.8 or 2.9 dynamically on newer Windows?
-2. How should player volume relate to the game's master and effects volume?
-3. What buffering depth avoids underruns without making pause and seek feel sluggish?
-4. How should audio-device removal appear to the user?
+1. How should player volume relate to the game's master and effects volume?
+2. What buffering depth avoids underruns without making pause and seek feel sluggish?
+3. How should audio-device removal appear to the user?
 
 ## Open questions before release
 
