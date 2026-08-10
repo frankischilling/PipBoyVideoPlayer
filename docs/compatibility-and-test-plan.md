@@ -495,6 +495,8 @@ The first in-game attempt began decoding, audio playback, and texture upload, th
 
 The second in-game attempt used the corrected staging build but stopped at a different boundary about 39 milliseconds after opening. XAudio2 had not initialized and no decoded frame reached the renderer. The worker reported `allocation_failed`, and the controller observed it at `decoder_state_before_drain`. The standalone x86 decoder still completes the identical file. The next short run must capture the new fixed allocation-site code and the process address-space snapshot before any queue, container, or decoded-frame layout changes.
 
+The third attempt captured `video_pixel_buffer`. The 1280 by 720 container opened, playback reached buffering, and the audio backend reported `ok`, but the first 3,686,400-byte BGRA conversion buffer threw an allocation exception. Process private memory was 1,590,300,672 bytes at failure. Its largest free virtual-memory region was 1,536,557,056 bytes, so contiguous address-space exhaustion does not explain the failed allocation. The next build keeps the 1920 by 1080 input cap but scales queued BGRA output into a 512 by 512 bound. A short live startup check must pass before another 30-minute run begins.
+
 ## UI matrix
 
 Test these layouts independently:

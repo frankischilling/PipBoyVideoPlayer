@@ -486,6 +486,20 @@ Rejected alternatives: do not reduce source limits, queue sizes, decoder threads
 
 Consequence: one short diagnostic run must record the new allocation site and address-space snapshot. If the failure is the full-resolution BGRA buffer and contiguous space is constrained, revise the decoder to scale into a bounded presentation intermediate while keeping the 720p and 1080p input checks. If container opening fails, investigate MP4 indexing without changing the frame pipeline.
 
+### Bound decoded output before queue insertion
+
+Date: August 10, 2026
+
+Decision: keep validating source dimensions against the 1920 by 1080 input cap, but scale decoded BGRA output to fit within a 512 by 512 intermediate before rotation and queue insertion. Do not upscale smaller sources. Preserve original source and display dimensions in media metadata. This entry supersedes the previous instruction to retain source-sized decoded frames.
+
+Reason: the engine-owned presentation texture is 256 by 256. The full-resolution BGRA queue consumes memory that the renderer discards when it prepares that texture. A 16:9 source becomes 512 by 288, or 589,824 bytes per queued frame. Three frames use 1,769,472 bytes instead of 24,883,200 bytes for three 1080p frames. Rotation keeps the same pixel count and swaps the scaled dimensions.
+
+Evidence: the allocation diagnostic identified `video_pixel_buffer` on the third long-playback attempt. The 1280 by 720 fixture opened and reached buffering, but its first 3,686,400-byte BGRA vector allocation failed. Process private memory was 1,590,300,672 bytes, the largest free region was 1,536,557,056 bytes, and total free virtual memory was 1,609,023,488 bytes. The source-sized C++ frame allocation is unreliable in the loaded VNV process despite ample contiguous address space and successful standalone decoding.
+
+Rejected alternatives: do not lower the accepted source resolution, shorten the test file, fragment the MP4, or place an unbounded allocation in another thread. Do not decode directly to 256 by 256 because the current renderer still needs room for later aspect-mode and tint processing.
+
+Consequence: update the decoder, high-resolution memory test, performance measurements, and documentation. The 30-minute in-game test must restart from the beginning after a short live run proves that the first frame and audio stream both start.
+
 ### System XAudio2 2.9 runtime
 
 Date: August 10, 2026

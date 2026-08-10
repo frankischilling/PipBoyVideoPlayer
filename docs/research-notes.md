@@ -307,6 +307,10 @@ The corrected long-playback build failed differently on its second live attempt.
 
 The old decoder failure record could not identify which allocation failed. It collapsed exceptions from container opening, the BGRA conversion buffer, rotation, audio conversion, and queue insertion into one status. The next diagnostic assigns a fixed site to each allocation boundary. It also records private bytes, working set, the largest contiguous free virtual-memory region, and total free virtual memory before opening and when playback fails. Normal builds retain only the fixed failure-site code and do not scan the address space.
 
+The allocation diagnostic identified `video_pixel_buffer` on the third long-playback attempt. The known 1280 by 720 fixture opened, the controller entered buffering, and the audio backend reported `ok`. The worker failed while allocating the first 3,686,400-byte BGRA conversion buffer. No frame reached the presentation mailbox.
+
+Process private memory was 1,588,396,032 bytes before open and 1,590,300,672 bytes at failure. The largest free virtual-memory region fell from 1,586,409,472 to 1,536,557,056 bytes, and total free virtual memory remained 1,609,023,488 bytes. The failure did not coincide with a shortage of contiguous virtual address space. The source-sized C++ frame allocation remains unreliable in the loaded VNV process even though the standalone x86 decoder and an earlier short in-game fixture completed.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.
