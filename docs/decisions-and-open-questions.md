@@ -348,6 +348,8 @@ Consequence: the test-case script accepts only the documented Phase 1 resolution
 
 First capped result: the 1280x720 native windowed case used VSync off and the existing RTSS FalloutNV profile at 30 FPS. Six visible cadence samples measured 30.00 to 30.01 FPS. The user reported that the panel and input looked good. The log confirmed the requested backbuffer, one 25.70-microsecond upload, no failure, both summaries, and a clean shutdown. This accepts the 1280x720, 30 FPS, and VSync-off row. It does not cover another resolution or cap.
 
+Second capped result: the first 1280x960 visual run passed placement and input, but focus or menu pauses lowered its cadence average to 41.97 FPS. The strict 60 FPS check rejected that timing sample. A retry kept the Data page focused and untouched. Its eight samples measured 59.98 to 60.04 FPS with a 60.00 FPS average. The retry confirmed the 1280x960 backbuffer, one 26.30-microsecond upload, no failure, an empty save directory, and a clean shutdown. This accepts the 4:3 resolution, 60 FPS cap, and VSync-on row without relabeling the disturbed run as a pass.
+
 ### Native fullscreen focus-cycle baseline
 
 Date: August 10, 2026

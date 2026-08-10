@@ -301,6 +301,16 @@ The user reported that the panel looked good and input remained usable. The plug
 
 Six visible cadence samples measured 30.00 to 30.01 FPS, with a 30.00 FPS session average. Both summaries and the clean shutdown record were present, the strict log check passed, and the isolated save directory remained empty. This accepts the 1280x720 resolution, 30 FPS cap, and VSync-off rows for native windowed mode.
 
+### 1280x960 and 60 FPS result
+
+Date: August 10, 2026
+
+Profile: PBVP Phase 1 Extended, native Direct3D 9, windowed 1280x960, VSync on, RTSS 60 FPS
+
+The first run passed visual placement and input but did not pass timing. Focus or menu pauses produced cadence samples from 15.25 to 60.00 FPS and lowered the session average to 41.97 FPS. The strict checker rejected that result.
+
+The timing-only retry kept the Data page focused and untouched. Eight cadence samples measured 59.98 to 60.04 FPS, with a 60.00 FPS average. The plugin confirmed the requested 1280x960 backbuffer and logical canvas, completed one upload in 26.30 microseconds, recorded no failure, and shut down cleanly. The strict check passed, and the isolated save directory remained empty. This accepts the required 4:3 resolution, 60 FPS cap, and VSync-on rows for native windowed mode.
+
 ## Required profiles
 
 | Profile | Purpose |
