@@ -216,7 +216,7 @@ Evidence: after the status-only candidate, the user clarified that the checkerbo
 
 Rejected alternatives: do not assign new absolute screen coordinates for the active 1920x1080 profile. Derive the vertical position from the parent height and the rectangle height so the candidate responds to UI scaling. Do not resize the video until the new location is seen in game.
 
-Consequence: the next run must show the complete checkerboard lower and farther left, with the black strip and label still attached to its lower-left corner. Final playback-stage size and page isolation remain Phase 5 work.
+Consequence: the next run resolved the rectangle 68 units farther left and 168 units lower, but the user still described the checkerboard as top-left. The unchanged 560 by 315 size prevents this candidate from reading as a small lower-left panel. Do not guess a smaller playback size without resolving that design choice because it conflicts with the documented full-glass stage.
 
 ### Verified reset hook only
 

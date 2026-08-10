@@ -135,6 +135,12 @@ Seventh run: placement scope corrected
 
 The lower-left status-strip candidate moved only the black probe and label within the unchanged video rectangle. The user expected the checkerboard to move as part of the UI and reported that it stayed in place. This rejects the narrow interpretation of the placement request. The next candidate anchors the complete `PBVP_VideoRect` to the lower-left of its parent while preserving its tested size and depths.
 
+Eighth run: full-size lower-left anchor visually rejected
+
+The complete rectangle anchor changed the resolved bounds from `110,108` through `670,423` to `42,276` through `602,591`. This proves that the relative XML expression moved the live tile 68 units left and 168 units down. The user still perceived the checkerboard as top-left.
+
+The candidate kept the original 560 by 315 size, so its upper edge still occupies much of the Pip-Boy content area even when its bottom edge is anchored. The placement is not accepted. The next change requires a choice between a smaller lower-left video panel and the documented full-glass playback stage.
+
 ## Required profiles
 
 | Profile | Purpose |
