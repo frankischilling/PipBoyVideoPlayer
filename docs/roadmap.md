@@ -28,13 +28,13 @@ This phase does not decode media.
 Tasks:
 
 1. Build the smallest x86 xNVSE plugin that loads and logs lifecycle events.
-2. Identify candidate Direct3D 9 hook points from the current executable and maintained open-source plugins.
+2. Review candidate Direct3D 9 presentation points from the current executable, xNVSE, and maintained open-source plugins.
 3. Inject a UIO prefab that exposes a colored placeholder rectangle in the Videos page.
-4. Draw a generated checkerboard texture into the resolved rectangle.
-5. Preserve game state and restore it after drawing.
-6. Handle device loss and Reset.
+4. Present a generated checkerboard through a safe render-thread boundary.
+5. Avoid changing game render state, or preserve and restore every state value that the chosen path changes.
+6. Prove resource ownership across device loss and `Reset` without forcing a renderer transition.
 7. Test native D3D9, DXVK, base VNV, and VNV Extended.
-8. Document the chosen hook, signature, ordering, and conflict behavior.
+8. Document the chosen callback boundary, object validation, ordering, and conflict behavior.
 
 Exit criteria:
 
@@ -42,7 +42,8 @@ Exit criteria:
 - fifty Alt+Tab cycles pass;
 - no visible state leaks outside the rectangle;
 - render cost is measured;
-- an occupied or unknown hook target causes a safe refusal;
+- the presentation path installs no executable or device-vtable hook that can conflict with another plugin;
+- an unknown device or texture profile causes a safe refusal;
 - the design has a credible path for each claimed Pip-Boy layout.
 
 If this phase fails, stop. Revisit the presentation method before adding FFmpeg.

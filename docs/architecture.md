@@ -62,7 +62,7 @@ The renderer locks the engine-owned texture, copies rows using the returned Dire
 
 The plugin does not retain ownership of the UI texture across callbacks. The engine owns its lifetime and reset behavior. PBVP accepts only `D3DPOOL_MANAGED` for this surface and rejects default-pool or unknown-pool textures. It stores non-owning device and surface identities so a later callback can detect a replacement, validate it, and upload again.
 
-The renderer keeps fixed-size session counters for frame callbacks, visible frames, validated devices, upload attempts, successful uploads, failures, and recreation results. It records the minimum, average, and maximum successful checkerboard upload time. An orderly shutdown writes one summary line. The counters do not allocate memory and the render callback does not write a line for each frame.
+The renderer keeps fixed-size session counters for frame callbacks, visible frames, validated devices, upload attempts, successful uploads, and failures. It records the minimum, average, and maximum successful checkerboard upload time. An orderly shutdown writes one summary line. The counters do not allocate memory and the render callback does not write a line for each frame.
 
 ### Pip-Boy presentation bridge
 

@@ -58,9 +58,7 @@ correct after every switch. The run produced no device-recreation entries in
 the plugin log, so it verifies visual persistence across those five switches,
 not release and recreation of default-pool resources.
 
-An explicit display-mode or resolution transition is still required to exercise
-the verified `NiDX9Renderer::Recreate` detour. The full 50-cycle acceptance test
-also remains open.
+An explicit game-initiated display-mode or resolution transition is still required to check whether the device or surface identity changes and receives fresh validation. The full 50-cycle acceptance test also remains open.
 
 ### Frame-present layer order
 
@@ -307,7 +305,7 @@ Pass criteria:
 
 The August 10, 2026 private deferred-request run is inconclusive for device recreation. It produced two successful surface uploads and the user saw the checkerboard return, but the verified recreation detour recorded no entry or result. This run counts as surface recovery after a UI transition only. It does not satisfy the reset row of the graphics matrix.
 
-The controlled recreation checker also requires exactly one observed request consumption and one verified restoration of the original requested-size values. A pending request, timeout, missing restoration, or consumed request without a successful detour still fails the reset case.
+The retired controlled recreation checker required exactly one observed request consumption and one verified restoration of the original requested-size values. No diagnostic run met those conditions. The checker and request path were removed after the native call froze.
 
 The next clean follow-up run kept the checkerboard visible and produced an orderly renderer summary. It recorded one successful upload at 28.50 microseconds, no upload or recreation failures, and eight visible cadence samples from 131.22 to 144.21 FPS. The guarded diagnostic did not write the request because at least one helper precondition was unavailable. This is a stable uncapped render baseline, not a recreation pass.
 
@@ -315,7 +313,7 @@ The per-field follow-up found a valid renderer and readable requested-size field
 
 The guarded same-size candidate met those checks, staged 1920x1080, and entered the verified recreation detour. The game then froze before the original `NiDX9Renderer::Recreate` call returned. The log contains no request consumption, value restoration, renderer summary, or orderly shutdown record, and CrashLogger produced no dump. This is a failed compatibility result. The private forced-recreation path is retired and must not be installed or run again.
 
-The normal development DLL was restored after FalloutNV closed. Its SHA-256 is `450619F2DA5B97F3D3C330D15ACA7D9D7EE9B554431358B10E7B4C161794FEBA`. Phase 1 now requires either observation of a naturally initiated recreation or a reviewed decision that the engine-owned managed texture leaves PBVP with no reset-sensitive resource to release. Neither route permits a DXVK or untested display-mode claim.
+The current development DLL installs no recreation detour and has SHA-256 `0091FF35675409A8612B24A113AC1571C9D5EFE6E55939813E12EF8565C8F547`. The reviewed managed-texture decision establishes that PBVP retains no reset-sensitive resource to release. The first hook-free run passed its visual, Alt+Tab, log, and clean-shutdown checks. A game-initiated transition is still needed to test fresh validation after a device or surface change. None of this evidence permits a DXVK or untested display-mode claim.
 
 ## UI matrix
 
