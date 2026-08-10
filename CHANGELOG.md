@@ -54,3 +54,4 @@
 - Refused isolated-profile and display-case mutations while the selected Mod Organizer instance is running.
 - Accepted the raised 384x216 panel position for the Base VNV UI after it cleared the Local Map and World Map buttons.
 - Verified in game that the repaired Phase 1 save guard leaves the isolated Base save directory empty after exit.
+- Made save-guard verification tolerate Stewie Tweaks whitespace normalization while rejecting any semantic change.

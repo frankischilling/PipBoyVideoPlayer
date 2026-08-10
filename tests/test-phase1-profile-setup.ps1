@@ -62,6 +62,31 @@ try {
         }
     }
 
+    [IO.File]::WriteAllText(
+        $guardIni,
+        "; PBVP isolated compatibility profiles only.`r`n`r`n`r`n" +
+        "[Tweaks]`r`nbImprovedAutoSave = 0`r`n" +
+        "bSaveOnExitGame = 0`r`niAutoSaveTimer = 0`r`n")
+    & $script -InstanceRoot $tempRoot -VerifyOnly
+
+    [IO.File]::AppendAllText($guardIni, "bUnexpectedSaveSetting = 0`r`n")
+    $unexpectedGuardRefused = $false
+    try {
+        & $script -InstanceRoot $tempRoot -VerifyOnly
+    } catch {
+        if ($_.Exception.Message -notmatch 'unexpected setting or value') { throw }
+        $unexpectedGuardRefused = $true
+    } finally {
+        [IO.File]::WriteAllText(
+            $guardIni,
+            "; PBVP isolated compatibility profiles only.`r`n`r`n" +
+            "[Tweaks]`r`nbImprovedAutoSave = 0`r`n" +
+            "bSaveOnExitGame = 0`r`niAutoSaveTimer = 0`r`n")
+    }
+    if (-not $unexpectedGuardRefused) {
+        throw 'Profile verification accepted an unexpected save-guard setting.'
+    }
+
     foreach ($target in @(
             'PBVP Phase 1 Base',
             'PBVP Phase 1 VUI Plus',

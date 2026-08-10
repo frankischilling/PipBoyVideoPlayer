@@ -187,10 +187,36 @@ function Test-SaveGuardMod {
     if (-not (Test-Path -LiteralPath $guardIni -PathType Leaf)) {
         throw "The Phase 1 save guard is missing: $guardIni"
     }
-    $expected = $saveGuardContent.TrimEnd() -replace "`r`n", "`n"
-    $actual = [IO.File]::ReadAllText($guardIni).TrimEnd() -replace "`r`n", "`n"
-    if ($actual -cne $expected) {
-        throw 'The Phase 1 save guard has unexpected contents.'
+    $expectedKeys = @{
+        bImprovedAutoSave = $false
+        bSaveOnExitGame = $false
+        iAutoSaveTimer = $false
+    }
+    $sectionSeen = $false
+    foreach ($rawLine in [IO.File]::ReadAllLines($guardIni)) {
+        $line = $rawLine.Trim()
+        if ($line.Length -eq 0 -or $line.StartsWith(';') -or $line.StartsWith('#')) {
+            continue
+        }
+        if ($line -match '^\[(?<section>[^\]]+)\]$') {
+            if ($sectionSeen -or $Matches.section -cne 'Tweaks') {
+                throw 'The Phase 1 save guard has an unexpected section.'
+            }
+            $sectionSeen = $true
+            continue
+        }
+        if (-not $sectionSeen -or $line -notmatch '^(?<key>[^=]+?)\s*=\s*(?<value>.*)$') {
+            throw 'The Phase 1 save guard has an unexpected setting line.'
+        }
+        $key = $Matches.key.Trim()
+        $value = $Matches.value.Trim()
+        if (-not $expectedKeys.ContainsKey($key) -or $expectedKeys[$key] -or $value -cne '0') {
+            throw 'The Phase 1 save guard has an unexpected setting or value.'
+        }
+        $expectedKeys[$key] = $true
+    }
+    if (-not $sectionSeen -or @($expectedKeys.Values | Where-Object { -not $_ }).Count -ne 0) {
+        throw 'The Phase 1 save guard is missing a required setting.'
     }
 }
 
