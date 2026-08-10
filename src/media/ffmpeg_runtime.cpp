@@ -190,7 +190,13 @@ bool FfmpegRuntime::Load(
         VersionFunction swscale_version = nullptr;
         TextFunction version_info = nullptr;
         TextFunction configuration = nullptr;
-        if (!ResolveSymbol(modules_[avutil], kModuleNames[avutil], "avutil_version", avutil_version, failure) ||
+        if (!ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_malloc", api_.av_malloc, failure) ||
+            !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_free", api_.av_free, failure) ||
+            !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "avio_alloc_context", api_.avio_alloc_context, failure) ||
+            !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "avio_context_free", api_.avio_context_free, failure) ||
+            !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "avio_read", api_.avio_read, failure) ||
+            !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "avio_seek", api_.avio_seek, failure) ||
+            !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "avutil_version", avutil_version, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_version_info", version_info, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "avutil_configuration", configuration, failure) ||
             !ResolveSymbol(modules_[avcodec], kModuleNames[avcodec], "avcodec_version", avcodec_version, failure) ||
@@ -264,6 +270,7 @@ void FfmpegRuntime::Unload() noexcept {
         }
     }
     versions_ = {};
+    api_ = {};
     loaded_ = false;
 }
 

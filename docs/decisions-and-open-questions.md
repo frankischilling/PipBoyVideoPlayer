@@ -484,6 +484,18 @@ Rejected alternatives: do not use a general FFmpeg binary bundle, enable unrelat
 
 Consequence: the plugin must load this exact private DLL set through restricted absolute paths and verify the expected library majors before decoding. Any FFmpeg or toolchain update requires new source verification, two clean builds, updated hashes, an import review, an upstream warning review, and a license review.
 
+### Custom overlapped Windows AVIO
+
+Date: August 10, 2026
+
+Decision: open media through a custom `AVIOContext` backed by a Unicode Win32 file handle. Accept only one direct-child filename under a drive-qualified media root. Reject directories, reparse points, empty files, network roots, and files beyond the configured limit. Use overlapped reads with a cancellation event and keep all seek positions in signed 64-bit range.
+
+Evidence: the Win32 test passed reads, seeking, size queries, Unicode names, cancellation, and every implemented refusal. The bridge allocates one bounded FFmpeg buffer and frees the current context buffer before releasing the context, as required by FFmpeg's AVIO contract.
+
+Rejected alternatives: do not use FFmpeg's default file protocol, convert paths to the game's narrow character set, accept arbitrary absolute media paths, allow recursive paths in the first release, map an entire media file into 32-bit address space, or leave shutdown waiting on an uncancellable synchronous read.
+
+Consequence: the decode worker must own the AVIO context and close it before FFmpeg unloads. The game thread may request cancellation, but it must join the worker before releasing callback targets. A live MO2 test still has to prove that the same `CreateFileW` path sees virtual media files.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.

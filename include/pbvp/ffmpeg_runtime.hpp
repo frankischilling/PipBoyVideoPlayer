@@ -9,6 +9,10 @@
 #include <cstdint>
 #include <string>
 
+extern "C" {
+struct AVIOContext;
+}
+
 namespace pbvp {
 
 enum class FfmpegLoadStatus : std::uint32_t {
@@ -41,6 +45,20 @@ struct FfmpegVersions {
     std::uint32_t swscale{};
 };
 
+struct FfmpegApi {
+    using ReadPacket = int (*)(void*, std::uint8_t*, int);
+    using WritePacket = int (*)(void*, const std::uint8_t*, int);
+    using Seek = std::int64_t (*)(void*, std::int64_t, int);
+
+    void* (*av_malloc)(std::size_t){};
+    void (*av_free)(void*){};
+    AVIOContext* (*avio_alloc_context)(
+        unsigned char*, int, int, void*, ReadPacket, WritePacket, Seek){};
+    void (*avio_context_free)(AVIOContext**){};
+    int (*avio_read)(AVIOContext*, unsigned char*, int){};
+    std::int64_t (*avio_seek)(AVIOContext*, std::int64_t, int){};
+};
+
 const char* FfmpegLoadStatusName(FfmpegLoadStatus status) noexcept;
 
 class FfmpegRuntime final {
@@ -54,6 +72,7 @@ public:
 
     bool IsLoaded() const noexcept { return loaded_; }
     FfmpegVersions Versions() const noexcept { return versions_; }
+    const FfmpegApi& Api() const noexcept { return api_; }
 
 private:
     using VersionFunction = unsigned int (*)();
@@ -69,6 +88,7 @@ private:
     };
 
     std::array<HMODULE, module_count> modules_{};
+    FfmpegApi api_{};
     FfmpegVersions versions_{};
     bool loaded_{};
 };

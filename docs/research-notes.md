@@ -109,6 +109,10 @@ The plugin loader builds the runtime directory from the xNVSE game path and the 
 
 The Win32 loader test rejects a relative directory, accepts the pinned runtime, verifies all five numeric versions, rejects a second load, unloads cleanly, and rejects an incomplete private directory. Packaging audits the source DLLs again, copies only the manifest entries, includes the verified license files, scans every staged file for local path markers, and requires the final DLL inventory to contain only the plugin and the five private libraries.
 
+The custom AVIO bridge opens one direct-child media name through `CreateFileW`. It rejects relative or network roots, traversal, subdirectories, reparse points, empty files, and files beyond the configured 64-bit limit. Reads use an overlapped file handle and wait on either the read completion event or a manual cancellation event. A cancellation request signals the waiter and calls `CancelIoEx`, so shutdown does not depend on an ordinary synchronous read returning by itself.
+
+The Win32 test opens a generated 128 KiB fixture with a Unicode name. It verifies buffered reads, an absolute seek, data after the seek, the size query, and cancellation. It also exercises the path, file type, file size, and AVIO buffer failures. This proves the Windows and FFmpeg callback contract outside the game. It does not prove that `CreateFileW` sees a file supplied only by the active MO2 virtual filesystem.
+
 ## Direct3D 9
 
 Microsoft's [`IDirect3DTexture9::LockRect` documentation](https://learn.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3dtexture9-lockrect) documents `D3DLOCK_DISCARD` for dynamic texture updates and notes the restrictions on default-pool textures. The [`D3DPOOL` documentation](https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dpool) states that default-pool resources must be released before `Reset` and recreated afterward.
