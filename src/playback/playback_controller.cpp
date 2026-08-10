@@ -20,6 +20,12 @@ bool IsActiveState(const PlaybackState state) noexcept {
            state == PlaybackState::playing || state == PlaybackState::paused;
 }
 
+PlaybackError DecoderPlaybackError(const DecoderSnapshot& snapshot) noexcept {
+    return snapshot.failure.status == MediaDecodeStatus::allocation_failed
+        ? PlaybackError::decoder_memory_failed
+        : PlaybackError::decoder_failed;
+}
+
 } // namespace
 
 const char* PlaybackFailureSiteName(const PlaybackFailureSite site) noexcept {
@@ -105,7 +111,7 @@ bool PlaybackController::Update(const bool presentation_visible) noexcept {
     if (decoder_snapshot.state == DecoderState::failed ||
         decoder_snapshot.state == DecoderState::stopped) {
         Fail(
-            PlaybackError::decoder_failed,
+            DecoderPlaybackError(decoder_snapshot),
             PlaybackFailureSite::decoder_state_before_drain);
         return false;
     }
@@ -132,7 +138,7 @@ bool PlaybackController::Update(const bool presentation_visible) noexcept {
     if (decoder_snapshot.state == DecoderState::failed ||
         decoder_snapshot.state == DecoderState::stopped) {
         Fail(
-            PlaybackError::decoder_failed,
+            DecoderPlaybackError(decoder_snapshot),
             PlaybackFailureSite::decoder_state_after_drain);
         return false;
     }

@@ -21,6 +21,7 @@ const char* PlaybackErrorName(const PlaybackError error) noexcept {
         case PlaybackError::none: return "none";
         case PlaybackError::media_open_failed: return "media_open_failed";
         case PlaybackError::decoder_failed: return "decoder_failed";
+        case PlaybackError::decoder_memory_failed: return "decoder_memory_failed";
         case PlaybackError::audio_initialization_failed:
             return "audio_initialization_failed";
         case PlaybackError::audio_device_failed: return "audio_device_failed";

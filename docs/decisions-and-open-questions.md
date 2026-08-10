@@ -500,6 +500,8 @@ Rejected alternatives: do not lower the accepted source resolution, shorten the 
 
 Consequence: update the decoder, high-resolution memory test, performance measurements, and documentation. The 30-minute in-game test must restart from the beginning after a short live run proves that the first frame and audio stream both start.
 
+Implementation evidence: the x86 decoder now produces 512 by 288 frames for a 1080p source. Three queued frames occupy 1,769,472 bytes. The complete 1080p regression passed, and the real long fixture stayed in playback for a five-second native run with no error or failure site. The in-game startup check remains open.
+
 ### System XAudio2 2.9 runtime
 
 Date: August 10, 2026

@@ -19,6 +19,7 @@ enum class PlaybackError : std::uint32_t {
     none,
     media_open_failed,
     decoder_failed,
+    decoder_memory_failed,
     audio_initialization_failed,
     audio_device_failed,
     audio_stream_failed,

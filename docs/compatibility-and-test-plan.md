@@ -497,6 +497,8 @@ The second in-game attempt used the corrected staging build but stopped at a dif
 
 The third attempt captured `video_pixel_buffer`. The 1280 by 720 container opened, playback reached buffering, and the audio backend reported `ok`, but the first 3,686,400-byte BGRA conversion buffer threw an allocation exception. Process private memory was 1,590,300,672 bytes at failure. Its largest free virtual-memory region was 1,536,557,056 bytes, so contiguous address-space exhaustion does not explain the failed allocation. The next build keeps the 1920 by 1080 input cap but scales queued BGRA output into a 512 by 512 bound. A short live startup check must pass before another 30-minute run begins.
 
+The bounded-output native build passed its first gate. A 1080p source produced 512 by 288 queued frames, and all three decoder slots held 1,769,472 bytes. The real long fixture stayed in playback for five seconds with 150 decoded frames, 143 delivered frames, six late drops, 245,760 submitted audio samples, a 4,940,000-microsecond clock, and no failure site. This is native process evidence only. The short in-game startup check remains open.
+
 ## UI matrix
 
 Test these layouts independently:

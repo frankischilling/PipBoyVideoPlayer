@@ -2,7 +2,12 @@
 
 #include "test_support.hpp"
 
+#include <string>
+
 void RunPlaybackStateTests() {
+    PBVP_CHECK(std::string(pbvp::PlaybackErrorName(
+                   pbvp::PlaybackError::decoder_memory_failed)) ==
+               "decoder_memory_failed");
     pbvp::PlaybackStateMachine state;
     PBVP_CHECK(state.Snapshot().state == pbvp::PlaybackState::idle);
     PBVP_CHECK(state.BeginOpen());

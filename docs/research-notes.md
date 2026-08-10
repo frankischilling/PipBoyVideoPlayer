@@ -311,6 +311,12 @@ The allocation diagnostic identified `video_pixel_buffer` on the third long-play
 
 Process private memory was 1,588,396,032 bytes before open and 1,590,300,672 bytes at failure. The largest free virtual-memory region fell from 1,586,409,472 to 1,536,557,056 bytes, and total free virtual memory remained 1,609,023,488 bytes. The failure did not coincide with a shortage of contiguous virtual address space. The source-sized C++ frame allocation remains unreliable in the loaded VNV process even though the standalone x86 decoder and an earlier short in-game fixture completed.
 
+The decoder now validates the original source dimensions, then scales BGRA output to fit within a 512-pixel square before rotation and queue insertion. Smaller sources retain their decoded dimensions. A 1920 by 1080 source produces 512 by 288 queued frames. Source and display metadata still report the original dimensions.
+
+The updated x86 full-queue test held three 512 by 288 frames at exactly 1,769,472 bytes. Process private memory increased by 35,028,992 bytes and committed address space increased by 43,335,680 bytes. The same 1080p fixture completed in 151,766 microseconds of wall time and 125,000 microseconds of process CPU time.
+
+The real 30-minute fixture then passed the optional five-second startup test. Playback remained in `playing` with no error or failure site. It decoded 150 frames, delivered 143, dropped six late frames, submitted 245,760 audio samples, and reached a 4,940,000-microsecond audio clock.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

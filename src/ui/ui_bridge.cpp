@@ -198,7 +198,8 @@ const char* PlaybackStatusText(const PlaybackStateSnapshot& playback) noexcept {
         case PlaybackState::error:
             switch (playback.error) {
                 case PlaybackError::media_open_failed: return "VIDEO COULD NOT BE OPENED";
-                case PlaybackError::decoder_failed: return "VIDEO FORMAT ERROR";
+                case PlaybackError::decoder_failed: return "VIDEO DECODE ERROR";
+                case PlaybackError::decoder_memory_failed: return "VIDEO MEMORY ERROR";
                 case PlaybackError::audio_initialization_failed:
                 case PlaybackError::audio_device_failed:
                 case PlaybackError::audio_stream_failed:

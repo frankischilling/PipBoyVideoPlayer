@@ -120,6 +120,7 @@ struct MediaDecoderConfig {
     QueueLimits audio_queue{16u, 4u * 1024u * 1024u};
     std::uint32_t output_audio_channels{2u};
     std::uint32_t output_audio_rate{48000u};
+    std::uint32_t output_video_edge_limit{512u};
     std::uint32_t maximum_streams{16u};
     std::uint32_t decoder_threads{2u};
     std::int64_t probe_bytes{8ll * 1024ll * 1024ll};

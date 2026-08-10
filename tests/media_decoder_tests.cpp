@@ -347,7 +347,7 @@ void TestFullHdMemory(
     PBVP_CHECK(snapshot.info.source_width == 1920u);
     PBVP_CHECK(snapshot.info.source_height == 1080u);
     PBVP_CHECK(buffers.video_items == 3u);
-    PBVP_CHECK(buffers.video_bytes == 3u * 1920u * 1080u * 4u);
+    PBVP_CHECK(buffers.video_bytes == 3u * 512u * 288u * 4u);
     PBVP_CHECK(buffers.video_bytes <= 32u * mebibyte);
     PBVP_CHECK(buffers.audio_bytes <= 4u * mebibyte);
 
@@ -399,6 +399,8 @@ void TestFullHdDecodePerformance(
         static_cast<unsigned long long>(output.audio_samples));
     PBVP_CHECK(output.snapshot.state == pbvp::DecoderState::end_of_stream);
     PBVP_CHECK(output.snapshot.failure.status == pbvp::MediaDecodeStatus::ok);
+    PBVP_CHECK(output.first_video_width == 512u);
+    PBVP_CHECK(output.first_video_height == 288u);
     PBVP_CHECK(output.video_pts.size() == 30u);
     PBVP_CHECK(output.audio_samples >= 47000u && output.audio_samples <= 49000u);
     PBVP_CHECK(wall_us > 0 && wall_us < 5'000'000);
@@ -498,6 +500,14 @@ void TestFailures(
     const pbvp::FfmpegRuntime& runtime,
     const std::wstring& fixture_root,
     const std::wstring& temporary_root) {
+    pbvp::MediaDecoderConfig invalid_output{};
+    invalid_output.output_video_edge_limit = 513u;
+    pbvp::MediaDecoder invalid_decoder(runtime, invalid_output);
+    pbvp::MediaDecodeFailure invalid_failure{};
+    PBVP_CHECK(!invalid_decoder.Start(
+        fixture_root, L"h264-aac-44100-stereo.mp4", invalid_failure));
+    PBVP_CHECK(invalid_failure.status == pbvp::MediaDecodeStatus::invalid_configuration);
+
     pbvp::DecoderSnapshot unsupported = DecodeFailure(
         runtime, fixture_root, L"unsupported-mpeg4-mp3.mp4");
     PBVP_CHECK(unsupported.failure.status ==

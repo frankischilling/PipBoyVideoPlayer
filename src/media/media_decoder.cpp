@@ -66,6 +66,36 @@ bool SubtractInt64(
     return true;
 }
 
+bool FitVideoWithinEdge(
+    const std::uint32_t source_width,
+    const std::uint32_t source_height,
+    const std::uint32_t edge_limit,
+    std::uint32_t& output_width,
+    std::uint32_t& output_height) noexcept {
+    output_width = 0u;
+    output_height = 0u;
+    if (source_width == 0u || source_height == 0u || edge_limit == 0u) {
+        return false;
+    }
+    if (source_width <= edge_limit && source_height <= edge_limit) {
+        output_width = source_width;
+        output_height = source_height;
+        return true;
+    }
+    if (source_width >= source_height) {
+        output_width = edge_limit;
+        output_height = static_cast<std::uint32_t>(
+            static_cast<std::uint64_t>(source_height) * edge_limit / source_width);
+    } else {
+        output_height = edge_limit;
+        output_width = static_cast<std::uint32_t>(
+            static_cast<std::uint64_t>(source_width) * edge_limit / source_height);
+    }
+    output_width = (std::max)(output_width, 1u);
+    output_height = (std::max)(output_height, 1u);
+    return true;
+}
+
 } // namespace
 
 const char* MediaDecodeStatusName(const MediaDecodeStatus status) noexcept {
@@ -139,6 +169,7 @@ bool MediaDecoder::ValidateConfiguration() const noexcept {
         config_.payload_limits.maximum_audio_payload_bytes == 0u ||
         config_.output_audio_channels == 0u || config_.output_audio_channels > 2u ||
         config_.output_audio_rate < 8000u || config_.output_audio_rate > 192000u ||
+        config_.output_video_edge_limit == 0u || config_.output_video_edge_limit > 512u ||
         config_.maximum_streams == 0u || config_.maximum_streams > 64u ||
         config_.decoder_threads == 0u || config_.decoder_threads > 8u ||
         config_.probe_bytes < 32ll * 1024ll || config_.probe_bytes > 64ll * 1024ll * 1024ll ||
@@ -749,11 +780,27 @@ MediaDecoder::WorkerResult MediaDecoder::ConvertVideoFrame(const AVFrame& frame)
     }
     const auto source_width = static_cast<std::uint32_t>(frame.width);
     const auto source_height = static_cast<std::uint32_t>(frame.height);
-    VideoLayout source_layout{};
+    VideoLayout source_validation{};
     if (ComputeBgraLayout(
             source_width, source_height,
-            config_.payload_limits, source_layout) != LayoutStatus::ok ||
-        source_layout.row_bytes > static_cast<std::size_t>((std::numeric_limits<int>::max)())) {
+            config_.payload_limits, source_validation) != LayoutStatus::ok) {
+        Fail(MediaDecodeStatus::source_limit_exceeded);
+        return WorkerResult::failed;
+    }
+    std::uint32_t converted_width = 0u;
+    std::uint32_t converted_height = 0u;
+    if (!FitVideoWithinEdge(
+            source_width, source_height, config_.output_video_edge_limit,
+            converted_width, converted_height)) {
+        Fail(MediaDecodeStatus::invalid_configuration);
+        return WorkerResult::failed;
+    }
+    VideoLayout converted_layout{};
+    if (ComputeBgraLayout(
+            converted_width, converted_height,
+            config_.payload_limits, converted_layout) != LayoutStatus::ok ||
+        converted_layout.row_bytes >
+            static_cast<std::size_t>((std::numeric_limits<int>::max)())) {
         Fail(MediaDecodeStatus::source_limit_exceeded);
         return WorkerResult::failed;
     }
@@ -761,7 +808,8 @@ MediaDecoder::WorkerResult MediaDecoder::ConvertVideoFrame(const AVFrame& frame)
     SwsContext* updated = runtime_.Api().sws_getCachedContext(
         scaler_, frame.width, frame.height,
         static_cast<AVPixelFormat>(frame.format),
-        frame.width, frame.height, AV_PIX_FMT_BGRA,
+        static_cast<int>(converted_width), static_cast<int>(converted_height),
+        AV_PIX_FMT_BGRA,
         SWS_BILINEAR, nullptr, nullptr, nullptr);
     if (updated == nullptr) {
         scaler_ = nullptr;
@@ -771,23 +819,23 @@ MediaDecoder::WorkerResult MediaDecoder::ConvertVideoFrame(const AVFrame& frame)
     scaler_ = updated;
 
     allocation_site_ = MediaDecodeFailureSite::video_pixel_buffer;
-    std::vector<std::uint8_t> source_pixels(source_layout.total_bytes);
+    std::vector<std::uint8_t> source_pixels(converted_layout.total_bytes);
     allocation_site_ = MediaDecodeFailureSite::none;
     std::uint8_t* destination_data[4]{source_pixels.data(), nullptr, nullptr, nullptr};
-    int destination_stride[4]{static_cast<int>(source_layout.row_bytes), 0, 0, 0};
+    int destination_stride[4]{static_cast<int>(converted_layout.row_bytes), 0, 0, 0};
     const int converted_rows = runtime_.Api().sws_scale(
         scaler_, frame.data, frame.linesize, 0, frame.height,
         destination_data, destination_stride);
-    if (converted_rows != frame.height) {
+    if (converted_rows != static_cast<int>(converted_height)) {
         Fail(MediaDecodeStatus::video_conversion_failed, converted_rows);
         return WorkerResult::failed;
     }
 
     DecodedVideoFrame output{};
     output.width = rotation_degrees_ == 90u || rotation_degrees_ == 270u
-        ? source_height : source_width;
+        ? converted_height : converted_width;
     output.height = rotation_degrees_ == 90u || rotation_degrees_ == 270u
-        ? source_width : source_height;
+        ? converted_width : converted_height;
     const std::size_t output_stride = static_cast<std::size_t>(output.width) * 4u;
     if (output_stride > static_cast<std::size_t>((std::numeric_limits<std::uint32_t>::max)())) {
         Fail(MediaDecodeStatus::source_limit_exceeded);
@@ -799,24 +847,24 @@ MediaDecoder::WorkerResult MediaDecoder::ConvertVideoFrame(const AVFrame& frame)
         output.bgra = std::move(source_pixels);
     } else {
         allocation_site_ = MediaDecodeFailureSite::video_rotation_buffer;
-        output.bgra.resize(source_layout.total_bytes);
+        output.bgra.resize(converted_layout.total_bytes);
         allocation_site_ = MediaDecodeFailureSite::none;
-        for (std::uint32_t y = 0u; y < source_height; ++y) {
-            for (std::uint32_t x = 0u; x < source_width; ++x) {
+        for (std::uint32_t y = 0u; y < converted_height; ++y) {
+            for (std::uint32_t x = 0u; x < converted_width; ++x) {
                 std::uint32_t destination_x = 0u;
                 std::uint32_t destination_y = 0u;
                 if (rotation_degrees_ == 90u) {
-                    destination_x = source_height - 1u - y;
+                    destination_x = converted_height - 1u - y;
                     destination_y = x;
                 } else if (rotation_degrees_ == 180u) {
-                    destination_x = source_width - 1u - x;
-                    destination_y = source_height - 1u - y;
+                    destination_x = converted_width - 1u - x;
+                    destination_y = converted_height - 1u - y;
                 } else {
                     destination_x = y;
-                    destination_y = source_width - 1u - x;
+                    destination_y = converted_width - 1u - x;
                 }
                 const std::size_t source_offset =
-                    static_cast<std::size_t>(y) * source_layout.row_bytes +
+                    static_cast<std::size_t>(y) * converted_layout.row_bytes +
                     static_cast<std::size_t>(x) * 4u;
                 const std::size_t destination_offset =
                     static_cast<std::size_t>(destination_y) * output_stride +
