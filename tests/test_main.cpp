@@ -5,6 +5,7 @@
 void RunFrameCadenceTests();
 void RunCheckedMathTests();
 void RunMediaLimitTests();
+void RunPlaybackClockTests();
 void RunBoundedQueueTests();
 void RunRectMathTests();
 void RunTextureContractTests();
@@ -12,6 +13,7 @@ void RunTextureContractTests();
 int main() {
     RunCheckedMathTests();
     RunMediaLimitTests();
+    RunPlaybackClockTests();
     RunBoundedQueueTests();
     RunFrameCadenceTests();
     RunRectMathTests();

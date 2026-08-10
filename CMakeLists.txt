@@ -16,6 +16,7 @@ add_library(pbvp_core STATIC
     src/core/checked_math.cpp
     src/core/frame_cadence.cpp
     src/core/media_limits.cpp
+    src/core/playback_clock.cpp
     src/core/rect_math.cpp
     src/core/texture_contract.cpp)
 target_include_directories(pbvp_core PUBLIC include)
@@ -219,6 +220,7 @@ if(PBVP_BUILD_TESTS)
         tests/checked_math_tests.cpp
         tests/frame_cadence_tests.cpp
         tests/media_limits_tests.cpp
+        tests/playback_clock_tests.cpp
         tests/rect_math_tests.cpp
         tests/texture_contract_tests.cpp
         tests/test_main.cpp)
