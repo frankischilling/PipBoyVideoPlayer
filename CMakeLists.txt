@@ -287,6 +287,23 @@ if(PBVP_BUILD_TESTS)
             -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase3-audio-smoke-log.ps1)
 
     add_test(
+        NAME pbvp_phase4_playback_profile_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase4-playback-profile.ps1
+            -ProfileScript ${CMAKE_SOURCE_DIR}/scripts/create-phase4-playback-profile.ps1
+            -FixturePath ${CMAKE_SOURCE_DIR}/tests/fixtures/h264-aac-44100-stereo.mp4)
+
+    add_test(
+        NAME pbvp_phase4_playback_smoke_log_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase4-playback-smoke-log.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase4-playback-smoke-log.ps1)
+
+    add_test(
         NAME pbvp_data_contract_test
         COMMAND ${CMAKE_COMMAND}
             -DPBVP_SOURCE_DIR=${CMAKE_SOURCE_DIR}
