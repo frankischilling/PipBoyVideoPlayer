@@ -30,6 +30,6 @@
 - Added a data-contract test for the UIO registration, named prefab tiles, private surface path, and package generator.
 - Added a repeatable Phase 1 log check for plugin load, hook verification, UI geometry, device validation, texture uploads, recreation failures, renderer summary, and clean shutdown.
 - Added RadioCaptions-style build, test, package, and MO2 development-install scripts.
-- Added guarded creation and verification of save-free Phase 1 MO2 profiles for base VNV, Extended, and Extended without Pip-Boy UI Tweaks.
+- Added guarded creation and verification of four save-free Phase 1 MO2 profiles for base VNV, Vanilla UI Plus, Extended, and Extended without Pip-Boy UI Tweaks.
 - Added a reversible Phase 1 case configurator for the documented resolutions, display modes, VSync states, and RTSS frame caps.
 - Added bounded visible-frame cadence samples and an independent log check for the expected game FPS.

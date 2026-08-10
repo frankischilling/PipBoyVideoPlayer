@@ -3,6 +3,7 @@ param(
     [Parameter(Mandatory)][string]$InstanceRoot,
     [Parameter(Mandatory)][ValidateSet(
         'PBVP Phase 1 Base',
+        'PBVP Phase 1 VUI Plus',
         'PBVP Phase 1 Extended',
         'PBVP Phase 1 Extended No Pip-Boy Tweaks')][string]$ProfileName,
     [Parameter(Mandatory)][string]$RtssProfilePath,

@@ -234,11 +234,14 @@ The next normal installed candidate records fixed-size session totals for frame 
 
 ### Local test profile isolation
 
-The local MO2 instance has three PBVP-specific Phase 1 profiles:
+The local MO2 instance has four PBVP-specific Phase 1 profiles:
 
 - `PBVP Phase 1 Base`
+- `PBVP Phase 1 VUI Plus`
 - `PBVP Phase 1 Extended`
 - `PBVP Phase 1 Extended No Pip-Boy Tweaks`
+
+The Base profile supplies the vanilla visual UI with UIO still active for PBVP injection. The VUI Plus profile keeps Vanilla UI Plus but disables Clean Vanilla HUD and both Pip-Boy UI Tweaks mods. The no-tweaks Extended profile keeps Vanilla UI Plus and Clean Vanilla HUD while disabling only the Pip-Boy tweaks. The full Extended profile retains its normal UI stack.
 
 Each profile enables only the separate `Pip-Boy Video Player - Dev` mod on top of its source profile. The setup copies no save directory and does not change MO2's selected profile. Because the original base profile has an empty `falloutprefs.ini`, its test copy uses the Extended profile's known 1920x1080 fullscreen display preferences. The base mod list remains the source for every other setting.
 
@@ -254,7 +257,7 @@ Create these profiles once, or verify them later:
   -VerifyOnly
 ```
 
-The creation command refuses to replace an existing target. The automated test builds a temporary MO2 fixture, confirms that saves are not copied, verifies the disabled Pip-Boy UI Tweaks entries, and checks the replacement refusal.
+The normal creation command refuses to replace an existing target. If a later project update adds another isolated profile, `-CreateMissing` validates every existing target and creates only the missing profiles. The automated test builds a temporary MO2 fixture, confirms that saves are not copied, verifies each disabled UI layer, checks the replacement refusal, and recreates one missing profile without touching the others.
 
 ### Reversible display and frame-rate cases
 

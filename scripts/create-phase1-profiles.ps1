@@ -1,10 +1,14 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [Parameter(Mandatory)][string]$InstanceRoot,
-    [switch]$VerifyOnly
+    [switch]$VerifyOnly,
+    [switch]$CreateMissing
 )
 
 $ErrorActionPreference = 'Stop'
+if ($VerifyOnly -and $CreateMissing) {
+    throw 'VerifyOnly and CreateMissing cannot be used together.'
+}
 $instance = (Resolve-Path -LiteralPath $InstanceRoot).Path
 $profiles = Join-Path $instance 'profiles'
 if (-not (Test-Path -LiteralPath $profiles -PathType Container)) {
@@ -16,18 +20,28 @@ $specifications = @(
         Source = 'Viva New Vegas'
         Target = 'PBVP Phase 1 Base'
         DisablePipBoyTweaks = $false
+        DisableCleanVanillaHud = $false
         SeedPrefsFromExtended = $true
+    },
+    [pscustomobject]@{
+        Source = 'Viva New Vegas Extended'
+        Target = 'PBVP Phase 1 VUI Plus'
+        DisablePipBoyTweaks = $true
+        DisableCleanVanillaHud = $true
+        SeedPrefsFromExtended = $false
     },
     [pscustomobject]@{
         Source = 'Viva New Vegas Extended'
         Target = 'PBVP Phase 1 Extended'
         DisablePipBoyTweaks = $false
+        DisableCleanVanillaHud = $false
         SeedPrefsFromExtended = $false
     },
     [pscustomobject]@{
         Source = 'Viva New Vegas Extended'
         Target = 'PBVP Phase 1 Extended No Pip-Boy Tweaks'
         DisablePipBoyTweaks = $true
+        DisableCleanVanillaHud = $false
         SeedPrefsFromExtended = $false
     }
 )
@@ -85,6 +99,17 @@ function Disable-PipBoyTweaks {
     Write-ModList -Path $Path -Lines $lines
 }
 
+function Disable-CleanVanillaHud {
+    param([Parameter(Mandatory)][string]$Path)
+    $lines = Read-ModList -Path $Path
+    for ($index = 0; $index -lt $lines.Count; $index++) {
+        if ($lines[$index] -eq '+Clean Vanilla Hud') {
+            $lines[$index] = '-Clean Vanilla Hud'
+        }
+    }
+    Write-ModList -Path $Path -Lines $lines
+}
+
 function Test-Profile {
     param([Parameter(Mandatory)]$Specification)
     $target = Resolve-ProfileChild -Name $Specification.Target
@@ -110,6 +135,14 @@ function Test-Profile {
         }).Count -ne 0) {
         throw 'Pip-Boy UI Tweaks remains enabled in its isolation profile.'
     }
+    if ($Specification.DisableCleanVanillaHud -and
+        @($lines | Where-Object { $_ -eq '+Clean Vanilla Hud' }).Count -ne 0) {
+        throw 'Clean Vanilla Hud remains enabled in the VUI Plus isolation profile.'
+    }
+    if ($Specification.Target -eq 'PBVP Phase 1 VUI Plus' -and
+        @($lines | Where-Object { $_ -eq '+Vanilla UI Plus (New Vegas)' }).Count -ne 1) {
+        throw 'Vanilla UI Plus is not enabled exactly once in its isolation profile.'
+    }
 }
 
 if (-not $VerifyOnly) {
@@ -120,6 +153,10 @@ if (-not $VerifyOnly) {
             throw "Source profile is missing: $($specification.Source)"
         }
         if (Test-Path -LiteralPath $target) {
+            if ($CreateMissing) {
+                Test-Profile -Specification $specification
+                continue
+            }
             throw "Refusing to replace an existing test profile: $($specification.Target)"
         }
         if (-not $PSCmdlet.ShouldProcess($target, "Create $($specification.Target) without saves")) {
@@ -146,6 +183,9 @@ if (-not $VerifyOnly) {
         Add-DevelopmentMod -Path $modList
         if ($specification.DisablePipBoyTweaks) {
             Disable-PipBoyTweaks -Path $modList
+        }
+        if ($specification.DisableCleanVanillaHud) {
+            Disable-CleanVanillaHud -Path $modList
         }
     }
 }
