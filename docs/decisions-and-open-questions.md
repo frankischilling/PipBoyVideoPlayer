@@ -460,6 +460,18 @@ Decision: use XAudio2's played-sample cursor as the master clock when audio is p
 
 Reason: synchronizing video to consumed audio prevents a slow game frame rate from causing cumulative drift.
 
+### Bounded integrated playback and presentation
+
+Date: August 10, 2026
+
+Decision: keep FFmpeg contexts on one decoder worker, XAudio2 and playback state on the game-thread owner, and Direct3D access on the frame-present thread. Move only one owned BGRA frame through a bounded renderer mailbox. Select the newest frame eligible for the audio clock and drop older eligible frames. Use one frame of presentation lead without advancing the media clock.
+
+Evidence: the automated scheduler completed a simulated 30-minute 30 FPS stream at a 10 FPS game cadence without cumulative drift. Native tests cover pause, resume, forward and backward seeks, stop during buffering, stale generation rejection, silent-video timing, hidden presentation, foreign-thread refusal, and orderly shutdown. The first live integrated run decoded 20 frames, presented 18, dropped two at startup, played all 96,967 audio samples with zero underruns, and uploaded every submitted frame. The maximum measured upload was 59.40 microseconds.
+
+Rejected alternatives: do not use game frames as the media clock, retain a full decoded video queue on the renderer, call Direct3D while holding the mailbox lock, let a stale seek generation reach the texture, or retain engine Direct3D references between callbacks.
+
+Consequence: low game frame rates reduce video smoothness through bounded frame dropping instead of slowing audio or growing queues. The live 30-minute drift target and the full low-FPS in-game matrix remain release tests.
+
 ### System XAudio2 2.9 runtime
 
 Date: August 10, 2026

@@ -479,7 +479,15 @@ The native x86 stream test compared 100, 200, and 300 ms prebuffers. Each case r
 
 The live `PBVP Phase 3 Audio` MO2 profile supplied its generated MP4 through a separate test mod. The user heard the two-second tone at the main menu. The plugin submitted 96,967 samples, reported a final audio clock of 2,020,125 microseconds, and reached one end-of-stream callback with zero underruns. Its fixed PCM pool was 262,144 bytes. The decoder worker joined before FFmpeg unload, and the source voice, callback targets, and pool were released before process shutdown. The strict log checker passed and found no absolute media path.
 
-This result selects a 200 ms default for the current reference system. Phase 4 still needs the 30-minute synchronization target, low-FPS video dropping, menu lifecycle behavior, and repeated integrated seeks. Phase 6 retains device-removal fault injection and the full stability matrix.
+This result selects a 200 ms default for the current reference system. The Phase 4 automation now covers the 30-minute scheduler target, low-FPS frame dropping, menu lifecycle behavior, and repeated integrated seeks. The live 30-minute run and full in-game matrix remain open. Phase 6 retains device-removal fault injection and the full stability matrix.
+
+## Phase 4 integrated playback evidence
+
+All 13 portable host tests and all 22 Win32 Release tests pass. The integrated x86 controller test delivered 18 video frames after two startup drops, played all 96,967 audio samples, reached 2,020,125 microseconds, and reported zero underruns. Separate tests cover pause and resume, forward and backward seeks, stop during buffering, Pip-Boy closure, game transitions, foreign-thread refusal, silent QPC playback, and orderly teardown. A simulated 30-minute 30 FPS stream at a 10 FPS game cadence showed bounded late-frame dropping without cumulative clock drift.
+
+The live `PBVP Phase 4 Playback` profile used the generated two-second H.264 and AAC fixture from its separate MO2 media mod. At 1920x1080 native D3D9 fullscreen, the user saw the video and state text, heard synchronized audio, and reported correct behavior after Alt+Tab. The plugin decoded 20 frames, presented 18, dropped two at startup, and uploaded every submitted frame. Upload time was 20.10 microseconds minimum, 27.52 microseconds average, and 59.40 microseconds maximum. The mailbox replaced no frame, XAudio2 reported no underrun, and the process shut down after the decoder joined.
+
+This accepts the short integrated path for the tested profile. It does not close the live 30-minute synchronization test, low-FPS in-game playback, pause and seek input scenarios, controller coverage, DXVK, other UI profiles, or the two-hour stability soak.
 
 ## UI matrix
 

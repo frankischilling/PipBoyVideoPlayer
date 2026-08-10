@@ -2,6 +2,12 @@
 
 ## 0.1.0 - Unreleased
 
+- Connected the decoder, XAudio2 sample clock, video scheduler, renderer mailbox, Pip-Boy status text, and game lifecycle into a bounded playback controller.
+- Added audio-led frame selection, late-frame dropping, startup buffering, pause, resume, forward and backward seeks, stop during buffering, silent-video QPC timing, and structured playback errors.
+- Added a one-frame renderer mailbox and checked BGRA scaling into the fixed 256x256 engine-owned texture without retaining a Direct3D reference across callbacks.
+- Added automated integrated tests for low game frame rates, 30-minute clock mapping, seek generations, Pip-Boy closure, game transitions, shutdown order, thread ownership, silent playback, and renderer mailbox pressure.
+- Verified the live Phase 4 path in FalloutNV with visible video and status text, 18 presented frames, two dropped startup frames, 96,967 played samples, a 2,020,125 microsecond final clock, zero underruns, and a 59.40 microsecond maximum upload.
+- Added a save-free Phase 4 MO2 profile, a generated playback fixture in a separate media mod, a strict playback log checker, and package rejection for an armed integrated diagnostic.
 - Added checked audio-sample and QueryPerformanceCounter clocks with pause, resume, seek-origin, 30-minute mapping, and overflow tests.
 - Added a bounded system XAudio2 2.9 stream with a fixed PCM pool, atomics-only callbacks, play, stop, pause, resume, mute, volume, end of stream, and default-device reconstruction.
 - Added tracked COM ownership on the audio thread after the first native mastering-voice test exposed the missing initialization step.

@@ -291,6 +291,10 @@ The pinned xNVSE 6.4.5 source at `nvse/nvse/GameTiles.h` defines `Tile::SetStrin
 
 This gives the game-thread playback owner a small status channel without replacing MapMenu XML or exposing a tile pointer to the decoder, audio callback, or renderer. The visible messages are fixed PBVP strings. Media paths and embedded metadata never enter the tile.
 
+The first live Phase 4 playback run used the generated two-second H.264 and AAC fixture from the isolated `PBVP Phase 4 Playback` MO2 profile. The user saw the moving image and playback status, heard the tone, and reported that Alt+Tab remained correct. The strict checker found 20 decoded frames, 18 presented frames, two startup drops, 96,967 consumed samples, a 2,020,125 microsecond final clock, zero underruns, and no presentation mailbox replacement. All 18 submitted frames reached the engine texture. Uploads ranged from 20.10 to 59.40 microseconds and averaged 27.52 microseconds.
+
+The shutdown record followed the required order. Playback stopped, the decoder worker joined, renderer counters were written, and process shutdown completed. The log contained no absolute media path. This run verifies the short integrated path and a clean post-playback focus change in native D3D9 fullscreen at 1920x1080. It does not satisfy the 30-minute live synchronization target, low-FPS in-game test, repeated seeks, DXVK, or the full UI and input matrix.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

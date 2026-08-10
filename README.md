@@ -6,11 +6,11 @@ The repository contains the implementation, automated tests, UIO files, build sc
 
 ## Project status
 
-Status: Phase 3 audio and clock
+Status: Phase 4 integrated playback
 
 The current diagnostic build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, and installs a UIO prefab. Once the Pip-Boy is open, it validates the live UIO image, engine texture objects, managed Direct3D texture, device, and callback thread before uploading a generated checkerboard. Any unknown object type, texture profile, or thread arrangement disables the update instead of guessing. The plugin does not patch game functions or a Direct3D device vtable.
 
-All 11 host tests and all 19 Win32 Release tests pass. Two overlay draw points were rejected because they rendered above the Pip-Boy UI. The accepted path updates an engine-owned managed texture and leaves drawing to the game. It uses no executable hook or Direct3D device vtable patch. The raised 384x216 panel passed all four isolated UI profiles at 1920x1080. Keyboard and mouse input, ten Pip-Boy reopen cycles, and 50 measured focus-loss and return cycles passed in the tested native windowed configuration.
+All 13 host tests and all 22 Win32 Release tests pass. Two overlay draw points were rejected because they rendered above the Pip-Boy UI. The accepted path updates an engine-owned managed texture and leaves drawing to the game. It uses no executable hook or Direct3D device vtable patch. The raised 384x216 panel passed all four isolated UI profiles at 1920x1080. Keyboard and mouse input, ten Pip-Boy reopen cycles, and 50 measured focus-loss and return cycles passed in the tested native windowed configuration.
 
 A synthetic recreation test froze inside the game's native reset sequence, so the test, reset hook, and MinHook dependency were removed. A PBVP-disabled control later reproduced the native fullscreen NVIDIA driver crash, so repeated fullscreen Alt+Tab is not supported. The isolated test-profile save guard passes Base and full Extended exit checks without changing normal profiles. Native windowed rows passed at 1280x720 and 30 FPS, 1280x960 and 60 FPS, 2560x1440 and 90 FPS, and 3440x1440 and 120 FPS. The two larger windows were clipped by the 1920x1080 monitor, so those results cover the visible panel and logged backbuffer rather than the full window.
 
@@ -23,6 +23,8 @@ The decoder worker opens MP4 and MOV containers, requires H.264 video, accepts o
 Phase 3 uses the Windows 10 and Windows 11 system XAudio2 2.9 runtime. The audio stream owns a fixed 256 KiB PCM pool, keeps callbacks limited to atomic updates, and uses the consumed sample count as the media clock. A checked QPC clock handles silent video. Automated tests cover pause, resume, mute, volume, stop and flush, forward and backward clock origins, end of stream, bounded queue pressure, default-device reconstruction, 44.1 and 48 kHz mono and stereo voices, 5.1 downmix through the decoder, and 25 complete audio lifetimes. The 100, 200, and 300 ms prebuffer cases completed with zero underruns.
 
 The live Phase 3 MO2 diagnostic played a generated two-second AAC fixture through FalloutNV. The user heard the tone. XAudio2 consumed 96,967 output samples, reached the expected 2,020,125 microsecond clock, and reported zero underruns. The decoder joined before FFmpeg unload, and the source voice and callback targets were released before process shutdown. The release packager rejects this private diagnostic and any bundled XAudio2 DLL.
+
+Phase 4 connects decoding, XAudio2, audio-led frame selection, the Pip-Boy texture upload, status text, and menu lifecycle handling. It keeps one bounded presentation frame, drops late video without changing the media clock, uses QPC for silent media, and stops playback when the Pip-Boy closes or the game changes state. The generated live playback diagnostic presented 18 of 20 decoded frames, dropped two startup frames, played all 96,967 audio samples, and reached the expected 2,020,125 microsecond clock with zero underruns. The user confirmed the video, status text, sound, and Alt+Tab behavior. The largest measured video upload took 59.40 microseconds, and shutdown joined the decoder before releasing audio and FFmpeg state.
 
 ## Build
 
