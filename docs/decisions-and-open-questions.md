@@ -350,6 +350,8 @@ First capped result: the 1280x720 native windowed case used VSync off and the ex
 
 Second capped result: the first 1280x960 visual run passed placement and input, but focus or menu pauses lowered its cadence average to 41.97 FPS. The strict 60 FPS check rejected that timing sample. A retry kept the Data page focused and untouched. Its eight samples measured 59.98 to 60.04 FPS with a 60.00 FPS average. The retry confirmed the 1280x960 backbuffer, one 26.30-microsecond upload, no failure, an empty save directory, and a clean shutdown. This accepts the 4:3 resolution, 60 FPS cap, and VSync-on row without relabeling the disturbed run as a pass.
 
+Third capped result: the 2560x1440 native windowed case used VSync off and RTSS at 90 FPS. The user reported that the visible panel looked good on the 1920x1080 monitor. Eight cadence samples measured 89.99 to 90.04 FPS with a 90.01 FPS average. The log confirmed the requested backbuffer, one 25.70-microsecond upload, no failure, an empty save directory, and a clean shutdown. This accepts the 2560x1440 and 90 FPS rows. The larger window was clipped by the physical display, so this result is limited to the visible panel and logged backbuffer.
+
 ### Native fullscreen focus-cycle baseline
 
 Date: August 10, 2026
