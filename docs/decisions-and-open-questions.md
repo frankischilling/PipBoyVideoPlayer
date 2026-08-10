@@ -218,6 +218,18 @@ Rejected alternatives: do not assign new absolute screen coordinates for the act
 
 Consequence: the next run resolved the rectangle 68 units farther left and 168 units lower, but the user still described the checkerboard as top-left. The unchanged 560 by 315 size prevents this candidate from reading as a small lower-left panel. Do not guess a smaller playback size without resolving that design choice because it conflicts with the documented full-glass stage.
 
+### Compact lower-left diagnostic viewport
+
+Date: August 9, 2026
+
+Decision: use a 320 by 180 `PBVP_VideoRect` for the next Phase 1 placement test. Retain the 12-unit lower-left anchor and the tested drawable depths. Keep the 256 by 256 private DDS because it is only a generated upload target, not the final decoded-frame size.
+
+Evidence: the user clarified that the complete checkerboard must move away from the radio station list at the upper-left. The 560 by 315 candidate was already bottom-anchored in the live trait geometry, but its height still placed its top edge at logical `y = 276`. Reducing the height to 180 moves that edge down by another 135 units while preserving the verified bottom edge.
+
+Rejected alternatives: another coordinate-only change would ignore the measured reason the large surface still reaches the upper-left. Do not change the final aspect-fit or aspect-fill contract based on this diagnostic texture. Those modes still apply inside the selected playback viewport.
+
+Consequence: the next run must show the full checkerboard as a smaller lower-left panel, leave the upper radio station list visible, and preserve keyboard and mouse input.
+
 ### Verified reset hook only
 
 Date: August 9, 2026

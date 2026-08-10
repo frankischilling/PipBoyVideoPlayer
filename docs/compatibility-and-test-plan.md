@@ -141,6 +141,12 @@ The complete rectangle anchor changed the resolved bounds from `110,108` through
 
 The candidate kept the original 560 by 315 size, so its upper edge still occupies much of the Pip-Boy content area even when its bottom edge is anchored. The placement is not accepted. The next change requires a choice between a smaller lower-left video panel and the documented full-glass playback stage.
 
+Ninth candidate: compact lower-left rectangle
+
+The user clarified that the entire checkerboard should sit at the lower-left of the Pip-Boy because the large surface still blocked the radio station list at the upper-left. The next candidate reduces `PBVP_VideoRect` from 560 by 315 to 320 by 180 while retaining the verified 12-unit lower-left anchor, texture path, and drawable depths.
+
+The smaller size should move the top edge 135 logical units lower without changing the bottom edge. It remains a Phase 1 diagnostic geometry until an in-game run confirms the placement and ordinary radio controls remain usable.
+
 ## Required profiles
 
 | Profile | Purpose |

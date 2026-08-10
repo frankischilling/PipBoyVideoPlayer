@@ -42,6 +42,13 @@ if(video_anchor_offset EQUAL -1)
     message(FATAL_ERROR "UI video rectangle must stay anchored to the lower-left inset")
 endif()
 
+string(FIND "${prefab_text}"
+    "<width> 320 </width>\n        <height> 180 </height>"
+    diagnostic_viewport_size_offset)
+if(diagnostic_viewport_size_offset EQUAL -1)
+    message(FATAL_ERROR "UI diagnostic viewport must retain the reviewed compact size")
+endif()
+
 function(require_drawable_depth drawable_name drawable_depth)
     string(REGEX MATCH
         "name=\"${drawable_name}\">[\r\n\t ]*<visible> 1 </visible>[\r\n\t ]*<alpha> [0-9]+ </alpha>[\r\n\t ]*<depth> ${drawable_depth} </depth>"
