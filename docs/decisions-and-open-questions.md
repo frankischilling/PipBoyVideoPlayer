@@ -472,6 +472,18 @@ Decision: place FFmpeg DLLs in a mod-private directory and load the pinned set t
 
 Reason: shared plugin or game-root DLLs can collide with unrelated mods and allow accidental version substitution.
 
+### Minimal FFmpeg 8.1.2 runtime
+
+Date: August 10, 2026
+
+Decision: use FFmpeg 8.1.2 built as five shared i686 libraries with MSYS2 GCC 15.2.0. Enable only MOV demuxing, H.264 and AAC parsing and decoding, software scaling, audio resampling, and Windows threads. Link the required winpthreads clock functions statically into `avutil`.
+
+Evidence: the official archive and detached signature passed the pinned hash and release-key checks. The first five-library build required `libwinpthread-1.dll`. Static linkage removed that runtime dependency. Two clean builds with fixed source time and neutral file-prefix mapping produced the same hashes. The automated audit verified every PE machine type, import, hash, and private-path check. Host tests passed 7 of 7, and Win32 Release tests passed 10 of 10.
+
+Rejected alternatives: do not use a general FFmpeg binary bundle, enable unrelated codecs, ship command-line tools, depend on a shared MinGW runtime DLL, link FFmpeg statically into the plugin, or retain absolute source paths in diagnostic strings.
+
+Consequence: the plugin must load this exact private DLL set through restricted absolute paths and verify the expected library majors before decoding. Any FFmpeg or toolchain update requires new source verification, two clean builds, updated hashes, an import review, an upstream warning review, and a license review.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.
@@ -486,14 +498,12 @@ Reason: the player should be safe to add or remove and should not leave missing 
 4. Which Pip-Boy replacers retain the same menu coordinate contract?
 5. Can the UI provide a clean Data entry without editing scripts or requiring an ESP?
 
-## Open questions before phase two
+## Remaining open questions before phase two
 
-1. Which FFmpeg release and minimal configure set will be pinned?
-2. Will the x86 build use MSVC-compatible import libraries or a fully MinGW-built dependency set?
-3. Does custom Win32 I/O see all media supplied by MO2's virtual filesystem?
-4. Which malformed-media corpus can be used without redistribution problems?
-5. Should the decoder scale directly to the current presentation rectangle or to a fixed intermediate size?
-6. What exact queue byte limits fit the VNV address-space budget under a large mod list?
+1. Does custom Win32 I/O see all media supplied by MO2's virtual filesystem?
+2. Which malformed-media corpus can be used without redistribution problems?
+3. Should the decoder scale directly to the current presentation rectangle or to a fixed intermediate size?
+4. What exact queue byte limits fit the VNV address-space budget under a large mod list?
 
 ## Open questions before phase three
 

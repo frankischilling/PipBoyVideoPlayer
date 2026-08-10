@@ -7,6 +7,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 option(PBVP_BUILD_PLUGIN "Build the Win32 xNVSE plugin" ON)
 option(PBVP_BUILD_TESTS "Build automated tests" ON)
 set(PBVP_XNVSE_ROOT "${CMAKE_SOURCE_DIR}/external/NVSE-6.4.5" CACHE PATH "xNVSE 6.4.5 release source root")
+set(PBVP_FFMPEG_ROOT "${CMAKE_SOURCE_DIR}/external/ffmpeg-8.1.2-i686" CACHE PATH "Verified FFmpeg 8.1.2 x86 install root")
 
 include(CTest)
 
@@ -32,6 +33,10 @@ if(PBVP_BUILD_PLUGIN)
     endif()
     if(NOT EXISTS "${PBVP_XNVSE_ROOT}/nvse/nvse/PluginAPI.h")
         message(FATAL_ERROR "PBVP_XNVSE_ROOT must point to the official xNVSE 6.4.5 release source.")
+    endif()
+    if(NOT EXISTS "${PBVP_FFMPEG_ROOT}/include/libavformat/avformat.h" OR
+       NOT EXISTS "${PBVP_FFMPEG_ROOT}/bin/avcodec-62.dll")
+        message(FATAL_ERROR "PBVP_FFMPEG_ROOT must point to the verified FFmpeg 8.1.2 x86 build. Run scripts/build-ffmpeg.ps1.")
     endif()
 
     add_library(PipBoyVideoPlayer SHARED
@@ -73,6 +78,7 @@ if(PBVP_BUILD_PLUGIN)
         add_test(NAME pbvp_plugin_abi_test COMMAND pbvp_plugin_abi_test $<TARGET_FILE:PipBoyVideoPlayer>)
 
         find_program(PBVP_LLVM_PDBUTIL_EXECUTABLE NAMES llvm-pdbutil REQUIRED)
+        find_program(PBVP_LLVM_READOBJ_EXECUTABLE NAMES llvm-readobj REQUIRED)
         add_test(
             NAME pbvp_public_pdb_sanitizer_test
             COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
@@ -84,6 +90,18 @@ if(PBVP_BUILD_PLUGIN)
                 -BinaryPath $<TARGET_FILE:PipBoyVideoPlayer>
                 -LlvmPdbUtil ${PBVP_LLVM_PDBUTIL_EXECUTABLE})
         set_tests_properties(pbvp_public_pdb_sanitizer_test PROPERTIES CONFIGURATIONS Release)
+
+        add_test(
+            NAME pbvp_ffmpeg_runtime_audit_test
+            COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+                -NoProfile
+                -ExecutionPolicy Bypass
+                -File ${CMAKE_SOURCE_DIR}/tests/test-ffmpeg-runtime-audit.ps1
+                -AuditScript ${CMAKE_SOURCE_DIR}/scripts/audit-ffmpeg-runtime.ps1
+                -RuntimeDirectory ${PBVP_FFMPEG_ROOT}/bin
+                -ManifestPath ${CMAKE_SOURCE_DIR}/dependencies/ffmpeg-8.1.2.json
+                -LlvmReadObj ${PBVP_LLVM_READOBJ_EXECUTABLE}
+                -PrivatePathMarker ${CMAKE_SOURCE_DIR})
     endif()
 endif()
 
@@ -119,6 +137,16 @@ if(PBVP_BUILD_TESTS)
             -ExecutionPolicy Bypass
             -File ${CMAKE_SOURCE_DIR}/tests/test-phase1-focus-counter.ps1
             -CounterModule ${CMAKE_SOURCE_DIR}/scripts/phase1-focus-counter.psm1)
+
+    add_test(
+        NAME pbvp_ffmpeg_manifest_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-ffmpeg-manifest.ps1
+            -ManifestPath ${CMAKE_SOURCE_DIR}/dependencies/ffmpeg-8.1.2.json
+            -FetchScript ${CMAKE_SOURCE_DIR}/scripts/fetch-dependencies.ps1
+            -BuildScript ${CMAKE_SOURCE_DIR}/scripts/build-ffmpeg.ps1)
 
     add_test(
         NAME pbvp_data_contract_test

@@ -15,6 +15,9 @@ if ($Target -eq 'plugin') {
     if (-not (Test-Path -LiteralPath (Join-Path $root 'external\NVSE-6.4.5\nvse\nvse\PluginAPI.h'))) {
         throw 'Verified dependencies are missing. Run scripts\fetch-dependencies.ps1 first.'
     }
+    if (-not (Test-Path -LiteralPath (Join-Path $root 'external\ffmpeg-8.1.2-i686\bin\avcodec-62.dll'))) {
+        throw 'The verified FFmpeg runtime is missing. Run scripts\build-ffmpeg.ps1 first.'
+    }
     if (-not $VisualStudioGenerator) {
         $vs2022Root = 'C:\Program Files\Microsoft Visual Studio\2022'
         $hasVs2022 = @(Get-ChildItem -LiteralPath $vs2022Root -Directory -ErrorAction SilentlyContinue | Where-Object {

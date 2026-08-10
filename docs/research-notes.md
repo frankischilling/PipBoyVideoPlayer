@@ -93,7 +93,17 @@ The [FFmpeg library documentation](https://www.ffmpeg.org/doxygen/trunk/index.ht
 
 The [FFmpeg README](https://ffmpeg.org/doxygen/8.0/md_README.html) states that the codebase is mainly LGPL with optional GPL components. The actual configuration controls the resulting obligations. The package plan therefore excludes optional components until their licenses and need are reviewed.
 
-Inference to test: a minimal x86 build with MOV/MP4, H.264, and AAC support is small enough in code and address-space cost for the target VNV profile.
+The official release index identified FFmpeg 8.1.2 as the current stable release on August 10, 2026. The source archive was downloaded from `https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz`. Its SHA-256 is `464BEB5E7BF0C311E68B45AE2F04E9CC2AF88851ABB4082231742A74D97B524C`. GnuPG accepted the detached signature from release key fingerprint `FCF986EA15E6E293A5644F10B4322F04D67658D8`.
+
+The minimal i686 configuration enables five shared libraries, the MOV demuxer, H.264 and AAC decoding and parsing, Windows threads, software scaling, and audio resampling. It disables programs, documentation, networking, protocols, encoders, muxers, filters, devices, hardware acceleration, and automatic external dependency detection. The configuration reports LGPL version 2.1 or later.
+
+The first build imported `libwinpthread-1.dll` from `avutil-60.dll` for `clock_gettime32` and `nanosleep32`. A second profile linked only those functions from the pinned static winpthreads archive. The resulting five DLLs import only one another and Windows system libraries. The installed MSYS2 package is `mingw-w64-i686-winpthreads` version `13.0.0.r505.g7d006b2ea-1`, based on source commit `7d006b2ea4b17da66e515f4494b86cc1adb52f24`. Its terms are MIT and BSD-3-Clause-Clear.
+
+A path scan then found absolute source names in FFmpeg's runtime diagnostic strings even though debug symbols were disabled. GCC file-prefix mapping replaces the local checkout with `pbvp` without adding an absolute path to FFmpeg's published configure string. Two clean builds with source epoch `1781662671` produced the same five DLL hashes. The audit confirmed i386 machine type, exact imports, exact hashes, and no repository, MSYS2, or user-profile path.
+
+GCC emitted upstream warnings in AAC spectral band replication, frame-worker naming, VLC table analysis, and unused transform initialization functions. The build completed without a local FFmpeg patch. These warnings remain part of the dependency review record and will be checked again before an update.
+
+The current five DLLs total 6,056,006 bytes on disk. This resolves build size, not runtime address-space cost. Phase 2 still needs a 1080p decode measurement inside the target VNV process.
 
 ## Direct3D 9
 
