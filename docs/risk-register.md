@@ -8,7 +8,7 @@ This register tracks failures that can change the architecture, support promise,
 | UIO shader property has no usable source texture | High | Project-blocking | Remove the ineffective filename refresh; verify `TileImage + 0x40` as the exact `TileShaderProperty` type, then verify its `+0x60` source as `NiSourceTexture` before reading renderer data | Two runs left `TileImage + 0x3C` null, while the second recorded a stable non-null `+0x40` object before and after the filename refresh | Phase 1 |
 | Drawable depth differs across UI stacks | Medium | High | Explicit depths 10 through 12 work in the active VNV Extended stack; verify the base profile and every supported UI combination before making a broader claim | The active stack passed after parent-only depth failed, so ancestor depth cannot be treated as portable | Phase 1 |
 | Direct3D device reset conflicts with the active renderer stack | Medium | High | Remove the reset detour, require the engine texture to use `D3DPOOL_MANAGED`, and retain no Direct3D reference across callbacks | The synthetic reset froze inside native recreation. The accepted surface uses the managed pool, and PBVP owns no default-pool resource that needs a pre-reset callback | Phase 1 |
-| Repeated focus changes trigger a graphics-driver crash | High | High | Run a matched 50-cycle test with the PBVP development mod disabled before changing the renderer | PBVP-enabled runs crashed after four and nine cycles inside `nvd3dum`; the second trace exactly matches a pre-PBVP driver crash | Phase 1 |
+| Repeated focus changes trigger a graphics-driver crash | High in native fullscreen | High | Do not attribute the baseline failure to PBVP; test native windowed mode and DXVK separately, and exclude unsafe fullscreen Alt+Tab from support unless the baseline is fixed | Two PBVP-enabled runs crashed inside `nvd3dum`; the disabled control reached 50 cycles and then crashed with the same pre-PBVP driver trace | Phase 1 |
 | DXVK behaves differently from native D3D9 | Medium | High | Treat it as a separate graphics target and keep the upload path replaceable | Different device lifetime, texture lock failure, or state restoration bug | Phase 1 |
 | UI rectangle is not portable across Pip-Boy layouts | High | High | Keep the accepted 384 by 216 locus-owned panel for the active profile, then verify every required layout, resolution, and scale before treating it as a release viewport | The panel resolved at `42,375` through `426,591` and passed the user's visual check on fullscreen 1920x1080 VNV Extended | Phases 1 and 5 |
 | FFmpeg consumes too much 32-bit address space | Medium | High | Cap dimensions, keep queues small, disable unused features, and measure virtual memory | Private bytes or address space grows past the agreed budget | Phase 2 |
@@ -29,7 +29,7 @@ This register tracks failures that can change the architecture, support promise,
 
 Implementation should stop and return to design if any of these occur:
 
-- the render hook cannot recover from device loss without affecting the game or another plugin;
+- the presentation path cannot recover from device loss without affecting the game or another plugin;
 - the only viable install method is a root `d3d9.dll` proxy;
 - the UI needs full-file menu replacement in the required VNV profile;
 - bounded playback cannot fit the agreed 32-bit memory budget;

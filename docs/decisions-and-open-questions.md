@@ -332,6 +332,20 @@ Rejected alternatives: do not edit the original VNV profiles, use VSync as a cap
 
 Consequence: the test-case script accepts only the documented Phase 1 resolutions, frame caps, display modes, VSync states, and isolated profile names. It refuses cross-profile overlap and restores the original files. Manual in-game checks remain necessary for every recorded result.
 
+### Native fullscreen focus-cycle baseline
+
+Date: August 10, 2026
+
+Decision: treat the 1920x1080 native Direct3D 9 fullscreen focus-cycle result as a failing VNV baseline. Do not change PBVP to address the NVIDIA driver trace unless a matched PBVP-disabled configuration stops reproducing it. Continue the Phase 1 matrix with native Direct3D 9 windowed mode and test DXVK separately.
+
+Evidence: the first two measured runs with PBVP loaded crashed after four and nine completed focus cycles. Both reports remained inside `nvd3dum`, and the second exactly matched a March crash from before PBVP development. The PBVP-disabled control completed 50 cycles, then crashed one second later with the same six driver frames. PBVP was absent from the module list, and its log file remained byte-for-byte unchanged.
+
+Reason: the control isolates the crash from PBVP, even though the enabled runs reached it sooner. The maintained FNV performance guide documents unstable Alt+Tab behavior in legacy fullscreen mode and recommends windowed mode or DXVK for the affected presentation paths. The active NVTF pool option differs from the guide's explicit failure case, so the precise driver trigger remains unknown.
+
+Rejected alternatives: do not hide the control crash, count the result as a clean 50-cycle pass, patch the NVIDIA driver path, force a Direct3D reset, or weaken PBVP's texture validation. Do not claim native fullscreen Alt+Tab support from this installation.
+
+Consequence: the accepted fullscreen evidence remains limited to ordinary presentation, short Alt+Tab checks, and the earlier uncounted stress run. A supported repeated-focus configuration still requires a clean measured windowed or DXVK result. Native fullscreen can remain a playback configuration only if its focus-loss limitation is explicit and other required lifecycle checks pass.
+
 ### Separate public and private symbols
 
 Date: August 9, 2026

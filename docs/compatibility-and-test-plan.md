@@ -229,6 +229,10 @@ The crash report contains no PBVP frame. A March 14, 2026 crash from before PBVP
 
 The user requested one more PBVP-enabled attempt before the control. That retry crashed after nine completed focus cycles. PBVP had completed one managed-texture upload at 27.90 microseconds and logged no upload failure. The new CrashLogger trace exactly matches all six NVIDIA driver frames in the March pre-PBVP report, starting at `0x113C8CAA` and ending at `0x1177FCA3`. Two measured PBVP-enabled failures now make the disabled control mandatory.
 
+The PBVP-disabled control completed all 50 measured focus cycles. It recorded 1,898 samples and away times from 0.77 to 4.49 seconds. One second after the counter reached its target, FalloutNV crashed with the same six-frame NVIDIA driver trace. PBVP was not loaded, its log timestamp and SHA-256 remained unchanged, and the crash report contains no PBVP module.
+
+This is a failed native Direct3D 9 fullscreen baseline, not a PBVP-specific failure and not a clean 50-cycle pass. The maintained [FNV Performance Guide](https://performance.moddinglinked.com/falloutnv.html) describes legacy fullscreen Alt+Tab as slow and unstable. It also explains that the NVTF default-pool texture option makes fullscreen Alt+Tab unusable when enabled, while windowed mode and DXVK avoid that specific device-loss path. The active VNV profile leaves that option disabled, so the guide does not identify the exact cause of this crash. It supports testing native Direct3D 9 windowed mode next instead of changing PBVP around a driver crash that also occurs without the plugin.
+
 ## Required profiles
 
 | Profile | Purpose |
