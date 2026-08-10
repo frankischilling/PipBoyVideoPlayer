@@ -47,3 +47,5 @@
 - Made the Phase 1 case configurator check every target file for write access before it creates backups or changes test settings.
 - Added an external foreground-process counter that measures completed Alt+Tab cycles without installing a Windows hook or changing the game process.
 - Added a display-only test-case mode that leaves RTSS unchanged and still restores every isolated-profile INI byte.
+- Completed 50 measured focus-loss and return cycles in native Direct3D 9 windowed mode at 1920x1080. The managed surface had no failed upload, the log check passed, and the game shut down normally.
+- Added a test-only Stewie Tweaks override that prevents autosaves and exit saves in isolated Phase 1 profiles without changing the shared VNV settings or release package.

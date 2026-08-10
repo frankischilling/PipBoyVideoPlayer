@@ -20,8 +20,34 @@ try {
     [IO.File]::WriteAllText((Join-Path $profile 'falloutprefs.ini'), $prefsOriginal)
     [IO.File]::WriteAllText(
         (Join-Path $profile 'modlist.txt'),
+        "+Pip-Boy Video Player - Phase 1 Save Guard`r`n" +
         "+Pip-Boy Video Player - Dev`r`n")
     [IO.File]::WriteAllText($rtssProfile, $rtssOriginal)
+
+    $guardRefused = $false
+    try {
+        [IO.File]::WriteAllText(
+            (Join-Path $profile 'modlist.txt'),
+            "+Pip-Boy Video Player - Dev`r`n")
+        & $script -InstanceRoot $tempRoot `
+            -ProfileName 'PBVP Phase 1 Extended' `
+            -Width 1280 -Height 720 `
+            -DisplayMode Windowed -VSync Off `
+            -SkipFrameCap -Confirm:$false
+    } catch {
+        if ($_.Exception.Message -notmatch 'save guard is not enabled exactly once') {
+            throw
+        }
+        $guardRefused = $true
+    } finally {
+        [IO.File]::WriteAllText(
+            (Join-Path $profile 'modlist.txt'),
+            "+Pip-Boy Video Player - Phase 1 Save Guard`r`n" +
+            "+Pip-Boy Video Player - Dev`r`n")
+    }
+    if (-not $guardRefused) {
+        throw 'The matrix configurator accepted a profile without the save guard.'
+    }
 
     $permissionRefused = $false
     try {

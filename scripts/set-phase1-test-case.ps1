@@ -116,11 +116,19 @@ if (Test-Path -LiteralPath (Join-Path $profile 'saves')) {
 }
 
 $modList = Join-Path $profile 'modlist.txt'
-if (-not (Test-Path -LiteralPath $modList -PathType Leaf) -or
-    @((Get-Content -LiteralPath $modList) | Where-Object {
+if (-not (Test-Path -LiteralPath $modList -PathType Leaf)) {
+    throw 'The isolated test profile has no mod list.'
+}
+$enabledMods = @(Get-Content -LiteralPath $modList)
+if (@($enabledMods | Where-Object {
         $_ -eq '+Pip-Boy Video Player - Dev'
     }).Count -ne 1) {
     throw 'The development mod is not enabled exactly once in the selected profile.'
+}
+if (@($enabledMods | Where-Object {
+        $_ -eq '+Pip-Boy Video Player - Phase 1 Save Guard'
+    }).Count -ne 1) {
+    throw 'The Phase 1 save guard is not enabled exactly once in the selected profile.'
 }
 
 $rtssProfile = $null

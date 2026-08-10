@@ -346,6 +346,34 @@ Rejected alternatives: do not hide the control crash, count the result as a clea
 
 Consequence: the accepted fullscreen evidence remains limited to ordinary presentation, short Alt+Tab checks, and the earlier uncounted stress run. A supported repeated-focus configuration still requires a clean measured windowed or DXVK result. Native fullscreen can remain a playback configuration only if its focus-loss limitation is explicit and other required lifecycle checks pass.
 
+### Native windowed focus-cycle acceptance
+
+Date: August 10, 2026
+
+Decision: accept native Direct3D 9 windowed mode at 1920x1080 with VSync on for the Phase 1 repeated-focus requirement. Keep native fullscreen and DXVK as separate compatibility cases.
+
+Evidence: the PBVP-enabled windowed run completed all 50 focus cycles with no incomplete loss. FalloutNV remained running at the target, then exited normally. The plugin recorded three successful managed-texture uploads from 25.00 to 51.20 microseconds, no upload failure, complete renderer and cadence summaries, and a clean shutdown. The strict log check passed, and no new crash report appeared.
+
+Reason: this is the first exact 50-cycle run that completed without the native fullscreen driver failure. It uses the same hook-free managed-texture renderer as the failing fullscreen baseline, so no renderer change is needed to explain or accept the windowed result.
+
+Rejected alternatives: do not treat this as evidence for fullscreen or DXVK, combine it with the disabled fullscreen control, or claim that it proves a Direct3D device reset occurred.
+
+Consequence: Phase 1 has a supported native windowed focus-loss configuration. The remaining matrix still needs other resolutions, UI profiles, input cases, frame caps, and a separate DXVK result.
+
+### Isolated profile save guard
+
+Date: August 10, 2026
+
+Decision: enable a separate local Stewie Tweaks multi-INI override in every PBVP Phase 1 profile. Disable improved autosaves, save-on-exit, and the autosave timer there. Do not edit the shared VNV INI, disable MO2 local saves, or include the guard in a PBVP package.
+
+Evidence: the first windowed test created a new `.fos` file and `.nvse` co-save at shutdown because the source Extended INI enables save-on-exit. The isolated profile had no save directory before the run, so both files were test output. They were moved together to an ignored quarantine and remain recoverable. The installed Stewie Tweaks 9.80 readme and active INI document and enable multi-INI overrides.
+
+Reason: a profile-only override stops the side effect at its source while preserving the rest of the Extended configuration. Keeping MO2 local saves enabled ensures that an unexpected save still stays inside the isolated profile instead of reaching a normal save directory.
+
+Rejected alternatives: do not edit the shared Extended INI, copy and replace its complete settings file, turn off local saves, delete generated files without a recoverable copy, or package test-only save behavior with the plugin.
+
+Consequence: profile creation verifies the override file, the active Stewie Tweaks multi-INI setting, and one enabled guard entry per test profile. The display-case helper refuses to run without the guard. A later in-game exit must confirm that no new test save is produced.
+
 ### Separate public and private symbols
 
 Date: August 9, 2026
