@@ -382,6 +382,20 @@ Rejected alternatives: do not treat this as evidence for fullscreen or DXVK, com
 
 Consequence: Phase 1 has a supported native windowed focus-loss configuration. The remaining matrix still needs other resolutions, UI profiles, input cases, frame caps, and a separate DXVK result.
 
+### Phase 1 native graphics support boundary
+
+Date: August 10, 2026
+
+Decision: complete the Phase 1 graphics gate with native Direct3D 9 windowed mode as the supported path. Do not claim DXVK or repeated native fullscreen focus changes. Move controller and input-method validation to Phase 5, where the player controls are implemented.
+
+Evidence: all four isolated UI profiles passed at 1920x1080. The native windowed matrix passed 1280x720 at 30 FPS, 1280x960 at 60 FPS, 2560x1440 at 90 FPS, and 3440x1440 at 120 FPS across both VSync states. The exact 50-cycle windowed focus run passed and shut down cleanly. Managed-texture uploads measured 22.70 to 51.20 microseconds. Host tests passed 6 of 6, and Win32 Release tests passed 8 of 8.
+
+The target VNV instance contains no DXVK installation or root-management tool. The windowed focus path did not expose a device recreation, and the game has no verified safe in-process display toggle. PBVP owns no Direct3D resource, retains no COM reference between callbacks, rejects non-managed textures, and validates a changed device or surface before use.
+
+Rejected alternatives: do not install a root `d3d9.dll` proxy, claim untested DXVK behavior, count the native fullscreen driver crash as a pass, retry the retired synthetic recreation path, or keep controller testing in a phase that has no player controls.
+
+Consequence: Phase 2 may start after the Phase 1 documentation, artifacts, GitHub issue, and pull request are finalized. DXVK can be added only after a separate isolated installation passes its own matrix. Phase 5 retains controller and input-method acceptance.
+
 ### Isolated profile save guard
 
 Date: August 10, 2026

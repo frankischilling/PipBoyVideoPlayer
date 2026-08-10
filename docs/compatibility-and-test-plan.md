@@ -159,7 +159,7 @@ The host and Win32 suites convert the accepted logical rectangle through represe
 
 Automated recreation result contract
 
-The earlier host and Win32 suites verified the audited `NiDX9Renderer::Recreate` return values while the observation detour was present. The managed-texture decision removes that detour because PBVP owns no reset-sensitive resource. The replacement tests require `D3DPOOL_MANAGED`, reject every other pool, and verify that a changed device or surface receives fresh validation and upload. An in-game natural display transition is still required.
+The earlier host and Win32 suites verified the audited `NiDX9Renderer::Recreate` return values while the observation detour was present. The managed-texture decision removes that detour because PBVP owns no reset-sensitive resource. The replacement contract requires `D3DPOOL_MANAGED`, rejects every other pool, and treats a changed device or surface as a fresh validation and upload. The target game exposes no verified safe in-process display toggle, so Phase 1 accepts the managed-resource ownership result without claiming that a natural Reset was observed.
 
 ### Retired controlled engine recreation candidate
 
@@ -331,6 +331,16 @@ The active monitor was 1920x1080, so the ultrawide game window extended beyond i
 
 Eight cadence samples measured 119.89 to 120.19 FPS, with a 120.01 FPS session average. Both summaries and the clean shutdown record were present, the strict check passed, and the isolated save directory remained empty. This accepts the 3440x1440 resolution and 120 FPS cap rows for native windowed mode. It does not claim full-window visual coverage on the smaller physical display.
 
+### Phase 1 graphics support boundary
+
+Date: August 10, 2026
+
+The supported Phase 1 graphics path is native Direct3D 9 in windowed mode. The required native resolutions, aspect ratios, VSync states, frame caps, UI profiles, keyboard and mouse checks, exact 50-cycle focus test, upload measurements, and clean shutdown checks passed. Native fullscreen remains usable for ordinary presentation, but repeated focus changes are excluded because the same NVIDIA driver crash occurred with PBVP disabled.
+
+DXVK and a safe root-management tool are absent from the target VNV instance. PBVP does not install a root `d3d9.dll` proxy, so Phase 1 makes no DXVK claim. Controller navigation and input-method switching belong to Phase 5, where the controls are implemented.
+
+The native windowed focus path did not expose a device recreation. PBVP creates no Direct3D resource, accepts only the engine's managed texture, and releases every temporary COM reference before returning from the callback. A changed device or surface identity triggers validation before use. This satisfies the Phase 1 resource-ownership gate without claiming that a natural Direct3D Reset passed.
+
 ## Required profiles
 
 | Profile | Purpose |
@@ -449,7 +459,7 @@ The per-field follow-up found a valid renderer and readable requested-size field
 
 The guarded same-size candidate met those checks, staged 1920x1080, and entered the verified recreation detour. The game then froze before the original `NiDX9Renderer::Recreate` call returned. The log contains no request consumption, value restoration, renderer summary, or orderly shutdown record, and CrashLogger produced no dump. This is a failed compatibility result. The private forced-recreation path is retired and must not be installed or run again.
 
-The current development DLL installs no recreation detour and has SHA-256 `0091FF35675409A8612B24A113AC1571C9D5EFE6E55939813E12EF8565C8F547`. The reviewed managed-texture decision establishes that PBVP retains no reset-sensitive resource to release. The first hook-free run passed its visual, Alt+Tab, log, and clean-shutdown checks. A game-initiated transition is still needed to test fresh validation after a device or surface change. None of this evidence permits a DXVK or untested display-mode claim.
+The current development DLL installs no recreation detour and has SHA-256 `0091FF35675409A8612B24A113AC1571C9D5EFE6E55939813E12EF8565C8F547`. The reviewed managed-texture decision establishes that PBVP retains no reset-sensitive resource to release. The hook-free path passed its visual, measured windowed Alt+Tab, log, and clean-shutdown checks. The game exposes no verified safe in-process display toggle in this setup, so the accepted result is the managed-resource ownership contract rather than an observed Reset. This evidence does not permit a DXVK claim.
 
 ## UI matrix
 

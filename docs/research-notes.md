@@ -225,6 +225,10 @@ The first in-process run on August 9, 2026 produced the same 16 bytes from the p
 
 The current xNVSE source was inspected at commit `625db7e60007fbcceab755650ed479b5c337717c`. The installed 6.4.5 release corresponds to commit `fa1ab4d0d49516ebcc7a69e5d6e075976acca061`. The current Fallout Shader Loader source was inspected at commit `12fdf8d84a8f54763625091f37d538e0bbca988f`, and Psycho was inspected at commit `85c96c1415b636051dff690036b510761de25d7a`.
 
+The final local graphics inventory found no DXVK DLL, DXVK configuration, DXVK mod, Root Builder plugin, or enabled root-management mod in the target VNV instance. Installing DXVK directly would require the root `d3d9.dll` path excluded by the project architecture. Phase 1 therefore makes no DXVK support claim.
+
+The native windowed focus path did not expose a repeatable device recreation, and the maintained executable audit found no verified safe in-process display toggle. The accepted resource contract uses only the engine-owned `D3DPOOL_MANAGED` texture, releases every temporary COM reference inside the callback, and treats a changed device or surface identity as new. Together with the clean 50-cycle windowed run, this closes the Phase 1 lifecycle gate without claiming that a natural Direct3D Reset occurred.
+
 ## Audio and timing
 
 Microsoft's [`XAUDIO2_VOICE_STATE` documentation](https://learn.microsoft.com/en-us/windows/win32/api/xaudio2/ns-xaudio2-xaudio2_voice_state) defines `SamplesPlayed` as the number of decoded samples processed by a source voice. The [XAudio2 streaming guide](https://learn.microsoft.com/en-us/windows/win32/xaudio2/xaudio2-streaming-audio-data) recommends queued buffers and a worker thread for long audio streams, and warns that underruns create audible gaps.
@@ -241,8 +245,7 @@ Inference to test: media enumeration and the custom FFmpeg I/O bridge see files 
 
 ## Research still needed
 
-- the exact Pip-Boy menu draw order and tile-to-backbuffer transform;
-- native Direct3D 9 and DXVK reset behavior at the selected frame boundary;
+- DXVK behavior at the selected frame boundary if support is later claimed;
 - XAudio2 version behavior on the minimum Windows target;
 - a reproducible minimal FFmpeg x86 build;
 - codec patent review for binary distribution;

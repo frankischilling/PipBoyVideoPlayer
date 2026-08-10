@@ -65,3 +65,5 @@
 - Accepted native windowed 1280x960 with VSync on and a stable measured 60 FPS RTSS cap.
 - Accepted the visible panel at native windowed 2560x1440 with VSync off and a measured 90 FPS RTSS cap.
 - Accepted the visible panel at native windowed 3440x1440 with VSync on and a measured 120 FPS RTSS cap.
+- Set the Phase 1 support boundary to native Direct3D 9 windowed mode without claiming DXVK or repeated fullscreen focus changes.
+- Rebuilt the Win32 Release plugin and passed all eight Win32 tests plus all six host tests.
