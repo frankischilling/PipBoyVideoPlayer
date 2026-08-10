@@ -167,6 +167,24 @@ Automated hook conflict classification
 
 The host and Win32 suites verify safe refusal for x86 relative jumps, absolute indirect jumps, push and return stubs, register jumps, and jumps after common hotpatch prefixes. A byte sequence that is neither a reviewed original entry nor a recognized redirect remains unknown and is also refused. This proves the pure classification gate. A live conflict test still needs a controlled fixture because the development profile must not patch another installed plugin.
 
+### Repeatable diagnostic log check
+
+Maintainers can check a Phase 1 game log from the repository root:
+
+```powershell
+.\scripts\check-phase1-log.ps1 `
+  -LogPath '...\PipBoyVideoPlayer.log' `
+  -ExpectedWidth 1920 `
+  -ExpectedHeight 1080 `
+  -MinimumUploads 1
+```
+
+The check requires a plugin load record, the verified recreation hook, a resolved UIO rectangle, a validated Direct3D device, and the requested number of successful texture uploads. It rejects plugin errors, failed or unknown recreation results, and a backbuffer that does not match the expected dimensions. Add `-MinimumRecreates 1` after a controlled display recreation. Add `-RequireCleanExit` when the test includes an orderly process exit.
+
+The accepted 1920x1080 VNV Extended run passes with one validated device and one upload at 27.30 microseconds. The log contains no plugin errors. It has zero recreation records, so this result does not satisfy the device-recreation test.
+
+CTest runs the checker against generated logs. The fixtures cover a normal clean exit and a successful recreation. They also confirm rejection of an error record, a wrong backbuffer, and a missing required recreation. The generated logs contain no game data or personal media.
+
 ## Required profiles
 
 | Profile | Purpose |

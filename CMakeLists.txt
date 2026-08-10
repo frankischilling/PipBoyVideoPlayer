@@ -79,6 +79,15 @@ if(PBVP_BUILD_PLUGIN)
 endif()
 
 if(PBVP_BUILD_TESTS)
+    find_program(PBVP_POWERSHELL_EXECUTABLE NAMES pwsh powershell REQUIRED)
+    add_test(
+        NAME pbvp_phase1_log_checker_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase1-log-checker.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase1-log.ps1)
+
     add_test(
         NAME pbvp_data_contract_test
         COMMAND ${CMAKE_COMMAND}

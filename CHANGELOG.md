@@ -25,4 +25,5 @@
 - Added host tests, Win32 tests, DLL export checks, and PE architecture checks.
 - Added coordinate conversion coverage for 4:3, 16:9, 16:10, and ultrawide canvases.
 - Added a data-contract test for the UIO registration, named prefab tiles, private surface path, and package generator.
+- Added a repeatable Phase 1 log check for plugin load, hook verification, UI geometry, device validation, texture uploads, recreation failures, and clean shutdown.
 - Added RadioCaptions-style build, test, package, and MO2 development-install scripts.
