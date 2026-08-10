@@ -251,6 +251,40 @@ Create these profiles once, or verify them later:
 
 The creation command refuses to replace an existing target. The automated test builds a temporary MO2 fixture, confirms that saves are not copied, verifies the disabled Pip-Boy UI Tweaks entries, and checks the replacement refusal.
 
+### Reversible display and frame-rate cases
+
+Exit FalloutNV before changing a test case. Create a FalloutNV.exe application profile in RTSS, then configure one isolated MO2 profile:
+
+```powershell
+$rtssProfile = Join-Path ${env:ProgramFiles(x86)} `
+  'RivaTuner Statistics Server\Profiles\FalloutNV.exe.cfg'
+
+.\scripts\set-phase1-test-case.ps1 `
+  -InstanceRoot 'C:\path\to\Viva New Vegas' `
+  -ProfileName 'PBVP Phase 1 Extended' `
+  -RtssProfilePath $rtssProfile `
+  -Width 1920 -Height 1080 `
+  -DisplayMode Fullscreen `
+  -FpsCap 60 `
+  -VSync On `
+  -Confirm:$false
+```
+
+The script accepts only the five resolutions and four frame caps in the Phase 1 matrix. It updates `fallout.ini`, `falloutprefs.ini`, and `falloutcustom.ini` only inside the selected PBVP profile. It also updates the existing RTSS application profile. The first case saves all four original files. Later cases for the same profile reuse that baseline.
+
+Restore the files before testing a different profile:
+
+```powershell
+.\scripts\set-phase1-test-case.ps1 `
+  -InstanceRoot 'C:\path\to\Viva New Vegas' `
+  -ProfileName 'PBVP Phase 1 Extended' `
+  -RtssProfilePath $rtssProfile `
+  -Restore `
+  -Confirm:$false
+```
+
+The restore operation puts the saved bytes back and removes its temporary state. The script refuses a second profile while another profile has an active case. It also refuses profiles with saves, a missing development mod, an unexpected RTSS filename, or an undocumented resolution. Its automated fixture covers two successive cases, rejection behavior, and byte-for-byte restoration. This tooling prepares repeatable cases but does not count as an in-game result.
+
 ENB and New Vegas Reloaded begin as unsupported configurations. They may enter the matrix after the native D3D9 path is stable and a maintainer can reproduce them.
 
 ## Graphics matrix

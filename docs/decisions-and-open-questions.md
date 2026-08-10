@@ -282,6 +282,18 @@ Rejected alternatives: do not call the renderer owner directly, call `IDirect3DD
 
 Consequence: the private candidate can exercise the engine-owned reset order without guessing function arguments. It still requires an in-game run and a clean log with one successful recreation. The normal build cannot schedule the request.
 
+### Reversible compatibility cases
+
+Date: August 9, 2026
+
+Decision: configure Phase 1 display cases only in the save-free PBVP MO2 profiles. Use the existing FalloutNV.exe RTSS application profile for the required 30, 60, 90, and 120 FPS caps. Save the original profile INIs and RTSS profile before the first case, and restore their exact bytes after the session.
+
+Evidence: the installed NVTF configuration exposes a maximum timing tolerance, not a general frame limiter. The maintained Fallout NV Performance Guide recommends RTSS and states that VSync is not a limiter. RTSS is already installed with a FalloutNV.exe profile, passive waiting, and front-edge sync. DXVK also supplies a built-in D3D9 cap, but its maintained configuration reference recommends an external limiter when one is available.
+
+Rejected alternatives: do not edit the original VNV profiles, use VSync as a cap, repurpose NVTF's tolerance setting, or change the limiter between native Direct3D 9 and DXVK. Do not automate changes to a profile that contains saves.
+
+Consequence: the test-case script accepts only the documented Phase 1 resolutions, frame caps, display modes, VSync states, and isolated profile names. It refuses cross-profile overlap and restores the original files. Manual in-game checks remain necessary for every recorded result.
+
 ### Private development licensing
 
 Date: August 9, 2026

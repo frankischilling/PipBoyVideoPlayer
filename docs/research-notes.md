@@ -40,6 +40,10 @@ The local VNV installation was inspected on August 9, 2026. The selected profile
 
 The installed versions relevant to the plugin are xNVSE 6.4.5, JIP LN 57.30, JohnnyGuitar 5.20, ShowOff 1.82, NVTF 10.61, UIO 2.30, Vanilla UI Plus 9.48, Clean Vanilla Hud f1.01, Pip-Boy UI Tweaks 5.2.1, and Fallout Shader Loader 1.32.
 
+The installed NVTF 10.61 configuration sets `iMaxFPSTolerance=300` and marks it as a value not to edit. It is not a general frame limiter. The maintained [Fallout NV Performance Guide](https://github.com/ModdingLinked/FalloutNV-Performance-Guide/blob/main/falloutnv.html) states that VSync is not a limiter and recommends a FalloutNV.exe profile in RivaTuner Statistics Server. RTSS is installed locally, and its existing FalloutNV.exe profile uses front-edge sync and passive waiting with the limit disabled. The Phase 1 matrix can set that profile to 30, 60, 90, or 120 FPS while retaining a restorable copy of its original contents.
+
+The official [DXVK configuration reference](https://github.com/doitsujin/dxvk/blob/master/dxvk.conf) provides `d3d9.maxFrameRate`, but its own comments recommend an external limiter when one is available. Using the same RTSS profile for native Direct3D 9 and any later DXVK test avoids changing the limiter between graphics paths. This does not establish DXVK support. A separate isolated DXVK installation and in-game result are still required before making that claim.
+
 The active `FalloutNV.exe` reports runtime 1.4.0.525 and has SHA-256 `518C87F58A6C4D9826E9EF8FBB7F4213882FA70822675610D45AEA2464502A57`. The retained backup executable has SHA-256 `3A87F92F011E5DC9179DDF733CF08BE2B39EA6E5B7A8A9E3A9A72DAFCC1B104D`. The active executable is large-address aware and contains code changes beyond the PE header. Runtime checks must therefore validate every patched function before installation. The game root contains no `d3d9.dll` or `dxgi.dll`, so the inspected profiles currently use native Direct3D 9.
 
 Inference to test: an ESP-less native plugin plus UIO prefab should fit the VNV install model without a load-order patch.
