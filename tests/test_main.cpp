@@ -3,11 +3,13 @@
 #include <cstdio>
 
 void RunHookProbeTests();
+void RunRecreateGateTests();
 void RunRecreateResultTests();
 void RunRectMathTests();
 
 int main() {
     RunHookProbeTests();
+    RunRecreateGateTests();
     RunRecreateResultTests();
     RunRectMathTests();
     if (pbvp::test::failures != 0) {

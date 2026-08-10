@@ -270,6 +270,18 @@ Verification: on August 9, 2026, the patched local Steam executable exposed the 
 
 Follow-up evidence: the current Psycho audit at commit `85c96c1415b636051dff690036b510761de25d7a` proves that the native function returns `0` on failure, `1` after recovering the original presentation parameters, and `2` after applying the requested parameters. The caller treats any nonzero result as usable, but PBVP accepts only the two documented success values. It also requires the renderer to publish a device before clearing its lost state. The next frame validates that device and reacquires the engine-owned texture.
 
+### Opt-in deferred recreation test build
+
+Date: August 9, 2026
+
+Decision: provide a private compile-time test option that writes Fallout's deferred recreation request once, after the checkerboard upload path has validated the shared game and render thread. Verify the exact 23-byte main-loop request gate before writing the byte. Keep the option disabled in normal builds and refuse to package any build directory marked as armed.
+
+Evidence: five Alt+Tab cycles preserved the managed texture but never called `NiDX9Renderer::Recreate`. The current Psycho checkout at commit `22b0030cd48d190a0cd9a0b4a945ebc2585b338e` identifies the full recreation helper at `0x004DC360`. The game main loop calls that helper only when byte `0x011C6FBB` is nonzero, then clears the byte. Its Ghidra cross-reference report finds no other executable reads or writes. The helper uses the active width and height before calling the reviewed renderer owner.
+
+Rejected alternatives: do not call the renderer owner directly, call `IDirect3DDevice9::Reset`, patch a device vtable, or enable this request in a normal package. Those paths bypass engine ordering or leave an unsafe test control in the release build.
+
+Consequence: the private candidate can exercise the engine-owned reset order without guessing function arguments. It still requires an in-game run and a clean log with one successful recreation. The normal build cannot schedule the request.
+
 ### Private development licensing
 
 Date: August 9, 2026

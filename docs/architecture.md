@@ -105,4 +105,6 @@ The engine's `NiDX9Renderer::Recreate` function remains the only MinHook detour 
 
 The active VNV Extended test has validated the live texture chain, matching callback thread IDs, and the intended layer order. An isolated Win32 fixture applies a real MinHook redirect to a test function, detects the occupied entry, and restores the original function. The selected boundaries still need an engine recreation test, the remaining native Direct3D matrix, and a separate DXVK result before any DXVK support claim.
 
+A private test build can schedule one engine-owned recreation after the first successful surface upload. This path is disabled at compile time in normal builds. Before it writes the request byte, it verifies the exact main-loop gate that reads the byte, calls the native recreation helper, and clears the request. It does not call `NiDX9Renderer::Recreate` directly. The package script rejects a build directory marked as having this diagnostic enabled.
+
 A proxy DLL is excluded because VNV users may already have root-level graphics wrappers. The normal package must remain installable through MO2.

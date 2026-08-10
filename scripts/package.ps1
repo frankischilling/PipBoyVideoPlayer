@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$Version = '0.1.0',
-    [ValidateSet('Debug','Release')][string]$Configuration = 'Release'
+    [ValidateSet('Debug','Release')][string]$Configuration = 'Release',
+    [string]$BuildDirectory = (Join-Path (Split-Path -Parent $PSScriptRoot) 'build-vs')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -48,8 +49,13 @@ function Write-PbvpSurfaceDds {
 }
 
 $root = Split-Path -Parent $PSScriptRoot
-$binary = Join-Path $root "build-vs\$Configuration\PipBoyVideoPlayer.dll"
-$pdb = Join-Path $root "build-vs\$Configuration\PipBoyVideoPlayer.pdb"
+$build = (Resolve-Path -LiteralPath $BuildDirectory).Path
+$binary = Join-Path $build "$Configuration\PipBoyVideoPlayer.dll"
+$pdb = Join-Path $build "$Configuration\PipBoyVideoPlayer.pdb"
+$recreateTestMarker = Join-Path $build 'pbvp-recreate-test-enabled.txt'
+if (Test-Path -LiteralPath $recreateTestMarker) {
+    throw 'Packaging refused the private one-shot recreation test build. Reconfigure the normal build first.'
+}
 if (-not (Test-Path -LiteralPath $binary)) { throw "Missing build output: $binary" }
 if (-not (Test-Path -LiteralPath $pdb)) { throw "Missing symbols: $pdb" }
 

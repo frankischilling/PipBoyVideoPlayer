@@ -88,6 +88,27 @@ if(generator_offset EQUAL -1)
     message(FATAL_ERROR "Package script does not generate the private surface texture")
 endif()
 
+string(FIND "${package_text}" "pbvp-recreate-test-enabled.txt" package_guard_offset)
+if(package_guard_offset EQUAL -1)
+    message(FATAL_ERROR "Package script does not reject the private recreation test build")
+endif()
+
+file(READ "${PBVP_SOURCE_DIR}/CMakeLists.txt" cmake_text)
+string(FIND "${cmake_text}"
+    "option(PBVP_ENABLE_RECREATE_TEST \"Enable the private one-shot engine recreation test\" OFF)"
+    recreate_default_offset)
+if(recreate_default_offset EQUAL -1)
+    message(FATAL_ERROR "Private recreation test must remain disabled by default")
+endif()
+
+file(READ "${PBVP_SOURCE_DIR}/scripts/configure.ps1" configure_text)
+string(FIND "${configure_text}"
+    "if ($EnableRecreateTest) { 'ON' } else { 'OFF' }"
+    recreate_configure_offset)
+if(recreate_configure_offset EQUAL -1)
+    message(FATAL_ERROR "Normal configure path must explicitly disarm the recreation test")
+endif()
+
 string(FIND "${prefab_text}" "PBVP UI LAYER" layer_probe_offset)
 if(layer_probe_offset EQUAL -1)
     message(FATAL_ERROR "UI prefab is missing the visible layer-probe text")

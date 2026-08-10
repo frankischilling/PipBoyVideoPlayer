@@ -77,6 +77,8 @@ Development artifacts should produce two archives:
 
 Personal media is never part of either archive.
 
+The private Phase 1 recreation test uses a separate build directory and development-mod install script. CMake marks that directory as armed. The package script checks the marker and refuses to create either archive from it. Running the normal configure command explicitly disables the test and removes the marker from the normal build directory.
+
 ## Versioning
 
 Use semantic versioning after the first public release. Before then, use `0.x` milestones. Runtime logs and DLL metadata must report the same version.

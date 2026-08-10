@@ -22,6 +22,7 @@
 - Added a reset-hook probe that rejects common x86 redirect stubs and unknown function entries before MinHook can patch them.
 - Added an isolated Win32 fixture that applies a real MinHook redirect, detects the occupied entry, and restores the test function.
 - Added exact renderer recreation result handling for failure, recovered parameters, requested parameters, and unknown values.
+- Added a private compile-time one-shot recreation test that uses Fallout's reviewed deferred request gate. Normal builds leave it disabled, and the package script refuses an armed build.
 - Removed the rejected frame-present and normal-frame overlay draws. The plugin no longer issues a screen-space primitive or patches the normal-frame UI call.
 - Added checked dependency downloads for xNVSE 6.4.5 and MinHook 1.3.4.
 - Added host tests, Win32 tests, DLL export checks, and PE architecture checks.

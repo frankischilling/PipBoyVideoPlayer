@@ -2,7 +2,8 @@
 param(
     [ValidateSet('host','plugin')][string]$Target = 'plugin',
     [string]$BuildDirectory,
-    [string]$VisualStudioGenerator
+    [string]$VisualStudioGenerator,
+    [switch]$EnableRecreateTest
 )
 
 $ErrorActionPreference = 'Stop'
@@ -23,7 +24,9 @@ if ($Target -eq 'plugin') {
         }).Count -gt 0
         $VisualStudioGenerator = if ($hasVs2022) { 'Visual Studio 17 2022' } else { 'Visual Studio 18 2026' }
     }
-    cmake -S $root -B $BuildDirectory -G $VisualStudioGenerator -A Win32
+    $recreateTest = if ($EnableRecreateTest) { 'ON' } else { 'OFF' }
+    cmake -S $root -B $BuildDirectory -G $VisualStudioGenerator -A Win32 `
+        "-DPBVP_ENABLE_RECREATE_TEST=$recreateTest"
 } else {
     cmake -S $root -B $BuildDirectory -G Ninja -DPBVP_BUILD_PLUGIN=OFF -DCMAKE_BUILD_TYPE=Debug
 }

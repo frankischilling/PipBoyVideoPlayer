@@ -1,6 +1,7 @@
 #include "pbvp/d3d_renderer.hpp"
 
 #include "pbvp/log.hpp"
+#include "pbvp/recreate_test.hpp"
 #include "pbvp/recreate_result.hpp"
 #include "pbvp/ui_bridge.hpp"
 
@@ -132,6 +133,7 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
     ++upload_success_count_;
     last_surface_ = surface.d3d_texture;
     PBVP_LOG_INFO("Generated checkerboard uploaded to PBVP_VideoSurface");
+    diagnostics::ScheduleEngineRecreateTest();
 }
 
 void D3dRenderer::BeforeDeviceRecreate(void* renderer) noexcept {

@@ -163,6 +163,33 @@ Automated recreation result contract
 
 The host and Win32 suites verify the audited `NiDX9Renderer::Recreate` return values. Zero keeps texture uploads disabled. One permits device reacquisition after the engine recovers the original presentation parameters. Two permits reacquisition after the requested parameters are applied. Every other value is unknown and keeps uploads disabled. An in-game display recreation is still required to exercise the detour and replacement device.
 
+### Controlled engine recreation candidate
+
+The normal game flow has not exposed a repeatable recreation action. The current executable audit found one main-loop read and one clear of the deferred request byte. When set, the main loop calls the complete renderer and window helper with the active dimensions. The helper owns the `NiDX9Renderer::Recreate` call.
+
+The repository has a private build option that schedules this request once, after a successful checkerboard upload and shared-thread validation. It first checks the exact 23-byte main-loop gate. The option is off by default, and the package script refuses any normal build directory marked as armed.
+
+Build and install the private candidate only in the separate development mod:
+
+```powershell
+.\scripts\configure.ps1 `
+  -Target plugin `
+  -BuildDirectory build-vs-recreate-test `
+  -EnableRecreateTest
+.\scripts\build.ps1 `
+  -Configuration Release `
+  -BuildDirectory build-vs-recreate-test
+.\scripts\test.ps1 `
+  -Configuration Release `
+  -BuildDirectory build-vs-recreate-test
+.\scripts\install-recreate-test.ps1 `
+  -MO2ModsDirectory 'C:\path\to\VNV\mods' `
+  -BuildDirectory build-vs-recreate-test `
+  -Confirm:$false
+```
+
+Open the Pip-Boy Data tab once, confirm that the checkerboard returns after the recreation, then exit through the game menu. The log must pass with `-MinimumRecreates 1 -RequireCleanExit`. Reinstall the normal development build immediately after the test. A test failure, a missing replacement device, a black surface, or a crash blocks Phase 1.
+
 Automated hook conflict classification
 
 The host and Win32 suites verify safe refusal for x86 relative jumps, absolute indirect jumps, push and return stubs, register jumps, and jumps after common hotpatch prefixes. A byte sequence that is neither a reviewed original entry nor a recognized redirect remains unknown and is also refused.

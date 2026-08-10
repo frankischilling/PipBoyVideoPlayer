@@ -6,12 +6,21 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 option(PBVP_BUILD_PLUGIN "Build the Win32 xNVSE plugin" ON)
 option(PBVP_BUILD_TESTS "Build automated tests" ON)
+option(PBVP_ENABLE_RECREATE_TEST "Enable the private one-shot engine recreation test" OFF)
 set(PBVP_XNVSE_ROOT "${CMAKE_SOURCE_DIR}/external/NVSE-6.4.5" CACHE PATH "xNVSE 6.4.5 release source root")
 set(PBVP_MINHOOK_ROOT "${CMAKE_SOURCE_DIR}/external/minhook-1.3.4" CACHE PATH "MinHook 1.3.4 source root")
+
+set(PBVP_RECREATE_TEST_MARKER "${CMAKE_BINARY_DIR}/pbvp-recreate-test-enabled.txt")
+if(PBVP_ENABLE_RECREATE_TEST AND PBVP_BUILD_PLUGIN)
+    file(WRITE "${PBVP_RECREATE_TEST_MARKER}" "Private one-shot recreation test build.\n")
+else()
+    file(REMOVE "${PBVP_RECREATE_TEST_MARKER}")
+endif()
 
 include(CTest)
 
 add_library(pbvp_core STATIC
+    src/core/recreate_gate.cpp
     src/core/recreate_result.cpp
     src/core/rect_math.cpp
     src/render/hook_probe.cpp)
@@ -41,6 +50,7 @@ if(PBVP_BUILD_PLUGIN)
 
     add_library(PipBoyVideoPlayer SHARED
         src/plugin/plugin_main.cpp
+        src/diagnostics/recreate_test.cpp
         src/render/d3d_renderer.cpp
         src/render/hook_manager.cpp
         src/ui/ui_bridge.cpp
@@ -57,6 +67,10 @@ if(PBVP_BUILD_PLUGIN)
         WIN32 _WINDOWS RUNTIME RUNTIME_VERSION=0x040020D0
         WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS
         PBVP_VERSION_STRING="${PROJECT_VERSION}")
+    if(PBVP_ENABLE_RECREATE_TEST)
+        message(WARNING "Building the private one-shot engine recreation test")
+        target_compile_definitions(PipBoyVideoPlayer PRIVATE PBVP_ENABLE_RECREATE_TEST=1)
+    endif()
     target_compile_options(PipBoyVideoPlayer PRIVATE
         /W4 /permissive- /utf-8 /Zc:__cplusplus /guard:cf
         "/FI${CMAKE_SOURCE_DIR}/include/pbvp/xnvse_prefix.hpp")
@@ -104,6 +118,7 @@ if(PBVP_BUILD_TESTS)
 
     add_executable(pbvp_tests
         tests/hook_probe_tests.cpp
+        tests/recreate_gate_tests.cpp
         tests/recreate_result_tests.cpp
         tests/rect_math_tests.cpp
         tests/test_main.cpp)
