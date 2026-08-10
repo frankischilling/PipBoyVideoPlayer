@@ -507,6 +507,10 @@ The `VirtualAlloc` payload build passed its short live startup gate. The user sa
 
 The user did not hear the fixture's tone during this run. The long diagnostic uses 3 percent source-voice volume, compared with 10 percent in the audible Phase 3 test. The log contained no audio-device or playback error. This run confirms the short live allocation fix but does not add an audible-audio result.
 
+The uninterrupted live 30-minute run passed the strict checker. It decoded 54,000 frames, presented and uploaded 53,993 frames, dropped seven startup frames, and submitted 86,400,000 audio samples. The final audio-to-video difference was 28,125 microseconds with zero underruns. Peak private-memory growth was 41,811,968 bytes. Texture uploads took 18.30 microseconds minimum, 24.64 microseconds average, and 150.40 microseconds maximum.
+
+The checker regression accepts a final audio clock up to 50 milliseconds early or late and rejects a 50,001-microsecond synchronization error. Separate cases reject clocks just outside both duration boundaries. The untouched live log passed after this change and has SHA-256 `5EB9A1D3DE63BAB69D4C6F7A028B00B9E6EE8C6144DEF887E4BC479434227C02`.
+
 ## UI matrix
 
 Test these layouts independently:

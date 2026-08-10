@@ -49,7 +49,7 @@ foreach ($entry in $requiredPatterns.GetEnumerator()) {
         if ($decoded -lt 53900 -or $decoded -gt 54100 -or
             $presented -eq 0 -or $presented + $dropped -gt $decoded -or
             $samples -lt 86400000 -or $samples -gt 86410000 -or
-            $clock -lt 1800000000 -or $clock -gt 1800100000 -or
+            $clock -lt 1799950000 -or $clock -gt 1800050000 -or
             $videoEnd -lt 1799900000 -or $videoEnd -gt 1800050000 -or
             $syncError -gt 50000 -or $submitted -eq 0 -or $uploaded -eq 0 -or
             $uploaded -gt $submitted -or $replaced -gt $submitted -or

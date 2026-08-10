@@ -333,7 +333,9 @@ The long diagnostic used 3 percent source-voice volume. The user did not hear it
 
 The first uninterrupted 30-minute run reached its final playback record. It decoded 54,000 frames, presented 53,993, dropped seven startup frames, submitted 86,400,000 audio samples, and reported zero underruns. The audio clock ended at 1,799,971,875 microseconds, the video ended at 1,800,000,000 microseconds, and the absolute difference was 28,125 microseconds. Peak private-memory growth was 41,811,968 bytes. The renderer uploaded all 53,993 submitted frames, with 18.30 microseconds minimum, 24.64 microseconds average, and 150.40 microseconds maximum upload time.
 
-The strict checker rejected this record because its audio-clock lower bound was exactly 1,800,000,000 microseconds. That one-sided bound conflicts with the documented absolute 50-millisecond synchronization target. The result remains provisional until the decision record is implemented, the checker gains boundary regressions, and the untouched log passes.
+The strict checker initially rejected this record because its audio-clock lower bound was exactly 1,800,000,000 microseconds. That one-sided bound conflicted with the documented absolute 50-millisecond synchronization target. The checker now applies the 50-millisecond duration window on both sides and retains the separate absolute stream-difference check. Regression cases reject clocks one microsecond outside both duration boundaries and reject a 50,001-microsecond synchronization error.
+
+The untouched live log passed the corrected checker. It also contains five monotonic five-minute checkpoints, the final playback record, ordered audio and decoder teardown, the renderer summary, and process shutdown without an absolute media path. The preserved evidence log has SHA-256 `5EB9A1D3DE63BAB69D4C6F7A028B00B9E6EE8C6144DEF887E4BC479434227C02`.
 
 ## Mod Organizer 2
 

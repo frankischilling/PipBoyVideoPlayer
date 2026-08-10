@@ -532,6 +532,8 @@ Rejected alternatives: do not round the runtime clock, change the playback metri
 
 Consequence: align the checker's lower and upper duration bounds with the 50-millisecond target, add boundary regression cases, and rerun it against the untouched live log before accepting the result.
 
+Implementation evidence: the checker now accepts the measured 28.125-millisecond early offset. Regression cases reject clocks one microsecond outside both 50-millisecond duration boundaries and reject a 50,001-microsecond synchronization error. The untouched live log passed every synchronization, memory, upload, privacy, and teardown check.
+
 ### System XAudio2 2.9 runtime
 
 Date: August 10, 2026
