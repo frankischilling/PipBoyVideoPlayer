@@ -60,3 +60,4 @@
 - Corrected the test-only guard, added section-aware validation, and limited automatic repair to the exact known legacy layout.
 - Verified that the corrected guard leaves the full Extended test profile empty after a normal test-world exit.
 - Accepted the raised panel with mouse and keyboard input in the isolated Vanilla UI Plus profile.
+- Accepted the raised panel with mouse and keyboard input in Extended without Pip-Boy UI Tweaks.

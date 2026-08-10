@@ -281,6 +281,16 @@ This isolated profile keeps Vanilla UI Plus and disables Clean Vanilla HUD and b
 
 The plugin completed one texture upload in 22.70 microseconds, recorded no upload failure, wrote both session summaries, and shut down cleanly. The strict Phase 1 log check passed. The isolated save directory remained empty after exit.
 
+### Extended without Pip-Boy UI Tweaks result
+
+Date: August 10, 2026
+
+Profile: PBVP Phase 1 Extended No Pip-Boy Tweaks, native Direct3D 9, windowed 1920x1080, VSync on, RTSS limit unchanged
+
+This isolated profile keeps Vanilla UI Plus and Clean Vanilla HUD while disabling both Pip-Boy UI Tweaks mods. The user reported that the checkerboard placement and visibility looked good and that mouse and keyboard input worked correctly. The panel resolved at `42,323` through `426,539` on the 1706.67x960 logical canvas.
+
+The plugin completed one texture upload in 26.30 microseconds, recorded no upload failure, wrote both session summaries, and shut down cleanly. The strict Phase 1 log check passed. The isolated save directory remained empty after exit. All four isolated UI profiles now pass at 1920x1080.
+
 ## Required profiles
 
 | Profile | Purpose |
