@@ -268,6 +268,8 @@ Consequence: the plugin accepts one relocation-free signature recovered from an 
 
 Verification: on August 9, 2026, the patched local Steam executable exposed the exact reviewed signature after runtime decryption. The hook installed with the VNV Extended graphics plugin stack present, and the game exited normally from the main menu.
 
+Follow-up evidence: the current Psycho audit at commit `85c96c1415b636051dff690036b510761de25d7a` proves that the native function returns `0` on failure, `1` after recovering the original presentation parameters, and `2` after applying the requested parameters. The caller treats any nonzero result as usable, but PBVP accepts only the two documented success values. It also requires the renderer to publish a device before clearing its lost state. The next frame validates that device and reacquires the engine-owned texture.
+
 ### Private development licensing
 
 Date: August 9, 2026

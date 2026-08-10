@@ -99,7 +99,7 @@ The plugin log records component, state, error code, media basename, and timesta
 
 xNVSE 6.4.5's `kMessage_OnFramePresent` notification is the upload boundary for the engine-owned texture. It does not issue a primitive draw. The callback ignores loading screens and refuses the upload if its operating-system thread does not match the game thread that resolved the tile. The plugin does not patch `Present`, `EndScene`, the normal-frame UI call, or a Direct3D device vtable.
 
-The engine's `NiDX9Renderer::Recreate` function remains the only MinHook detour during this spike. Before installing it, the plugin compares the live function entry with a reviewed signature table and rejects common jump stubs and unknown bytes. An unknown or occupied entry disables texture updates for the session instead of attempting to chain through another hook.
+The engine's `NiDX9Renderer::Recreate` function remains the only MinHook detour during this spike. Before installing it, the plugin compares the live function entry with a reviewed signature table and rejects common jump stubs and unknown bytes. An unknown or occupied entry disables texture updates for the session instead of attempting to chain through another hook. The detour clears transient surface state before the native call. It resumes uploads only when the engine returns `1` for recovered parameters or `2` for requested parameters and publishes a replacement device. The next frame revalidates that device and reacquires the engine-owned surface. A failure, unknown return value, or missing device leaves uploads disabled.
 
 The selected boundaries still need:
 

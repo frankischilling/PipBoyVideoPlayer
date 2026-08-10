@@ -159,6 +159,14 @@ Automated coordinate matrix
 
 The host and Win32 suites convert the accepted logical rectangle through representative 4:3, 16:9, 16:10, and 3440x1440 ultrawide canvases. They cover the required 1280x720, 1920x1080, 2560x1440, and 3440x1440 backbuffers plus 1280x960 and 1920x1200. Invalid and nonfinite geometry fails with an empty output rectangle. These tests verify the pure conversion math only. Each resolution still needs an in-game visual check because the active UI mod supplies the logical canvas.
 
+Automated recreation result contract
+
+The host and Win32 suites verify the audited `NiDX9Renderer::Recreate` return values. Zero keeps texture uploads disabled. One permits device reacquisition after the engine recovers the original presentation parameters. Two permits reacquisition after the requested parameters are applied. Every other value is unknown and keeps uploads disabled. An in-game display recreation is still required to exercise the detour and replacement device.
+
+Automated hook conflict classification
+
+The host and Win32 suites verify safe refusal for x86 relative jumps, absolute indirect jumps, push and return stubs, register jumps, and jumps after common hotpatch prefixes. A byte sequence that is neither a reviewed original entry nor a recognized redirect remains unknown and is also refused. This proves the pure classification gate. A live conflict test still needs a controlled fixture because the development profile must not patch another installed plugin.
+
 ## Required profiles
 
 | Profile | Purpose |

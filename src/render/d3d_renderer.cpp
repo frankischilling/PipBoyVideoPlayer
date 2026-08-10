@@ -1,6 +1,7 @@
 #include "pbvp/d3d_renderer.hpp"
 
 #include "pbvp/log.hpp"
+#include "pbvp/recreate_result.hpp"
 #include "pbvp/ui_bridge.hpp"
 
 #include <Windows.h>
@@ -138,12 +139,32 @@ void D3dRenderer::BeforeDeviceRecreate(void* renderer) noexcept {
 }
 
 void D3dRenderer::AfterDeviceRecreate(void* renderer, const std::uint32_t result) noexcept {
-    if (result != 0u) {
-        device_ = DeviceFromRenderer(renderer);
-        device_lost_ = false;
-        PBVP_LOG_INFO("D3D engine recreation succeeded with result %u", result);
+    const RecreateResult classification = ClassifyRecreateResult(result);
+    if (classification == RecreateResult::failed) {
+        PBVP_LOG_WARN("D3D engine recreation failed; texture uploads remain disabled");
+        return;
+    }
+    if (classification == RecreateResult::unknown) {
+        PBVP_LOG_ERROR(
+            "D3D engine recreation returned unexpected value %u; texture uploads remain disabled",
+            result);
+        return;
+    }
+    if (DeviceFromRenderer(renderer) == nullptr) {
+        PBVP_LOG_ERROR(
+            "D3D engine recreation returned %u without publishing a device; texture uploads remain disabled",
+            result);
+        return;
+    }
+
+    device_ = nullptr;
+    device_lost_ = false;
+    if (classification == RecreateResult::recovered) {
+        PBVP_LOG_INFO(
+            "D3D engine recreation recovered the original presentation parameters; resources will be reacquired");
     } else {
-        PBVP_LOG_WARN("D3D engine recreation failed");
+        PBVP_LOG_INFO(
+            "D3D engine recreation applied the requested presentation parameters; resources will be reacquired");
     }
 }
 

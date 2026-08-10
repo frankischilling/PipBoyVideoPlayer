@@ -12,6 +12,7 @@ set(PBVP_MINHOOK_ROOT "${CMAKE_SOURCE_DIR}/external/minhook-1.3.4" CACHE PATH "M
 include(CTest)
 
 add_library(pbvp_core STATIC
+    src/core/recreate_result.cpp
     src/core/rect_math.cpp
     src/render/hook_probe.cpp)
 target_include_directories(pbvp_core PUBLIC include)
@@ -86,6 +87,7 @@ if(PBVP_BUILD_TESTS)
 
     add_executable(pbvp_tests
         tests/hook_probe_tests.cpp
+        tests/recreate_result_tests.cpp
         tests/rect_math_tests.cpp
         tests/test_main.cpp)
     target_link_libraries(pbvp_tests PRIVATE pbvp_core)

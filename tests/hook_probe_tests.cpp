@@ -21,6 +21,41 @@ void RunHookProbeTests() {
     indirect_jump[1] = 0x25u;
     PBVP_CHECK(ClassifyHookTarget(indirect_jump, signatures) == HookProbeResult::occupied);
 
+    HookBytes push_return = signature;
+    push_return[0] = 0x68u;
+    push_return[5] = 0xC3u;
+    PBVP_CHECK(ClassifyHookTarget(push_return, signatures) == HookProbeResult::occupied);
+
+    HookBytes register_jump = signature;
+    register_jump[0] = 0xB8u;
+    register_jump[5] = 0xFFu;
+    register_jump[6] = 0xE0u;
+    PBVP_CHECK(ClassifyHookTarget(register_jump, signatures) == HookProbeResult::occupied);
+
+    HookBytes indirect_register_jump = signature;
+    indirect_register_jump[0] = 0xA1u;
+    indirect_register_jump[5] = 0xFFu;
+    indirect_register_jump[6] = 0xE0u;
+    PBVP_CHECK(ClassifyHookTarget(indirect_register_jump, signatures) == HookProbeResult::occupied);
+
+    HookBytes hotpatch_jump = signature;
+    hotpatch_jump[0] = 0x8Bu;
+    hotpatch_jump[1] = 0xFFu;
+    hotpatch_jump[2] = 0xE9u;
+    PBVP_CHECK(ClassifyHookTarget(hotpatch_jump, signatures) == HookProbeResult::occupied);
+
+    HookBytes padded_jump = signature;
+    padded_jump[0] = 0x90u;
+    padded_jump[1] = 0xE9u;
+    PBVP_CHECK(ClassifyHookTarget(padded_jump, signatures) == HookProbeResult::occupied);
+
+    HookBytes mismatched_register_jump = signature;
+    mismatched_register_jump[0] = 0xB9u;
+    mismatched_register_jump[5] = 0xFFu;
+    mismatched_register_jump[6] = 0xE0u;
+    PBVP_CHECK(
+        ClassifyHookTarget(mismatched_register_jump, signatures) == HookProbeResult::unknown);
+
     HookBytes unknown{};
     unknown.fill(0xCCu);
     PBVP_CHECK(ClassifyHookTarget(unknown, signatures) == HookProbeResult::unknown);
