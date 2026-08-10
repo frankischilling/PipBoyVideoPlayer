@@ -10,6 +10,7 @@ bool ConvertUiRectToPixels(
     const PixelExtent& ui_extent,
     const PixelExtent& backbuffer_extent,
     FloatRect& output) noexcept {
+    output = {};
     const bool finite = std::isfinite(ui_rect.left) && std::isfinite(ui_rect.top) &&
                         std::isfinite(ui_rect.right) && std::isfinite(ui_rect.bottom) &&
                         std::isfinite(ui_extent.width) && std::isfinite(ui_extent.height) &&

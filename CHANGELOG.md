@@ -22,5 +22,6 @@
 - Removed the rejected frame-present and normal-frame overlay draws. The plugin no longer issues a screen-space primitive or patches the normal-frame UI call.
 - Added checked dependency downloads for xNVSE 6.4.5 and MinHook 1.3.4.
 - Added host tests, Win32 tests, DLL export checks, and PE architecture checks.
+- Added coordinate conversion coverage for 4:3, 16:9, 16:10, and ultrawide canvases.
 - Added a data-contract test for the UIO registration, named prefab tiles, private surface path, and package generator.
 - Added RadioCaptions-style build, test, package, and MO2 development-install scripts.

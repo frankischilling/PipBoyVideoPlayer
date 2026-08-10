@@ -155,6 +155,10 @@ The user asked for the accepted lower-left panel to be slightly larger. The next
 
 The run resolved the panel at `42,375` through `426,591` on the 1706.67 by 960 logical canvas. The managed texture upload took 27.3 microseconds. The user reported that the larger panel looked good. This accepts the size and position for the active fullscreen 1920x1080 VNV Extended profile. It does not extend that result to other resolutions or UI profiles.
 
+Automated coordinate matrix
+
+The host and Win32 suites convert the accepted logical rectangle through representative 4:3, 16:9, 16:10, and 3440x1440 ultrawide canvases. They cover the required 1280x720, 1920x1080, 2560x1440, and 3440x1440 backbuffers plus 1280x960 and 1920x1200. Invalid and nonfinite geometry fails with an empty output rectangle. These tests verify the pure conversion math only. Each resolution still needs an in-game visual check because the active UI mod supplies the logical canvas.
+
 ## Required profiles
 
 | Profile | Purpose |
