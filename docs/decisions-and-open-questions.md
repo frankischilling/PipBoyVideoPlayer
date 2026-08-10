@@ -496,6 +496,18 @@ Rejected alternatives: do not use FFmpeg's default file protocol, convert paths 
 
 Consequence: the decode worker must own the AVIO context and close it before FFmpeg unloads. The game thread may request cancellation, but it must join the worker before releasing callback targets. A live MO2 test still has to prove that the same `CreateFileW` path sees virtual media files.
 
+### Bounded media payloads and seek generations
+
+Date: August 10, 2026
+
+Decision: check every video and audio payload calculation before allocation. Reject sources above 1920x1080. Bound each queue by both item count and total payload bytes. Every queued item carries a seek generation, and advancing the generation clears queued data, wakes waiters, and rejects work from an older generation.
+
+Evidence: portable tests cover checked addition, multiplication, alignment, and 64-bit size conversion. They also cover BGRA and PCM layout limits, count and byte capacity, stale generation rejection, queue drain after close, and blocked producer wakeup after a generation change or shutdown. All 7 host tests and all 12 Win32 Release tests pass. The x86 run uses the same 32-bit `size_t` as the game process.
+
+Rejected alternatives: do not rely on frame count alone, allow allocation arithmetic to wrap, keep pre-seek buffers until the consumer notices them, or let shutdown wait for queue capacity.
+
+Consequence: the decoder may block only through the queue API and may hold no other PBVP lock while waiting. Queue capacities remain a profiling decision, but they must fit the release memory budget and cannot be changed by untrusted media metadata.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.

@@ -113,6 +113,8 @@ The custom AVIO bridge opens one direct-child media name through `CreateFileW`. 
 
 The Win32 test opens a generated 128 KiB fixture with a Unicode name. It verifies buffered reads, an absolute seek, data after the seek, the size query, and cancellation. It also exercises the path, file type, file size, and AVIO buffer failures. This proves the Windows and FFmpeg callback contract outside the game. It does not prove that `CreateFileW` sees a file supplied only by the active MO2 virtual filesystem.
 
+The bounded media tests on August 10, 2026 passed all 7 host tests and all 12 Win32 Release tests. The x86 run exercised the 64-bit to 32-bit size rejection used by the game build. Queue tests filled both count and byte capacity, advanced a seek generation while a producer was blocked, and closed a full queue while another producer was blocked. Both waiters woke with the expected refusal instead of publishing stale data or waiting through shutdown.
+
 ## Direct3D 9
 
 Microsoft's [`IDirect3DTexture9::LockRect` documentation](https://learn.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3dtexture9-lockrect) documents `D3DLOCK_DISCARD` for dynamic texture updates and notes the restrictions on default-pool textures. The [`D3DPOOL` documentation](https://learn.microsoft.com/en-us/windows/win32/direct3d9/d3dpool) states that default-pool resources must be released before `Reset` and recreated afterward.

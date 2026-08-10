@@ -5,6 +5,7 @@
 - Pinned a reproducible, minimal i686 FFmpeg 8.1.2 runtime for MOV, H.264, AAC, BGRA conversion, and audio resampling.
 - Added restricted private FFmpeg loading with exact path, version, configuration, architecture, import, hash, and package-inventory checks.
 - Added custom Win32 AVIO with Unicode direct-child paths, file and buffer limits, overlapped reads, cancellation, and 64-bit seeks.
+- Added checked media layout arithmetic and count-and-byte bounded queues with seek generations, cancellation wakeups, and portable x86 tests.
 - Added verified FFmpeg and winpthreads license material to the private release package.
 - Added the Win32 xNVSE plugin scaffold and strict FalloutNV 1.4.0.525 runtime check.
 - Added xNVSE lifecycle logging and a guarded texture-upload boundary through `kMessage_OnFramePresent`.
