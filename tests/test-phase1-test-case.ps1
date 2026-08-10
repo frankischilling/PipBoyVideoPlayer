@@ -23,6 +23,34 @@ try {
         "+Pip-Boy Video Player - Dev`r`n")
     [IO.File]::WriteAllText($rtssProfile, $rtssOriginal)
 
+    $permissionRefused = $false
+    try {
+        [IO.File]::SetAttributes($rtssProfile, [IO.FileAttributes]::ReadOnly)
+        & $script -InstanceRoot $tempRoot `
+            -ProfileName 'PBVP Phase 1 Extended' `
+            -RtssProfilePath $rtssProfile `
+            -Width 1280 -Height 720 `
+            -DisplayMode Windowed -FpsCap 30 -VSync Off `
+            -Confirm:$false
+    } catch {
+        if ($_.Exception.Message -notmatch 'test-case file is not writable') {
+            throw
+        }
+        $permissionRefused = $true
+    } finally {
+        [IO.File]::SetAttributes($rtssProfile, [IO.FileAttributes]::Normal)
+    }
+    if (-not $permissionRefused) {
+        throw 'The matrix configurator accepted a protected RTSS profile.'
+    }
+    if ([IO.File]::ReadAllText((Join-Path $profile 'falloutprefs.ini')) -cne $prefsOriginal -or
+        [IO.File]::ReadAllText($rtssProfile) -cne $rtssOriginal -or
+        @(Get-ChildItem -LiteralPath $tempRoot -Recurse -File | Where-Object {
+            $_.Name -match '\.pbvp-phase1\.(?:bak|state\.json)$'
+        }).Count -ne 0) {
+        throw 'The protected-file refusal changed a test file or left temporary state.'
+    }
+
     & $script -InstanceRoot $tempRoot `
         -ProfileName 'PBVP Phase 1 Extended' `
         -RtssProfilePath $rtssProfile `

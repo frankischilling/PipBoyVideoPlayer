@@ -89,6 +89,21 @@ function Restore-Bytes {
     }
 }
 
+function Assert-FileWritable {
+    param([Parameter(Mandatory)][string]$Path)
+
+    try {
+        $stream = [IO.File]::Open(
+            $Path,
+            [IO.FileMode]::Open,
+            [IO.FileAccess]::Write,
+            [IO.FileShare]::ReadWrite)
+        $stream.Dispose()
+    } catch {
+        throw "The test-case file is not writable: $Path"
+    }
+}
+
 $instance = (Resolve-Path -LiteralPath $InstanceRoot).Path
 $profilesRoot = Resolve-ContainedPath -Parent $instance -Child 'profiles'
 $profile = Resolve-ContainedPath -Parent $profilesRoot -Child $ProfileName
@@ -127,6 +142,9 @@ foreach ($path in $profileFiles) {
 }
 
 $allFiles = @($profileFiles) + @($rtssProfile)
+foreach ($path in $allFiles) {
+    Assert-FileWritable -Path $path
+}
 $backupSuffix = '.pbvp-phase1.bak'
 $statePath = "$rtssProfile.pbvp-phase1.state.json"
 
