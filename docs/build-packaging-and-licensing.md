@@ -81,7 +81,7 @@ The linker writes the explicit filename `PipBoyVideoPlayer.pdb` into the DLL. Th
 
 The package check requires the cleaned PDB to retain the original GUID, age, stripped status, complete public symbol set, FPO data, and section contributions. It also scans every logical PDB stream, the raw PDB bytes, and the DLL for absolute drive paths and known repository, build, temporary, and user-profile markers. Checking archive entry names alone is insufficient.
 
-The private Phase 1 recreation test uses a separate build directory and development-mod install script. CMake marks that directory as armed. The package script checks the marker and refuses to create either archive from it. Running the normal configure command explicitly disables the test and removes the marker from the normal build directory.
+The retired Phase 1 forced-recreation test is not part of CMake, the development installer, or the package script. There is no armed build mode. Lifecycle testing must use the normal plugin and a transition initiated by the game.
 
 ## Versioning
 

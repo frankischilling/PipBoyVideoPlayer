@@ -53,10 +53,6 @@ $build = (Resolve-Path -LiteralPath $BuildDirectory).Path
 $binary = Join-Path $build "$Configuration\PipBoyVideoPlayer.dll"
 $pdb = Join-Path $build "$Configuration\PipBoyVideoPlayer.pdb"
 $publicPdb = Join-Path $build "$Configuration\PipBoyVideoPlayer-public.pdb"
-$recreateTestMarker = Join-Path $build 'pbvp-recreate-test-enabled.txt'
-if (Test-Path -LiteralPath $recreateTestMarker) {
-    throw 'Packaging refused the private one-shot recreation test build. Reconfigure the normal build first.'
-}
 if (-not (Test-Path -LiteralPath $binary)) { throw "Missing build output: $binary" }
 if (-not (Test-Path -LiteralPath $pdb)) { throw "Missing symbols: $pdb" }
 if ($Configuration -ne 'Release') {

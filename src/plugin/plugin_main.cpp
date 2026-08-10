@@ -108,11 +108,6 @@ extern "C" bool NVSEPlugin_Load(NVSEInterface* nvse) {
     PBVP_LOG_INFO(
         "Pip-Boy Video Player %s loading; runtime=0x%08X xNVSE=0x%08X",
         PBVP_VERSION_STRING, nvse->runtimeVersion, nvse->nvseVersion);
-#if defined(PBVP_ENABLE_RECREATE_TEST)
-    PBVP_LOG_WARN(
-        "Private Phase 1 engine recreation diagnostic is enabled for this build");
-#endif
-
     g_messaging = static_cast<NVSEMessagingInterface*>(nvse->QueryInterface(kInterface_Messaging));
     if (g_messaging == nullptr || g_messaging->version < NVSEMessagingInterface::kVersion ||
         g_messaging->RegisterListener == nullptr ||
