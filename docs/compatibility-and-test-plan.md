@@ -291,6 +291,16 @@ This isolated profile keeps Vanilla UI Plus and Clean Vanilla HUD while disablin
 
 The plugin completed one texture upload in 26.30 microseconds, recorded no upload failure, wrote both session summaries, and shut down cleanly. The strict Phase 1 log check passed. The isolated save directory remained empty after exit. All four isolated UI profiles now pass at 1920x1080.
 
+### 1280x720 and 30 FPS result
+
+Date: August 10, 2026
+
+Profile: PBVP Phase 1 Extended, native Direct3D 9, windowed 1280x720, VSync off, RTSS 30 FPS
+
+The user reported that the panel looked good and input remained usable. The plugin confirmed the requested 1280x720 backbuffer with immediate presentation. It completed one checkerboard upload in 25.70 microseconds and recorded no failure.
+
+Six visible cadence samples measured 30.00 to 30.01 FPS, with a 30.00 FPS session average. Both summaries and the clean shutdown record were present, the strict log check passed, and the isolated save directory remained empty. This accepts the 1280x720 resolution, 30 FPS cap, and VSync-off rows for native windowed mode.
+
 ## Required profiles
 
 | Profile | Purpose |

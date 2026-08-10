@@ -346,6 +346,8 @@ Rejected alternatives: do not edit the original VNV profiles, use VSync as a cap
 
 Consequence: the test-case script accepts only the documented Phase 1 resolutions, frame caps, display modes, VSync states, and isolated profile names. It refuses cross-profile overlap and restores the original files. Manual in-game checks remain necessary for every recorded result.
 
+First capped result: the 1280x720 native windowed case used VSync off and the existing RTSS FalloutNV profile at 30 FPS. Six visible cadence samples measured 30.00 to 30.01 FPS. The user reported that the panel and input looked good. The log confirmed the requested backbuffer, one 25.70-microsecond upload, no failure, both summaries, and a clean shutdown. This accepts the 1280x720, 30 FPS, and VSync-off row. It does not cover another resolution or cap.
+
 ### Native fullscreen focus-cycle baseline
 
 Date: August 10, 2026
