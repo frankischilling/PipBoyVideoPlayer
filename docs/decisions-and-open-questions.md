@@ -284,7 +284,7 @@ Consequence: the private candidate can exercise the engine-owned reset order wit
 
 Runtime result and decision update: the August 10, 2026 VNV Extended run wrote the request after a successful checkerboard upload, but the verified `NiDX9Renderer::Recreate` detour never ran. About ten seconds later the MapMenu snapshot became unavailable and the available engine texture received another checkerboard upload. The log does not establish that the request caused the UI transition. The user's report that the checkerboard returned proves surface recovery after the transition, not a Direct3D device recreation.
 
-The deferred request byte is no longer accepted as a reset test by itself. A follow-up private diagnostic may observe whether the byte is consumed and whether the reviewed helper is entered. It must not call the renderer owner or Direct3D device directly. Phase 1 still requires a log containing the detour's before and after records, a successful texture reacquisition, and an orderly session summary.
+The deferred request byte is no longer accepted as a reset test by itself. The follow-up private diagnostic now observes whether the byte stays pending, is consumed, changes unexpectedly, or times out after five seconds. It adds no hook and does not call the renderer owner or Direct3D device directly. Phase 1 still requires a log containing the detour's before and after records, a successful texture reacquisition, and an orderly session summary.
 
 ### Reversible compatibility cases
 

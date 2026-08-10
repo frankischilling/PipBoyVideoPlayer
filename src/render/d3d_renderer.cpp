@@ -65,6 +65,7 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
         PBVP_LOG_INFO("xNVSE frame-present texture upload boundary active");
         frame_callback_logged_ = true;
     }
+    diagnostics::ObserveEngineRecreateTest();
     if (device_lost_) {
         cadence_tracker_.Reset();
         return;

@@ -5,6 +5,7 @@
 void RunHookProbeTests();
 void RunFrameCadenceTests();
 void RunRecreateGateTests();
+void RunRecreateObserverTests();
 void RunRecreateResultTests();
 void RunRectMathTests();
 
@@ -12,6 +13,7 @@ int main() {
     RunFrameCadenceTests();
     RunHookProbeTests();
     RunRecreateGateTests();
+    RunRecreateObserverTests();
     RunRecreateResultTests();
     RunRectMathTests();
     if (pbvp::test::failures != 0) {

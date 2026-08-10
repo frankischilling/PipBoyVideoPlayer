@@ -318,6 +318,8 @@ Pass criteria:
 
 The August 10, 2026 private deferred-request run is inconclusive for device recreation. It produced two successful surface uploads and the user saw the checkerboard return, but the verified recreation detour recorded no entry or result. This run counts as surface recovery after a UI transition only. It does not satisfy the reset row of the graphics matrix.
 
+The controlled recreation checker also requires exactly one observed request consumption. A pending request, timeout, or consumed request without a successful detour still fails the reset case.
+
 ## UI matrix
 
 Test these layouts independently:

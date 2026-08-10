@@ -109,4 +109,6 @@ The active VNV Extended test has validated the live texture chain, matching call
 
 A private test build can schedule one engine-owned recreation after the first successful surface upload. This path is disabled at compile time in normal builds. Before it writes the request byte, it verifies the exact main-loop gate that reads the byte, calls the native recreation helper, and clears the request. It does not call `NiDX9Renderer::Recreate` directly. The package script rejects a build directory marked as having this diagnostic enabled.
 
+The follow-up diagnostic requires a live renderer, nonzero configured dimensions, and a working QueryPerformanceCounter before writing the request. Later frame callbacks only read the request byte. They report its first pending state, one observed consumption, an unexpected value, or a five-second timeout. This observation adds no hook and cannot count as a device recreation unless the existing renderer detour also records a successful before and after sequence.
+
 A proxy DLL is excluded because VNV users may already have root-level graphics wrappers. The normal package must remain installable through MO2.

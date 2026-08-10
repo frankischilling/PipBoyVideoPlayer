@@ -22,6 +22,7 @@ include(CTest)
 add_library(pbvp_core STATIC
     src/core/frame_cadence.cpp
     src/core/recreate_gate.cpp
+    src/core/recreate_observer.cpp
     src/core/recreate_result.cpp
     src/core/rect_math.cpp
     src/render/hook_probe.cpp)
@@ -155,6 +156,7 @@ if(PBVP_BUILD_TESTS)
         tests/frame_cadence_tests.cpp
         tests/hook_probe_tests.cpp
         tests/recreate_gate_tests.cpp
+        tests/recreate_observer_tests.cpp
         tests/recreate_result_tests.cpp
         tests/rect_math_tests.cpp
         tests/test_main.cpp)
