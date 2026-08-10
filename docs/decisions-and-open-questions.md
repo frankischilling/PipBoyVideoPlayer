@@ -534,6 +534,20 @@ Consequence: align the checker's lower and upper duration bounds with the 50-mil
 
 Implementation evidence: the checker now accepts the measured 28.125-millisecond early offset. Regression cases reject clocks one microsecond outside both 50-millisecond duration boundaries and reject a 50,001-microsecond synchronization error. The untouched live log passed every synchronization, memory, upload, privacy, and teardown check.
 
+### Drain bounded video while rebuilding the audio buffer
+
+Date: August 10, 2026
+
+Decision: use the existing bounded video-discard path whenever playback is buffering, including recovery after an audio underrun. Keep the oldest staged frame until the audio buffer is ready, then let audio-led selection discard stale frames against the current sample clock.
+
+Reason: the decoder worker reads interleaved video and audio from one media timeline. A full video staging path can block that worker before it produces the 200 milliseconds of audio required to leave buffering. Initial buffering already avoids this dependency by discarding excess video. Rebuffering must do the same even though the XAudio2 voice has started.
+
+Evidence: the first live 10 FPS run reached playing, returned to buffering after 499 milliseconds, and remained there until normal shutdown. The render callback stayed between 10.00 and 10.06 FPS, but only four video frames reached the texture. The controller's discard predicate excludes the rebuffer case when `audio_started_` is true.
+
+Rejected alternatives: do not grow either queue, decode on the render thread, submit XAudio2 buffers from its callback, move game objects to a worker, lower the supported media frame rate, or replace the consumed-sample clock with game-frame timing.
+
+Consequence: change only the buffering discard predicate, add an integrated forced-underrun recovery regression, and repeat the five-minute 10 FPS live case. Preserve all existing queue limits and thread ownership.
+
 ### System XAudio2 2.9 runtime
 
 Date: August 10, 2026

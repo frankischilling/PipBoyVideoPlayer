@@ -520,6 +520,8 @@ The uninterrupted live 30-minute run passed the strict checker. It decoded 54,00
 
 The checker regression accepts a final audio clock up to 50 milliseconds early or late and rejects a 50,001-microsecond synchronization error. Separate cases reject clocks just outside both duration boundaries. The untouched live log passed after this change and has SHA-256 `5EB9A1D3DE63BAB69D4C6F7A028B00B9E6EE8C6144DEF887E4BC479434227C02`.
 
+The first live 10 FPS run reached playing, then returned to buffering 499 milliseconds later and did not recover before normal shutdown. RTSS held the visible callback rate between 10.00 and 10.06 FPS. The renderer uploaded four frames without failure, and shutdown stopped audio and joined the decoder worker. This fails the Phase 4 frame-rate-change criterion. The next candidate must recover from a forced audio underrun in an automated integrated test before the live 10 FPS case repeats.
+
 ## UI matrix
 
 Test these layouts independently:

@@ -337,6 +337,10 @@ The strict checker initially rejected this record because its audio-clock lower 
 
 The untouched live log passed the corrected checker. It also contains five monotonic five-minute checkpoints, the final playback record, ordered audio and decoder teardown, the renderer summary, and process shutdown without an absolute media path. The preserved evidence log has SHA-256 `5EB9A1D3DE63BAB69D4C6F7A028B00B9E6EE8C6144DEF887E4BC479434227C02`.
 
+The first live low-FPS attempt used the same 30 FPS long fixture with RTSS holding FalloutNV between 10.00 and 10.06 visible callbacks per second. Playback reached `playing`, returned to `buffering` 499 milliseconds later, and did not recover before normal shutdown. The renderer uploaded four frames without failure. Audio stopped and the decoder worker joined during shutdown. The failure log has SHA-256 `B8EABDD452C0B6FB32F97B54B244D654891E55825D09CDB8B0DE831EF4F3572C`.
+
+The decoder uses one worker for interleaved media. Initial buffering drains and discards excess video when staging is full, which lets the worker continue producing audio. Rebuffering does not discard because the current predicate requires `audio_started_` to be false. At the measured 10 FPS update rate, the bounded video path can block the worker before XAudio2 rebuilds its 200-millisecond prebuffer. The next regression forces an audio underrun, verifies recovery, and retains the existing queue and thread ownership limits.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.
