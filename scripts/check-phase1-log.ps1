@@ -4,7 +4,6 @@ param(
     [ValidateRange(0, 16384)][int]$ExpectedWidth = 0,
     [ValidateRange(0, 16384)][int]$ExpectedHeight = 0,
     [ValidateRange(0, 100000)][int]$MinimumUploads = 1,
-    [ValidateRange(0, 100000)][int]$MinimumRecreates = 0,
     [ValidateRange(0.0, 240.0)][double]$ExpectedFps = 0.0,
     [ValidateRange(0.0, 60.0)][double]$FpsTolerance = 0.0,
     [switch]$RequireCleanExit
@@ -30,42 +29,28 @@ try {
     $failures = [System.Collections.Generic.List[string]]::new()
 
     $loads = Get-Matches -Lines $lines -Pattern '\[INFO\] Pip-Boy Video Player .+ loading; runtime='
-    $hooks = Get-Matches -Lines $lines -Pattern '\[INFO\] Verified NiDX9Renderer::Recreate hook installed$'
+    $presentationPaths = Get-Matches -Lines $lines -Pattern '\[INFO\] xNVSE frame-present presentation path enabled without executable hooks$'
     $rectangles = Get-Matches -Lines $lines -Pattern '\[INFO\] UIO video rectangle resolved:'
     $devices = Get-Matches -Lines $lines -Pattern '\[INFO\] D3D device validated:'
     $uploads = Get-Matches -Lines $lines -Pattern '\[INFO\] Generated checkerboard uploaded to PBVP_VideoSurface$'
     $uploadTimes = Get-Matches -Lines $lines -Pattern '\[INFO\] Engine texture checkerboard upload took ([0-9]+(?:\.[0-9]+)?) microseconds$'
     $cadencePattern = '\[INFO\] Visible frame cadence: frames=(?<frames>[0-9]+) elapsed-ms=(?<elapsed>[0-9]+(?:\.[0-9]+)?) fps=(?<fps>[0-9]+(?:\.[0-9]+)?)$'
     $cadences = Get-Matches -Lines $lines -Pattern $cadencePattern
-    $recreateStarts = Get-Matches -Lines $lines -Pattern '\[INFO\] Transient engine-surface state cleared before engine recreation '
-    $recreateSuccesses = @(
-        Get-Matches -Lines $lines -Pattern '\[INFO\] D3D engine recreation (?:recovered the original|applied the requested) presentation parameters; resources will be reacquired$'
-    )
     $errors = Get-Matches -Lines $lines -Pattern '\[ERROR\]'
-    $resetFailures = Get-Matches -Lines $lines -Pattern '\[(?:WARN|ERROR)\] D3D engine recreation (?:failed|returned)'
-    $summaryPattern = '\[INFO\] Phase 1 renderer summary: callbacks=(?<callbacks>[0-9]+) visible=(?<visible>[0-9]+) devices=(?<devices>[0-9]+) upload-successes=(?<uploadSuccesses>[0-9]+) upload-attempts=(?<uploadAttempts>[0-9]+) upload-failures=(?<uploadFailures>[0-9]+) upload-us=[0-9]+(?:\.[0-9]+)?/[0-9]+(?:\.[0-9]+)?/[0-9]+(?:\.[0-9]+)? recreation-successes=(?<recreateSuccesses>[0-9]+) recreation-starts=(?<recreateStarts>[0-9]+) recreation-failures=(?<recreateFailures>[0-9]+)$'
+    $summaryPattern = '\[INFO\] Phase 1 renderer summary: callbacks=(?<callbacks>[0-9]+) visible=(?<visible>[0-9]+) devices=(?<devices>[0-9]+) upload-successes=(?<uploadSuccesses>[0-9]+) upload-attempts=(?<uploadAttempts>[0-9]+) upload-failures=(?<uploadFailures>[0-9]+) upload-us=[0-9]+(?:\.[0-9]+)?/[0-9]+(?:\.[0-9]+)?/[0-9]+(?:\.[0-9]+)?$'
     $summaries = Get-Matches -Lines $lines -Pattern $summaryPattern
     $cadenceSummaryPattern = '\[INFO\] Phase 1 cadence summary: samples=(?<samples>[0-9]+) fps=(?<minimum>[0-9]+(?:\.[0-9]+)?)/(?<average>[0-9]+(?:\.[0-9]+)?)/(?<maximum>[0-9]+(?:\.[0-9]+)?)$'
     $cadenceSummaries = Get-Matches -Lines $lines -Pattern $cadenceSummaryPattern
     $shutdowns = Get-Matches -Lines $lines -Pattern '\[INFO\] Process shutdown requested$'
 
     if ($loads.Count -lt 1) { $failures.Add('Plugin load record is missing.') }
-    if ($hooks.Count -lt 1) { $failures.Add('Verified reset hook record is missing.') }
+    if ($presentationPaths.Count -lt 1) { $failures.Add('Hook-free presentation path record is missing.') }
     if ($rectangles.Count -lt 1) { $failures.Add('Resolved UIO rectangle record is missing.') }
     if ($devices.Count -lt 1) { $failures.Add('Validated Direct3D device record is missing.') }
     if ($uploads.Count -lt $MinimumUploads) {
         $failures.Add("Expected at least $MinimumUploads successful uploads, found $($uploads.Count).")
     }
     if ($errors.Count -gt 0) { $failures.Add("The log contains $($errors.Count) error records.") }
-    if ($resetFailures.Count -gt 0) {
-        $failures.Add("The log contains $($resetFailures.Count) failed or rejected recreation records.")
-    }
-    if ($recreateStarts.Count -lt $MinimumRecreates) {
-        $failures.Add("Expected at least $MinimumRecreates recreation starts, found $($recreateStarts.Count).")
-    }
-    if ($recreateSuccesses.Count -lt $MinimumRecreates) {
-        $failures.Add("Expected at least $MinimumRecreates recreation successes, found $($recreateSuccesses.Count).")
-    }
     if ($RequireCleanExit -and $shutdowns.Count -lt 1) {
         $failures.Add('Clean process shutdown record is missing.')
     }
@@ -83,10 +68,6 @@ try {
         $summaryUploadSuccesses = [uint64]$summary.Groups['uploadSuccesses'].Value
         $summaryUploadAttempts = [uint64]$summary.Groups['uploadAttempts'].Value
         $summaryUploadFailures = [uint64]$summary.Groups['uploadFailures'].Value
-        $summaryRecreateSuccesses = [uint64]$summary.Groups['recreateSuccesses'].Value
-        $summaryRecreateStarts = [uint64]$summary.Groups['recreateStarts'].Value
-        $summaryRecreateFailures = [uint64]$summary.Groups['recreateFailures'].Value
-
         if ($summaryVisible -gt $summaryCallbacks) {
             $failures.Add('Renderer summary has more visible frames than callbacks.')
         }
@@ -98,14 +79,6 @@ try {
         }
         if (($summaryUploadSuccesses + $summaryUploadFailures) -ne $summaryUploadAttempts) {
             $failures.Add('Renderer summary upload outcomes do not match its attempt count.')
-        }
-        if ($summaryRecreateSuccesses -ne $recreateSuccesses.Count -or
-            $summaryRecreateStarts -ne $recreateStarts.Count) {
-            $failures.Add('Renderer summary recreation counts do not match the log.')
-        }
-        if (($summaryRecreateSuccesses + $summaryRecreateFailures) -ne
-            $summaryRecreateStarts) {
-            $failures.Add('Renderer summary recreation outcomes do not match its start count.')
         }
     }
 
@@ -208,7 +181,6 @@ try {
     Write-Host "Validated devices: $($devices.Count)"
     Write-Host "Successful uploads: $($uploads.Count)"
     Write-Host ("Upload time range: {0:F2} to {1:F2} microseconds" -f $minimumTime, $maximumTime)
-    Write-Host "Successful recreations: $($recreateSuccesses.Count)"
     if ($cadenceValues.Count -gt 0) {
         $cadenceAverage = ($cadenceValues | Measure-Object -Average).Average
         Write-Host ("Visible cadence: {0:F2} FPS across {1} samples" -f

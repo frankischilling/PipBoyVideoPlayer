@@ -7,15 +7,13 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 option(PBVP_BUILD_PLUGIN "Build the Win32 xNVSE plugin" ON)
 option(PBVP_BUILD_TESTS "Build automated tests" ON)
 set(PBVP_XNVSE_ROOT "${CMAKE_SOURCE_DIR}/external/NVSE-6.4.5" CACHE PATH "xNVSE 6.4.5 release source root")
-set(PBVP_MINHOOK_ROOT "${CMAKE_SOURCE_DIR}/external/minhook-1.3.4" CACHE PATH "MinHook 1.3.4 source root")
 
 include(CTest)
 
 add_library(pbvp_core STATIC
     src/core/frame_cadence.cpp
-    src/core/recreate_result.cpp
     src/core/rect_math.cpp
-    src/render/hook_probe.cpp)
+    src/core/texture_contract.cpp)
 target_include_directories(pbvp_core PUBLIC include)
 target_compile_features(pbvp_core PUBLIC cxx_std_20)
 target_compile_definitions(pbvp_core PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
@@ -36,23 +34,14 @@ if(PBVP_BUILD_PLUGIN)
         message(FATAL_ERROR "PBVP_XNVSE_ROOT must point to the official xNVSE 6.4.5 release source.")
     endif()
 
-    if(NOT EXISTS "${PBVP_MINHOOK_ROOT}/CMakeLists.txt")
-        message(FATAL_ERROR "PBVP_MINHOOK_ROOT must point to the verified MinHook 1.3.4 source.")
-    endif()
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-    set(MH_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    add_subdirectory("${PBVP_MINHOOK_ROOT}" "${CMAKE_BINARY_DIR}/minhook" EXCLUDE_FROM_ALL)
-    set_target_properties(minhook PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-
     add_library(PipBoyVideoPlayer SHARED
         src/plugin/plugin_main.cpp
         src/render/d3d_renderer.cpp
-        src/render/hook_manager.cpp
         src/ui/ui_bridge.cpp
         src/diagnostics/logger.cpp
         src/plugin/version.rc
         src/plugin/exports.def)
-    target_link_libraries(PipBoyVideoPlayer PRIVATE pbvp_core minhook d3d9)
+    target_link_libraries(PipBoyVideoPlayer PRIVATE pbvp_core d3d9)
     target_include_directories(PipBoyVideoPlayer PRIVATE
         include
         "${PBVP_XNVSE_ROOT}"
@@ -82,14 +71,6 @@ if(PBVP_BUILD_PLUGIN)
         set_target_properties(pbvp_plugin_abi_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
         add_dependencies(pbvp_plugin_abi_test PipBoyVideoPlayer)
         add_test(NAME pbvp_plugin_abi_test COMMAND pbvp_plugin_abi_test $<TARGET_FILE:PipBoyVideoPlayer>)
-
-        add_executable(pbvp_hook_conflict_test tests/test_hook_conflict_win32.cpp)
-        target_link_libraries(pbvp_hook_conflict_test PRIVATE pbvp_core minhook)
-        target_include_directories(pbvp_hook_conflict_test PRIVATE "${PBVP_MINHOOK_ROOT}/include")
-        target_compile_features(pbvp_hook_conflict_test PRIVATE cxx_std_20)
-        target_compile_options(pbvp_hook_conflict_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
-        set_target_properties(pbvp_hook_conflict_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-        add_test(NAME pbvp_hook_conflict_test COMMAND pbvp_hook_conflict_test)
 
         find_program(PBVP_LLVM_PDBUTIL_EXECUTABLE NAMES llvm-pdbutil REQUIRED)
         add_test(
@@ -139,9 +120,8 @@ if(PBVP_BUILD_TESTS)
 
     add_executable(pbvp_tests
         tests/frame_cadence_tests.cpp
-        tests/hook_probe_tests.cpp
-        tests/recreate_result_tests.cpp
         tests/rect_math_tests.cpp
+        tests/texture_contract_tests.cpp
         tests/test_main.cpp)
     target_link_libraries(pbvp_tests PRIVATE pbvp_core)
     target_compile_features(pbvp_tests PRIVATE cxx_std_20)

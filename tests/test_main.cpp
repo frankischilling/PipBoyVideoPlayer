@@ -2,16 +2,14 @@
 
 #include <cstdio>
 
-void RunHookProbeTests();
 void RunFrameCadenceTests();
-void RunRecreateResultTests();
 void RunRectMathTests();
+void RunTextureContractTests();
 
 int main() {
     RunFrameCadenceTests();
-    RunHookProbeTests();
-    RunRecreateResultTests();
     RunRectMathTests();
+    RunTextureContractTests();
     if (pbvp::test::failures != 0) {
         std::fprintf(stderr, "%d test check(s) failed\n", pbvp::test::failures);
         return 1;

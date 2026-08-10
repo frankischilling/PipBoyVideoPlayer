@@ -1,7 +1,6 @@
 #include "nvse/PluginAPI.h"
 
 #include "pbvp/d3d_renderer.hpp"
-#include "pbvp/hook_manager.hpp"
 #include "pbvp/log.hpp"
 #include "pbvp/ui_bridge.hpp"
 
@@ -20,6 +19,7 @@ constexpr std::uint32_t kMinimumNvseVersion = 0x06040050u;
 PluginHandle g_plugin_handle = static_cast<PluginHandle>(kPluginHandle_Invalid);
 NVSEMessagingInterface* g_messaging = nullptr;
 std::atomic<bool> g_shutdown{false};
+std::atomic<bool> g_presentation_ready{false};
 
 void HandleMessage(NVSEMessagingInterface::Message* message) {
     if (message == nullptr) {
@@ -31,7 +31,8 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
             break;
         case NVSEMessagingInterface::kMessage_DeferredInit:
             PBVP_LOG_INFO("xNVSE DeferredInit received");
-            pbvp::hooks::ProbeAndInstall();
+            g_presentation_ready.store(true, std::memory_order_release);
+            PBVP_LOG_INFO("xNVSE frame-present presentation path enabled without executable hooks");
             break;
         case NVSEMessagingInterface::kMessage_MainGameLoop:
             if (!g_shutdown.load(std::memory_order_acquire)) {
@@ -43,7 +44,7 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
             if (message->data != nullptr && message->dataLen == sizeof(int)) {
                 loading_screen = *static_cast<const int*>(message->data) != 0;
             }
-            if (!loading_screen && pbvp::hooks::IsReady() &&
+            if (!loading_screen && g_presentation_ready.load(std::memory_order_acquire) &&
                 !g_shutdown.load(std::memory_order_acquire)) {
                 pbvp::D3dRenderer::Instance().OnFrame(
                     pbvp::UiBridge::Instance().ReadForRenderThread());
@@ -59,7 +60,7 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
         case NVSEMessagingInterface::kMessage_ExitGame:
         case NVSEMessagingInterface::kMessage_ExitGame_Console:
             g_shutdown.store(true, std::memory_order_release);
-            pbvp::hooks::MarkShutdown();
+            g_presentation_ready.store(false, std::memory_order_release);
             pbvp::UiBridge::Instance().Clear();
             pbvp::D3dRenderer::Instance().RequestShutdown();
             PBVP_LOG_INFO("Process shutdown requested");

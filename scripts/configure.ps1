@@ -12,8 +12,7 @@ if (-not $BuildDirectory) {
 }
 
 if ($Target -eq 'plugin') {
-    if (-not (Test-Path -LiteralPath (Join-Path $root 'external\NVSE-6.4.5\nvse\nvse\PluginAPI.h')) -or
-        -not (Test-Path -LiteralPath (Join-Path $root 'external\minhook-1.3.4\CMakeLists.txt'))) {
+    if (-not (Test-Path -LiteralPath (Join-Path $root 'external\NVSE-6.4.5\nvse\nvse\PluginAPI.h'))) {
         throw 'Verified dependencies are missing. Run scripts\fetch-dependencies.ps1 first.'
     }
     if (-not $VisualStudioGenerator) {

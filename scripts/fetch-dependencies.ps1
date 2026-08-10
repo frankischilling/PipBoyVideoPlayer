@@ -16,14 +16,6 @@ $dependencies = @(
         Hash = 'A4C03B13BBC810A5452ABC04B1BBDECB7881C766D56CF46B6035F5DF5EFDF343'
         ExpandedName = 'NVSE-6.4.5'
         Destination = 'NVSE-6.4.5'
-    },
-    @{
-        Name = 'MinHook 1.3.4'
-        Uri = 'https://github.com/TsudaKageyu/minhook/archive/refs/tags/v1.3.4.zip'
-        Archive = 'minhook-1.3.4-source.zip'
-        Hash = '172708123DAA0C98D20D3A980B16A50BE14AF243DC95DEE6F79C24193AD010E4'
-        ExpandedName = 'minhook-1.3.4'
-        Destination = 'minhook-1.3.4'
     }
 )
 

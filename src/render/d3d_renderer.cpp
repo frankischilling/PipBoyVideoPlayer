@@ -1,7 +1,7 @@
 #include "pbvp/d3d_renderer.hpp"
 
 #include "pbvp/log.hpp"
-#include "pbvp/recreate_result.hpp"
+#include "pbvp/texture_contract.hpp"
 #include "pbvp/ui_bridge.hpp"
 
 #include <Windows.h>
@@ -63,10 +63,6 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
     if (!frame_callback_logged_) {
         PBVP_LOG_INFO("xNVSE frame-present texture upload boundary active");
         frame_callback_logged_ = true;
-    }
-    if (device_lost_) {
-        cadence_tracker_.Reset();
-        return;
     }
     if (!ui_rect.visible) {
         cadence_tracker_.Reset();
@@ -179,49 +175,6 @@ void D3dRenderer::RecordVisibleCadence() noexcept {
         sample.frames, sample.elapsed_seconds * 1000.0, sample.frames_per_second);
 }
 
-void D3dRenderer::BeforeDeviceRecreate(void* renderer) noexcept {
-    static_cast<void>(renderer);
-    ReleaseResources();
-    device_lost_ = true;
-    ++reset_count_;
-    PBVP_LOG_INFO(
-        "Transient engine-surface state cleared before engine recreation %u", reset_count_);
-}
-
-void D3dRenderer::AfterDeviceRecreate(void* renderer, const std::uint32_t result) noexcept {
-    const RecreateResult classification = ClassifyRecreateResult(result);
-    if (classification == RecreateResult::failed) {
-        ++recreate_failure_count_;
-        PBVP_LOG_WARN("D3D engine recreation failed; texture uploads remain disabled");
-        return;
-    }
-    if (classification == RecreateResult::unknown) {
-        ++recreate_failure_count_;
-        PBVP_LOG_ERROR(
-            "D3D engine recreation returned unexpected value %u; texture uploads remain disabled",
-            result);
-        return;
-    }
-    if (DeviceFromRenderer(renderer) == nullptr) {
-        ++recreate_failure_count_;
-        PBVP_LOG_ERROR(
-            "D3D engine recreation returned %u without publishing a device; texture uploads remain disabled",
-            result);
-        return;
-    }
-
-    device_ = nullptr;
-    device_lost_ = false;
-    ++recreate_success_count_;
-    if (classification == RecreateResult::recovered) {
-        PBVP_LOG_INFO(
-            "D3D engine recreation recovered the original presentation parameters; resources will be reacquired");
-    } else {
-        PBVP_LOG_INFO(
-            "D3D engine recreation applied the requested presentation parameters; resources will be reacquired");
-    }
-}
-
 void D3dRenderer::RequestShutdown() noexcept {
     shutdown_requested_ = true;
     ReleaseResources();
@@ -292,10 +245,18 @@ bool D3dRenderer::UploadCheckerboard(
         "PBVP_VideoSurface profile: size=%ux%u format=%u pool=%u usage=0x%08X",
         description.Width, description.Height, static_cast<unsigned>(description.Format),
         static_cast<unsigned>(description.Pool), static_cast<unsigned>(description.Usage));
-    if (description.Width != kTextureWidth || description.Height != kTextureHeight ||
-        (description.Format != D3DFMT_A8R8G8B8 && description.Format != D3DFMT_X8R8G8B8)) {
+    const TexturePixelFormat pixel_format =
+        description.Format == D3DFMT_A8R8G8B8
+            ? TexturePixelFormat::argb8
+            : (description.Format == D3DFMT_X8R8G8B8 ? TexturePixelFormat::xrgb8
+                                                      : TexturePixelFormat::unsupported);
+    const TextureMemoryPool memory_pool =
+        description.Pool == D3DPOOL_MANAGED ? TextureMemoryPool::managed
+                                             : TextureMemoryPool::unsupported;
+    if (!AcceptEngineVideoTexture(
+            description.Width, description.Height, pixel_format, memory_pool)) {
         texture->Release();
-        PBVP_LOG_ERROR("PBVP_VideoSurface has an unsupported size or format");
+        PBVP_LOG_ERROR("PBVP_VideoSurface must be a 256x256 managed ARGB or XRGB texture");
         return false;
     }
 
@@ -404,14 +365,13 @@ void D3dRenderer::LogSessionSummary() noexcept {
                                      static_cast<double>(upload_timing_count_)
                                : 0.0;
     PBVP_LOG_INFO(
-        "Phase 1 renderer summary: callbacks=%llu visible=%llu devices=%u upload-successes=%llu upload-attempts=%llu upload-failures=%llu upload-us=%.2f/%.2f/%.2f recreation-successes=%u recreation-starts=%u recreation-failures=%u",
+        "Phase 1 renderer summary: callbacks=%llu visible=%llu devices=%u upload-successes=%llu upload-attempts=%llu upload-failures=%llu upload-us=%.2f/%.2f/%.2f",
         static_cast<unsigned long long>(frame_callback_count_),
         static_cast<unsigned long long>(visible_frame_count_), device_validation_count_,
         static_cast<unsigned long long>(upload_success_count_),
         static_cast<unsigned long long>(upload_attempt_count_),
         static_cast<unsigned long long>(upload_failure_count_), upload_minimum_microseconds_,
-        average, upload_maximum_microseconds_, recreate_success_count_, reset_count_,
-        recreate_failure_count_);
+        average, upload_maximum_microseconds_);
     const double cadence_average = cadence_sample_count_ > 0u
                                        ? cadence_total_fps_ /
                                              static_cast<double>(cadence_sample_count_)

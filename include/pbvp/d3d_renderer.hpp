@@ -15,8 +15,6 @@ public:
     static D3dRenderer& Instance() noexcept;
 
     void OnFrame(const UiRectSnapshot& ui_rect) noexcept;
-    void BeforeDeviceRecreate(void* renderer) noexcept;
-    void AfterDeviceRecreate(void* renderer, std::uint32_t result) noexcept;
     void RequestShutdown() noexcept;
 
 private:
@@ -50,12 +48,8 @@ private:
     double cadence_maximum_fps_{};
     std::uint32_t error_count_{};
     std::uint32_t device_validation_count_{};
-    std::uint32_t reset_count_{};
-    std::uint32_t recreate_success_count_{};
-    std::uint32_t recreate_failure_count_{};
     std::uint32_t last_surface_status_{};
     bool shutdown_requested_{};
-    bool device_lost_{};
     bool frame_callback_logged_{};
     bool thread_identity_logged_{};
     bool summary_logged_{};

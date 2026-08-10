@@ -171,11 +171,9 @@ The repository temporarily had a private build option that scheduled this reques
 
 This failure does not prove that normal game-initiated recreation is unsafe. It proves that PBVP cannot safely synthesize the transition from the audited consumer inputs alone. Future lifecycle testing must observe a transition initiated by the game or use the documented managed-resource ownership result. Direct renderer calls, direct Direct3D resets, device-vtable patches, and synthetic request writes remain prohibited.
 
-Automated hook conflict classification
+No executable hook surface
 
-The host and Win32 suites verify safe refusal for x86 relative jumps, absolute indirect jumps, push and return stubs, register jumps, and jumps after common hotpatch prefixes. A byte sequence that is neither a reviewed original entry nor a recognized redirect remains unknown and is also refused.
-
-The Win32 integration fixture uses the pinned MinHook build to redirect a function inside the test process. The probe classifies the patched entry as occupied. The fixture then removes the hook and confirms that the original function works again. This exercises a live redirect without patching Fallout or another installed plugin. An in-game occupied-target check remains unnecessary unless another graphics plugin supplies a controlled and reversible fixture.
+The current renderer uses xNVSE's frame-present notification and installs no executable or device-vtable hook. The earlier hook classifier, MinHook fixture, and reset detour were removed with the managed-texture decision. Runtime rejection now covers the FalloutNV version, engine object layouts, Direct3D device identity, texture dimensions, pixel format, and `D3DPOOL_MANAGED` requirement.
 
 ### Repeatable diagnostic log check
 
@@ -190,17 +188,17 @@ Maintainers can check a Phase 1 game log from the repository root:
   -MinimumUploads 1
 ```
 
-The check requires a plugin load record, the verified recreation hook, a resolved UIO rectangle, a validated Direct3D device, and the requested number of successful texture uploads. When `-ExpectedFps` is present, it also requires at least one visible-frame cadence sample. The default allowance is the greater of 2 FPS or 5 percent of the requested cap. `-FpsTolerance` can set a different allowance for a recorded case.
+The check requires a plugin load record, the hook-free presentation-path record, a resolved UIO rectangle, a validated Direct3D device, and the requested number of successful texture uploads. When `-ExpectedFps` is present, it also requires at least one visible-frame cadence sample. The default allowance is the greater of 2 FPS or 5 percent of the requested cap. `-FpsTolerance` can set a different allowance for a recorded case.
 
 The plugin measures up to eight three-second windows while the Pip-Boy is visible. It resets a partial window when the menu hides, the device is unavailable, or the performance counter regresses. Each log record contains the frame count, elapsed time, and calculated FPS. The checker recalculates that FPS before comparing it with the requested cap.
 
-The checker rejects plugin errors, failed or unknown recreation results, inconsistent cadence records, and a backbuffer that does not match the expected dimensions. Add `-MinimumRecreates 1` only for a naturally initiated display recreation. Add `-RequireCleanExit` when the test includes an orderly process exit. A clean-exit check requires the renderer summary and, when samples exist, the cadence summary.
+The checker rejects plugin errors, inconsistent cadence records, and a backbuffer that does not match the expected dimensions. Add `-RequireCleanExit` when the test includes an orderly process exit. A clean-exit check requires the renderer summary and, when samples exist, the cadence summary.
 
-The accepted 1920x1080 VNV Extended run passes with one validated device and one upload at 27.30 microseconds. The log contains no plugin errors. It has zero recreation records, so this result does not satisfy the device-recreation test.
+The accepted 1920x1080 VNV Extended run passes with one validated device and one upload at 27.30 microseconds. The log contains no plugin errors. The run predates removal of the recreation detour, so the hook-free build still needs its own in-game result.
 
-CTest runs the checker against generated logs. The fixtures cover a normal clean exit, a 60 FPS cadence, and a successful natural recreation record. They also confirm rejection of an error record, a wrong backbuffer, a missing required recreation, a wrong frame rate, inconsistent cadence arithmetic, and a clean exit without the renderer summary. The generated logs contain no game data or personal media.
+CTest runs the checker against generated logs. The fixtures cover a normal clean exit and a 60 FPS cadence. They also confirm rejection of an error record, a wrong backbuffer, a wrong frame rate, inconsistent cadence arithmetic, and a clean exit without the renderer summary. Portable texture-contract tests accept the two supported 256x256 color formats in the managed pool and reject wrong dimensions, unsupported formats, and every other pool. The generated fixtures contain no game data or personal media.
 
-The next normal installed candidate records fixed-size session totals for frame callbacks, visible frames, device validations, texture uploads, recreation outcomes, and cadence samples. It also reports minimum, average, and maximum successful upload time and visible FPS. These summaries still need an in-game orderly-exit check before they can be counted as runtime evidence.
+The next normal installed candidate records fixed-size session totals for frame callbacks, visible frames, device validations, texture uploads, and cadence samples. It also reports minimum, average, and maximum successful upload time and visible FPS. These summaries still need an in-game orderly-exit check before they can be counted as runtime evidence.
 
 ## Required profiles
 

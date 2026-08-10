@@ -258,6 +258,8 @@ Consequence: the next run resolved the panel at `42,375` through `426,591`. The 
 
 Date: August 9, 2026
 
+Status: superseded on August 10, 2026 by the managed-texture decision below.
+
 Decision: use a pinned MinHook 1.3.4 detour on `NiDX9Renderer::Recreate` only after an exact runtime signature check accepts the original function entry. Refuse rendering for the session if the entry is already redirected or its bytes are unknown.
 
 Evidence: maintained Fallout NV graphics code identifies `NiDX9Renderer::Recreate` as the engine boundary for device recreation. Direct3D requires default-pool resources to be released before `Reset`, so detecting loss after presentation is not sufficient.

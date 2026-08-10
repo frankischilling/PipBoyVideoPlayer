@@ -41,3 +41,5 @@
 - Identified both transient recreation dimensions as readable zero values and specified a bounded, reversible request-staging test.
 - Required the controlled recreation log check to verify restoration of the transient requested-size values.
 - Retired and removed the private forced-recreation diagnostic after its same-size request froze the game inside the native renderer recreation call. The build flag, request code, observer, tests, and installer are gone.
+- Removed the `NiDX9Renderer::Recreate` detour and MinHook dependency after confirming that PBVP retains no reset-sensitive Direct3D resource.
+- Required the engine-owned video texture to use `D3DPOOL_MANAGED` and added portable tests for the accepted size, format, and pool contract.

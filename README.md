@@ -8,7 +8,7 @@ The repository contains the implementation, automated tests, UIO files, build sc
 
 Status: Phase 1 render and UI feasibility
 
-The current diagnostic build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, installs a UIO prefab, and probes the engine's Direct3D recreation function. Once the Pip-Boy is open, it validates the live UIO image, engine texture objects, Direct3D device, and callback thread before uploading a generated checkerboard. Any unknown object type, function entry, or thread arrangement disables the update instead of guessing.
+The current diagnostic build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, and installs a UIO prefab. Once the Pip-Boy is open, it validates the live UIO image, engine texture objects, managed Direct3D texture, device, and callback thread before uploading a generated checkerboard. Any unknown object type, texture profile, or thread arrangement disables the update instead of guessing. The plugin does not patch game functions or a Direct3D device vtable.
 
 The host and Win32 automated tests pass. Two separate overlay draw points were rejected because they rendered above the Pip-Boy UI. The engine-owned image path now resolves the UIO tile, verifies the shader source texture, and uploads a checkerboard in 27.30 microseconds in the accepted 1920x1080 run. Explicit drawable depths keep the checkerboard visible inside the Pip-Boy with the black and text probes above it in the active VNV Extended UI stack. Keyboard and mouse input, five Alt+Tab cycles, and ten Pip-Boy reopen cycles passed on that profile. A synthetic recreation test froze inside the game's native reset sequence, so that test and its installer were removed. Controller input, natural device recreation, resolution coverage, the base VNV profile, and DXVK support are not verified yet.
 
@@ -25,7 +25,7 @@ Required tools are CMake, Visual Studio with the x86 C++ workload, PowerShell, a
 .\scripts\test.ps1 -Configuration Debug
 ```
 
-The dependency script downloads the official xNVSE 6.4.5 and MinHook 1.3.4 source archives and verifies their SHA-256 hashes before extraction. The plugin build uses a Win32 Visual Studio generator. A separate host build can run the portable tests without building the plugin:
+The dependency script downloads the official xNVSE 6.4.5 source archive and verifies its SHA-256 hash before extraction. The plugin build uses a Win32 Visual Studio generator. A separate host build can run the portable tests without building the plugin:
 
 ```powershell
 .\scripts\configure.ps1 -Target host

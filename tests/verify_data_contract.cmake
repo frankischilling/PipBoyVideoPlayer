@@ -93,6 +93,27 @@ if(symbol_sanitizer_offset EQUAL -1)
     message(FATAL_ERROR "Package script does not prepare path-neutral public symbols")
 endif()
 
+file(READ "${PBVP_SOURCE_DIR}/CMakeLists.txt" cmake_text)
+string(REGEX MATCH "MinHook|minhook" removed_hook_dependency "${cmake_text}")
+if(NOT removed_hook_dependency STREQUAL "")
+    message(FATAL_ERROR "The managed texture build must not link the retired hook dependency")
+endif()
+
+file(READ "${PBVP_SOURCE_DIR}/src/plugin/plugin_main.cpp" plugin_text)
+string(FIND "${plugin_text}"
+    "xNVSE frame-present presentation path enabled without executable hooks"
+    hook_free_log_offset)
+if(hook_free_log_offset EQUAL -1)
+    message(FATAL_ERROR "Plugin lifecycle does not declare the hook-free presentation path")
+endif()
+
+file(READ "${PBVP_SOURCE_DIR}/src/render/d3d_renderer.cpp" renderer_text)
+string(FIND "${renderer_text}" "description.Pool == D3DPOOL_MANAGED" managed_pool_offset)
+string(FIND "${renderer_text}" "AcceptEngineVideoTexture" texture_contract_offset)
+if(managed_pool_offset EQUAL -1 OR texture_contract_offset EQUAL -1)
+    message(FATAL_ERROR "Renderer does not enforce the managed engine texture contract")
+endif()
+
 string(FIND "${prefab_text}" "PBVP UI LAYER" layer_probe_offset)
 if(layer_probe_offset EQUAL -1)
     message(FATAL_ERROR "UI prefab is missing the visible layer-probe text")
