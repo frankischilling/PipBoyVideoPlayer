@@ -468,6 +468,8 @@ Decision: keep FFmpeg contexts on one decoder worker, XAudio2 and playback state
 
 Evidence: the automated scheduler completed a simulated 30-minute 30 FPS stream at a 10 FPS game cadence without cumulative drift. Native tests cover pause, resume, forward and backward seeks, stop during buffering, stale generation rejection, silent-video timing, hidden presentation, foreign-thread refusal, and orderly shutdown. The first live integrated run decoded 20 frames, presented 18, dropped two at startup, played all 96,967 audio samples with zero underruns, and uploaded every submitted frame. The maximum measured upload was 59.40 microseconds.
 
+The first 720p long-test attempt exposed an accounting defect rather than an ownership change. The controller subtracted a frame's BGRA size after moving it to the presentation slot, so the moved-from vector contributed zero and the bounded staging counter only increased. The corrected code records the size before moving the frame. A complete 1080p regression and a five-second run against the 30-minute fixture passed with the failure site clear.
+
 Rejected alternatives: do not use game frames as the media clock, retain a full decoded video queue on the renderer, call Direct3D while holding the mailbox lock, let a stale seek generation reach the texture, or retain engine Direct3D references between callbacks.
 
 Consequence: low game frame rates reduce video smoothness through bounded frame dropping instead of slowing audio or growing queues. The live 30-minute drift target and the full low-FPS in-game matrix remain release tests.

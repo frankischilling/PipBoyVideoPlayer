@@ -299,6 +299,10 @@ The long-test generator uses the pinned FFmpeg 8.0.1 executable to encode one ex
 
 The private long-test build logs five-minute progress, final audio and video times, their absolute difference, process private-memory growth, queue peaks, renderer uploads, and teardown order. Its checker enforces the 50 millisecond synchronization target and 128 MiB private-memory limit. The build and checker are ready, but no live 30-minute result is recorded yet.
 
+The first live long-test attempt opened the generated container, entered buffering and playback, decoded BGRA video, started AAC audio, and uploaded the first video frame. It then stopped after about 340 milliseconds with the controller's generic decoder error while both the decoder and audio snapshots still reported `ok`. This is a failed playback result, not a format rejection by FFmpeg.
+
+A native reproduction added a fixed failure-site code and identified `video_staging_capacity`. The controller moved a selected frame into its presentation slot before subtracting that frame's byte count. The moved-from BGRA vector reported zero bytes, so the staging counter never fell. Small 160x90 fixtures did not reach the 8 MiB budget during their short runs. Two 1280x720 presentations did. The controller now saves the owned byte count before the move and subtracts that value afterward. A full 1080p fixture then completed, and the real 30-minute file stayed in playback for a five-second native check with 151 decoded frames, 145 delivered frames, five startup drops, 245,760 submitted audio samples, and a 4,950,000 microsecond clock.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

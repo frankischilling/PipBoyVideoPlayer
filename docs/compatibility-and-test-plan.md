@@ -491,6 +491,8 @@ This accepts the short integrated path for the tested profile. It does not close
 
 The live 30-minute test now has a reproducible private fixture and strict checker. The pinned generator produced an exact 1,800-second, 54,000-frame, 1280x720 H.264 stream with stereo 48 kHz AAC. The 15,720,894 byte file reproduced SHA-256 `431220B5D0F941E85E44671CDC46F04E43C3D6FA5AFA04988B35073E5C2FA239`. The armed build records progress every five minutes and measures final synchronization error, private-memory growth, queue peaks, upload cost, underruns, and shutdown order. Packaging rejects that build. This describes prepared test infrastructure, not a passed live result.
 
+The first in-game attempt began decoding, audio playback, and texture upload, then stopped after about 340 milliseconds at the controller's video staging capacity check. The decoder and audio backend still reported `ok`. Native reproduction found that the byte counter subtracted the BGRA size after moving the frame, when the source vector was already empty. The corrected controller passed a complete 1080p playback regression and a five-second startup run against the real long fixture. The 30-minute in-game row remains open until the corrected build completes it.
+
 ## UI matrix
 
 Test these layouts independently:

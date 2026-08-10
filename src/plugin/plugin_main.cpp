@@ -213,9 +213,10 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
         if (!g_playback_controller->Update(ui_snapshot.visible)) {
             const pbvp::PlaybackControllerSnapshot failed = g_playback_controller->Snapshot();
             PBVP_LOG_ERROR(
-                "Playback update failed: state=%s error=%s decoder=%s audio=%s",
+                "Playback update failed: state=%s error=%s site=%s decoder=%s audio=%s",
                 pbvp::PlaybackStateName(failed.playback.state),
                 pbvp::PlaybackErrorName(failed.playback.error),
+                pbvp::PlaybackFailureSiteName(failed.failure_site),
                 pbvp::MediaDecodeStatusName(failed.decoder.failure.status),
                 pbvp::XAudioStreamStatusName(failed.audio.status));
         }

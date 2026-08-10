@@ -37,6 +37,18 @@ enum class PlaybackTerminalReason : std::uint32_t {
     shutdown,
 };
 
+enum class PlaybackFailureSite : std::uint32_t {
+    none,
+    decoder_state_before_drain,
+    decoder_state_after_drain,
+    video_queue_contract,
+    video_staging_capacity,
+    audio_queue_contract,
+    video_timeline,
+};
+
+[[nodiscard]] const char* PlaybackFailureSiteName(PlaybackFailureSite site) noexcept;
+
 struct PlaybackMetrics final {
     std::uint64_t update_calls{};
     std::uint64_t decoded_video_frames{};
@@ -62,6 +74,7 @@ struct PlaybackMetrics final {
 struct PlaybackControllerSnapshot final {
     PlaybackStateSnapshot playback{};
     PlaybackTerminalReason terminal_reason{PlaybackTerminalReason::none};
+    PlaybackFailureSite failure_site{PlaybackFailureSite::none};
     DecoderSnapshot decoder{};
     DecoderBufferUsage decoder_buffers{};
     XAudioStreamSnapshot audio{};
@@ -112,7 +125,9 @@ private:
     [[nodiscard]] std::optional<std::int64_t> MediaTimeUs() noexcept;
     [[nodiscard]] bool CheckForCompletion(const DecoderSnapshot& snapshot) noexcept;
     void RecordBufferUsage() noexcept;
-    void Fail(PlaybackError error) noexcept;
+    void Fail(
+        PlaybackError error,
+        PlaybackFailureSite site = PlaybackFailureSite::none) noexcept;
     void ReleaseSessionResources(bool keep_ready_frame = false) noexcept;
     void ResetSessionData() noexcept;
 

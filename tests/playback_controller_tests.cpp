@@ -153,6 +153,24 @@ void TestStopAndThreadOwnership(
     }
 }
 
+void TestHighResolutionCompletion(
+    const pbvp::FfmpegRuntime& runtime,
+    const std::wstring& fixture_root) {
+    pbvp::PlaybackController controller(runtime, TestConfig());
+    PBVP_CHECK(controller.Open(fixture_root, L"h264-aac-1080p.mp4"));
+    std::uint64_t delivered_frames = 0u;
+    PBVP_CHECK(AdvanceUntil(
+        controller, pbvp::PlaybackState::idle,
+        std::chrono::steady_clock::now() + 10s, delivered_frames));
+    const auto snapshot = controller.Snapshot();
+    PBVP_CHECK(snapshot.playback.error == pbvp::PlaybackError::none);
+    PBVP_CHECK(snapshot.terminal_reason == pbvp::PlaybackTerminalReason::completed);
+    PBVP_CHECK(snapshot.failure_site == pbvp::PlaybackFailureSite::none);
+    PBVP_CHECK(snapshot.metrics.decoded_video_frames == 30u);
+    PBVP_CHECK(delivered_frames > 0u);
+    PBVP_CHECK(snapshot.metrics.peak_staged_video_bytes <= 8u * 1024u * 1024u);
+}
+
 void TestSilentCompletion(
     const pbvp::FfmpegRuntime& runtime,
     const std::wstring& fixture_root) {
@@ -169,11 +187,47 @@ void TestSilentCompletion(
     PBVP_CHECK(delivered_frames > 0u);
 }
 
+void TestOptionalLongStart(
+    const pbvp::FfmpegRuntime& runtime,
+    const std::wstring& fixture_root,
+    const std::wstring& fixture_name) {
+    pbvp::PlaybackController controller(runtime, TestConfig());
+    PBVP_CHECK(controller.Open(fixture_root, fixture_name));
+    std::uint64_t delivered_frames = 0u;
+    const auto deadline = std::chrono::steady_clock::now() + 5s;
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (!controller.Update(true)) {
+            break;
+        }
+        if (controller.TakeVideoFrame().has_value()) {
+            ++delivered_frames;
+        }
+        Sleep(1u);
+    }
+    const auto snapshot = controller.Snapshot();
+    std::printf(
+        "long startup: state=%s error=%s site=%s decoder=%s frames=%llu delivered=%llu dropped=%llu samples=%llu clock_us=%lld\n",
+        pbvp::PlaybackStateName(snapshot.playback.state),
+        pbvp::PlaybackErrorName(snapshot.playback.error),
+        pbvp::PlaybackFailureSiteName(snapshot.failure_site),
+        pbvp::MediaDecodeStatusName(snapshot.decoder.failure.status),
+        static_cast<unsigned long long>(snapshot.metrics.decoded_video_frames),
+        static_cast<unsigned long long>(delivered_frames),
+        static_cast<unsigned long long>(snapshot.metrics.dropped_video_frames),
+        static_cast<unsigned long long>(snapshot.metrics.submitted_audio_samples),
+        static_cast<long long>(snapshot.metrics.last_media_time_us));
+    PBVP_CHECK(snapshot.playback.state != pbvp::PlaybackState::error);
+    PBVP_CHECK(delivered_frames > 0u);
+    controller.Stop();
+}
+
 } // namespace
 
 int wmain(int argc, wchar_t** argv) {
-    if (argc != 3) {
-        std::fputs("usage: pbvp_playback_controller_test <runtime-bin> <fixture-root>\n", stderr);
+    if (argc != 3 && argc != 5) {
+        std::fputs(
+            "usage: pbvp_playback_controller_test <runtime-bin> <fixture-root> [<long-root> <long-name>]\n",
+            stderr);
         return 2;
     }
 
@@ -187,7 +241,11 @@ int wmain(int argc, wchar_t** argv) {
     TestAudioCompletion(runtime, argv[2]);
     TestPauseAndSeeks(runtime, argv[2]);
     TestStopAndThreadOwnership(runtime, argv[2]);
+    TestHighResolutionCompletion(runtime, argv[2]);
     TestSilentCompletion(runtime, argv[2]);
+    if (argc == 5) {
+        TestOptionalLongStart(runtime, argv[3], argv[4]);
+    }
     runtime.Unload();
 
     if (pbvp::test::failures != 0) {

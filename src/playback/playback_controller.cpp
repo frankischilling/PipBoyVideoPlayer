@@ -22,6 +22,21 @@ bool IsActiveState(const PlaybackState state) noexcept {
 
 } // namespace
 
+const char* PlaybackFailureSiteName(const PlaybackFailureSite site) noexcept {
+    switch (site) {
+        case PlaybackFailureSite::none: return "none";
+        case PlaybackFailureSite::decoder_state_before_drain:
+            return "decoder_state_before_drain";
+        case PlaybackFailureSite::decoder_state_after_drain:
+            return "decoder_state_after_drain";
+        case PlaybackFailureSite::video_queue_contract: return "video_queue_contract";
+        case PlaybackFailureSite::video_staging_capacity: return "video_staging_capacity";
+        case PlaybackFailureSite::audio_queue_contract: return "audio_queue_contract";
+        case PlaybackFailureSite::video_timeline: return "video_timeline";
+    }
+    return "unknown";
+}
+
 PlaybackController::PlaybackController(
     const FfmpegRuntime& runtime,
     PlaybackControllerConfig config) noexcept
@@ -89,7 +104,9 @@ bool PlaybackController::Update(const bool presentation_visible) noexcept {
     snapshot_.decoder = decoder_snapshot;
     if (decoder_snapshot.state == DecoderState::failed ||
         decoder_snapshot.state == DecoderState::stopped) {
-        Fail(PlaybackError::decoder_failed);
+        Fail(
+            PlaybackError::decoder_failed,
+            PlaybackFailureSite::decoder_state_before_drain);
         return false;
     }
     if (!media_configured_ &&
@@ -114,7 +131,9 @@ bool PlaybackController::Update(const bool presentation_visible) noexcept {
     snapshot_.decoder = decoder_snapshot;
     if (decoder_snapshot.state == DecoderState::failed ||
         decoder_snapshot.state == DecoderState::stopped) {
-        Fail(PlaybackError::decoder_failed);
+        Fail(
+            PlaybackError::decoder_failed,
+            PlaybackFailureSite::decoder_state_after_drain);
         return false;
     }
     if (!FeedAudio(decoder_snapshot)) {
@@ -420,7 +439,9 @@ bool PlaybackController::DrainVideo(const bool discard_when_full) noexcept {
             break;
         }
         if (!popped.value.has_value()) {
-            Fail(PlaybackError::decoder_failed);
+            Fail(
+                PlaybackError::decoder_failed,
+                PlaybackFailureSite::video_queue_contract);
             return false;
         }
 
@@ -439,7 +460,9 @@ bool PlaybackController::DrainVideo(const bool discard_when_full) noexcept {
                 ++snapshot_.metrics.dropped_video_frames;
                 continue;
             }
-            Fail(PlaybackError::decoder_failed);
+            Fail(
+                PlaybackError::decoder_failed,
+                PlaybackFailureSite::video_staging_capacity);
             return false;
         }
         staged_video_bytes_ += bytes;
@@ -466,7 +489,9 @@ bool PlaybackController::FeedAudio(const DecoderSnapshot& decoder_snapshot) noex
                 break;
             }
             if (!popped.value.has_value()) {
-                Fail(PlaybackError::decoder_failed);
+                Fail(
+                    PlaybackError::decoder_failed,
+                    PlaybackFailureSite::audio_queue_contract);
                 return false;
             }
             if (popped.value->generation != generation_) {
@@ -567,7 +592,7 @@ bool PlaybackController::SelectVideoForCurrentClock() noexcept {
         const VideoSelection selection = scheduler_.Select(
             std::span<const VideoFrameTiming>(&timing, 1u), generation_, *media_time);
         if (selection.status != VideoSelectionStatus::ok) {
-            Fail(PlaybackError::decoder_failed);
+            Fail(PlaybackError::decoder_failed, PlaybackFailureSite::video_timeline);
             return false;
         }
         if (selection.consume_count == 0u) {
@@ -576,9 +601,10 @@ bool PlaybackController::SelectVideoForCurrentClock() noexcept {
 
         if (selection.present_index.has_value()) {
             const DecodedVideoFrame& selected = staged_video_.front();
+            const std::size_t selected_bytes = selected.bgra.size();
             const std::int64_t maximum = (std::numeric_limits<std::int64_t>::max)();
             if (selected.duration_us > maximum - selected.pts_us) {
-                Fail(PlaybackError::decoder_failed);
+                Fail(PlaybackError::decoder_failed, PlaybackFailureSite::video_timeline);
                 return false;
             }
             if (ready_frame_.has_value()) {
@@ -592,11 +618,12 @@ bool PlaybackController::SelectVideoForCurrentClock() noexcept {
             snapshot_.metrics.maximum_video_lateness_us = (std::max)(
                 snapshot_.metrics.maximum_video_lateness_us,
                 selection.presentation_lateness_us);
+            staged_video_bytes_ -= selected_bytes;
         } else {
             snapshot_.metrics.dropped_video_frames += selection.dropped_frames;
             snapshot_.metrics.stale_video_frames += selection.stale_frames;
+            staged_video_bytes_ -= staged_video_.front().bgra.size();
         }
-        staged_video_bytes_ -= staged_video_.front().bgra.size();
         staged_video_.pop_front();
     }
     return true;
@@ -680,9 +707,12 @@ void PlaybackController::RecordBufferUsage() noexcept {
         snapshot_.decoder_buffers.audio_bytes);
 }
 
-void PlaybackController::Fail(const PlaybackError error) noexcept {
+void PlaybackController::Fail(
+    const PlaybackError error,
+    const PlaybackFailureSite site) noexcept {
     state_.Fail(error);
     snapshot_.terminal_reason = PlaybackTerminalReason::failed;
+    snapshot_.failure_site = site;
     snapshot_.playback = state_.Snapshot();
     ReleaseSessionResources();
 }
