@@ -15,6 +15,7 @@ if(NOT registration_text STREQUAL expected_registration)
 endif()
 
 file(READ "${prefab}" prefab_text)
+string(REPLACE "\r\n" "\n" prefab_text "${prefab_text}")
 foreach(required_name IN ITEMS
         PBVP_Root
         PBVP_VideoRect
@@ -26,6 +27,13 @@ foreach(required_name IN ITEMS
         message(FATAL_ERROR "UI prefab is missing ${required_name}")
     endif()
 endforeach()
+
+set(expected_root_stack
+    "<height> <copy src=\"parent()\" trait=\"height\" /> </height>\n    <depth> 10 </depth>\n    <visible> 1 </visible>\n    <target> 0 </target>")
+string(FIND "${prefab_text}" "${expected_root_stack}" root_stack_offset)
+if(root_stack_offset EQUAL -1)
+    message(FATAL_ERROR "UI prefab root must remain above page content and below native controls")
+endif()
 
 string(FIND "${prefab_text}" "Interface\\PipBoyVideoPlayer\\Surface.dds" surface_path_offset)
 if(surface_path_offset EQUAL -1)

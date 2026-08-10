@@ -3,7 +3,9 @@
     <y> 0 </y>
     <width> <copy src="parent()" trait="width" /> </width>
     <height> <copy src="parent()" trait="height" /> </height>
+    <depth> 10 </depth>
     <visible> 1 </visible>
+    <target> 0 </target>
 
     <rect name="PBVP_VideoRect">
         <x> 80 </x>

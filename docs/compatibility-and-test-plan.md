@@ -107,6 +107,12 @@ The follow-up build found the expected filename, cleared and restored it once th
 
 The null direct member did not prove that the image lacked a render texture. Maintained JIP LN NVSE layouts identify `+0x40` as `TileShaderProperty` and its source texture at offset `0x60`. Psycho's decompiled `TileImage` node-building path also sends `+0x40` through the render-object setup. The next candidate removes the refresh and verifies that shader-property chain with exact vtables before attempting an upload.
 
+Third run: texture upload verified, root depth rejected
+
+The shader-source build resolved a 256x256 `A8R8G8B8` managed texture, verified its Direct3D device, and uploaded the checkerboard in 21.0 to 25.8 microseconds. The user saw the checkerboard for about one second while switching from Items to Data, then it disappeared. Repeated MapMenu openings produced the same valid texture profile and upload. The plugin exited cleanly.
+
+This result verifies the engine-owned upload path and rejects the prefab root's default sibling depth. The active Vanilla UI Plus MapMenu places map content as high as depth 8, headline cards at depth 15, and the tab line at depth 22. The next candidate sets `PBVP_Root` to depth 10 so the surface clears ordinary page content without covering the existing headline and tab controls.
+
 ## Required profiles
 
 | Profile | Purpose |

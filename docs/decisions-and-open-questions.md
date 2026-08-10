@@ -168,6 +168,20 @@ Rejected alternatives: `+0x40` is not a texture and will not be cast as one. The
 
 Consequence: the next build will follow the shader property's source texture only after both object types match. Its diagnostic record will include the direct texture, shader property, shader source texture, and their vtables. Any mismatch leaves the Pip-Boy usable and disables the upload.
 
+### MapMenu video sibling depth
+
+Date: August 9, 2026
+
+Decision: assign depth 10 to `PBVP_Root` for the current Vanilla UI Plus feasibility candidate. Keep the surface, probe background, and probe text ordered within that root. Do not raise the whole root above the existing headline or tab controls.
+
+Evidence: the shader-source build verified the full engine and Direct3D texture chain and uploaded the checkerboard repeatedly. The checkerboard was visible for about one second during the Items-to-Data transition, then normal MapMenu content covered it. The active MapMenu uses depths through 8 for page content, 15 for headline cards, and 22 for the tab line. The PBVP root previously had no explicit sibling depth.
+
+Pip-Flicks 3000 provides a useful behavioral comparison but not a drop-in placement. It replaces Pip-Boy background frames while the Items screen is active and stops video when the player switches to Stats or Data. PBVP keeps its ESP-less UIO design and uses the reference only to confirm that an engine-owned Pip-Boy texture can carry video beneath native controls.
+
+Rejected alternatives: a frame-wide overlay already failed the layer-order test. Setting the PBVP root above depth 15 could obscure existing navigation. Copying the Pip-Flicks ESP, scripts, frames, audio, or assets is unnecessary and would change PBVP's architecture and distribution obligations.
+
+Consequence: the next run must keep the checkerboard visible after the Data transition, retain the normal headline and tab controls, and leave input usable. A successful result verifies only the active VNV Extended UI stack; other UI profiles still require separate tests.
+
 ### Verified reset hook only
 
 Date: August 9, 2026
