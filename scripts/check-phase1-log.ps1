@@ -7,6 +7,7 @@ param(
     [ValidateRange(0, 100000)][int]$MinimumRecreates = 0,
     [ValidateRange(0.0, 240.0)][double]$ExpectedFps = 0.0,
     [ValidateRange(0.0, 60.0)][double]$FpsTolerance = 0.0,
+    [switch]$RequireScheduledRecreate,
     [switch]$RequireCleanExit
 )
 
@@ -37,6 +38,8 @@ try {
     $uploadTimes = Get-Matches -Lines $lines -Pattern '\[INFO\] Engine texture checkerboard upload took ([0-9]+(?:\.[0-9]+)?) microseconds$'
     $cadencePattern = '\[INFO\] Visible frame cadence: frames=(?<frames>[0-9]+) elapsed-ms=(?<elapsed>[0-9]+(?:\.[0-9]+)?) fps=(?<fps>[0-9]+(?:\.[0-9]+)?)$'
     $cadences = Get-Matches -Lines $lines -Pattern $cadencePattern
+    $armedBuilds = Get-Matches -Lines $lines -Pattern '\[WARN\] Private Phase 1 engine recreation diagnostic is enabled for this build$'
+    $scheduledRecreates = Get-Matches -Lines $lines -Pattern '\[WARN\] Private Phase 1 diagnostic scheduled one engine-owned recreation request$'
     $recreateStarts = Get-Matches -Lines $lines -Pattern '\[INFO\] Transient engine-surface state cleared before engine recreation '
     $recreateSuccesses = @(
         Get-Matches -Lines $lines -Pattern '\[INFO\] D3D engine recreation (?:recovered the original|applied the requested) presentation parameters; resources will be reacquired$'
@@ -65,6 +68,15 @@ try {
     }
     if ($recreateSuccesses.Count -lt $MinimumRecreates) {
         $failures.Add("Expected at least $MinimumRecreates recreation successes, found $($recreateSuccesses.Count).")
+    }
+    if ($RequireScheduledRecreate -and $MinimumRecreates -lt 1) {
+        $failures.Add('RequireScheduledRecreate requires MinimumRecreates of at least one.')
+    }
+    if ($RequireScheduledRecreate -and $armedBuilds.Count -ne 1) {
+        $failures.Add("Expected one armed recreation diagnostic record, found $($armedBuilds.Count).")
+    }
+    if ($RequireScheduledRecreate -and $scheduledRecreates.Count -ne 1) {
+        $failures.Add("Expected one scheduled recreation request, found $($scheduledRecreates.Count).")
     }
     if ($RequireCleanExit -and $shutdowns.Count -lt 1) {
         $failures.Add('Clean process shutdown record is missing.')
@@ -209,6 +221,9 @@ try {
     Write-Host "Successful uploads: $($uploads.Count)"
     Write-Host ("Upload time range: {0:F2} to {1:F2} microseconds" -f $minimumTime, $maximumTime)
     Write-Host "Successful recreations: $($recreateSuccesses.Count)"
+    if ($RequireScheduledRecreate) {
+        Write-Host 'Controlled recreation request: present'
+    }
     if ($cadenceValues.Count -gt 0) {
         $cadenceAverage = ($cadenceValues | Measure-Object -Average).Average
         Write-Host ("Visible cadence: {0:F2} FPS across {1} samples" -f

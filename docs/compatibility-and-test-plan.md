@@ -188,7 +188,7 @@ Build and install the private candidate only in the separate development mod:
   -Confirm:$false
 ```
 
-Open the Pip-Boy Data tab once, confirm that the checkerboard returns after the recreation, then exit through the game menu. The log must pass with `-MinimumRecreates 1 -RequireCleanExit`. Reinstall the normal development build immediately after the test. A test failure, a missing replacement device, a black surface, or a crash blocks Phase 1.
+Open the Pip-Boy Data tab once, confirm that the checkerboard returns after the recreation, then exit through the game menu. The log must pass with `-MinimumRecreates 1 -RequireScheduledRecreate -RequireCleanExit`. This proves that the armed build loaded, scheduled exactly one engine request, completed the recreation, reacquired the surface, and shut down cleanly. Reinstall the normal development build immediately after the test. A test failure, a missing replacement device, a black surface, or a crash blocks Phase 1.
 
 Automated hook conflict classification
 
@@ -213,11 +213,11 @@ The check requires a plugin load record, the verified recreation hook, a resolve
 
 The plugin measures up to eight three-second windows while the Pip-Boy is visible. It resets a partial window when the menu hides, the device is unavailable, or the performance counter regresses. Each log record contains the frame count, elapsed time, and calculated FPS. The checker recalculates that FPS before comparing it with the requested cap.
 
-The checker rejects plugin errors, failed or unknown recreation results, inconsistent cadence records, and a backbuffer that does not match the expected dimensions. Add `-MinimumRecreates 1` after a controlled display recreation. Add `-RequireCleanExit` when the test includes an orderly process exit. A clean-exit check requires the renderer summary and, when samples exist, the cadence summary.
+The checker rejects plugin errors, failed or unknown recreation results, inconsistent cadence records, and a backbuffer that does not match the expected dimensions. Add `-MinimumRecreates 1 -RequireScheduledRecreate` for the controlled display recreation. The scheduled check also requires exactly one armed-build banner and one engine-request record. Add `-RequireCleanExit` when the test includes an orderly process exit. A clean-exit check requires the renderer summary and, when samples exist, the cadence summary.
 
 The accepted 1920x1080 VNV Extended run passes with one validated device and one upload at 27.30 microseconds. The log contains no plugin errors. It has zero recreation records, so this result does not satisfy the device-recreation test.
 
-CTest runs the checker against generated logs. The fixtures cover a normal clean exit, a 60 FPS cadence, and a successful recreation. They also confirm rejection of an error record, a wrong backbuffer, a missing required recreation, a wrong frame rate, inconsistent cadence arithmetic, and a clean exit without the renderer summary. The generated logs contain no game data or personal media.
+CTest runs the checker against generated logs. The fixtures cover a normal clean exit, a 60 FPS cadence, and a successful scheduled recreation. They also confirm rejection of an error record, a wrong backbuffer, a missing required recreation, a missing armed-build banner, a missing schedule record, a scheduled check with a zero recreation minimum, a wrong frame rate, inconsistent cadence arithmetic, and a clean exit without the renderer summary. The generated logs contain no game data or personal media.
 
 The next normal installed candidate records fixed-size session totals for frame callbacks, visible frames, device validations, texture uploads, recreation outcomes, and cadence samples. It also reports minimum, average, and maximum successful upload time and visible FPS. These summaries still need an in-game orderly-exit check before they can be counted as runtime evidence.
 

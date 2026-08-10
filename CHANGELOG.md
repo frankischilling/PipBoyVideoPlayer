@@ -34,3 +34,4 @@
 - Added a reversible Phase 1 case configurator for the documented resolutions, display modes, VSync states, and RTSS frame caps.
 - Added bounded visible-frame cadence samples and an independent log check for the expected game FPS.
 - Added path-neutral public symbol packaging with exact PDB identity, public-symbol, FPO, section-contribution, and archive-content checks.
+- Tightened the controlled recreation log check to require the armed-build banner and exactly one scheduled engine request.

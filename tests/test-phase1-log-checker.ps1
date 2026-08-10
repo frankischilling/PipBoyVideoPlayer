@@ -47,7 +47,11 @@ try {
     }
 
     $resetText = $base.Replace(
+        '12:00:00.000 [INFO] Pip-Boy Video Player 0.1.0 loading; runtime=0x040020D0 xNVSE=0x06040050',
+        "12:00:00.000 [INFO] Pip-Boy Video Player 0.1.0 loading; runtime=0x040020D0 xNVSE=0x06040050`n" +
+        '12:00:00.001 [WARN] Private Phase 1 engine recreation diagnostic is enabled for this build').Replace(
         '12:00:07.900 [INFO] Phase 1 renderer summary: callbacks=400 visible=362 devices=1 upload-successes=1 upload-attempts=1 upload-failures=0 upload-us=24.50/24.50/24.50 recreation-successes=0 recreation-starts=0 recreation-failures=0',
+        "12:00:01.100 [WARN] Private Phase 1 diagnostic scheduled one engine-owned recreation request`n" +
         "12:00:01.500 [INFO] Transient engine-surface state cleared before engine recreation 1`n" +
         "12:00:01.600 [INFO] D3D engine recreation applied the requested presentation parameters; resources will be reacquired`n" +
         "12:00:01.700 [INFO] D3D device validated: adapter=Fixture driver=fixture.dll mode=fullscreen backbuffer=1920x1080 format=22 interval=0x00000001`n" +
@@ -56,8 +60,32 @@ try {
         '12:00:07.900 [INFO] Phase 1 renderer summary: callbacks=400 visible=362 devices=2 upload-successes=2 upload-attempts=2 upload-failures=0 upload-us=24.50/25.00/25.50 recreation-successes=1 recreation-starts=1 recreation-failures=0')
     $reset = Write-Fixture -Name 'reset.txt' -Text $resetText
     if ((Invoke-Checker -Fixture $reset -Arguments @(
-            '-MinimumRecreates', '1', '-RequireCleanExit')) -ne 0) {
+            '-MinimumRecreates', '1', '-RequireScheduledRecreate',
+            '-RequireCleanExit')) -ne 0) {
         throw 'The valid recreation fixture failed.'
+    }
+
+    $missingArmedBanner = Write-Fixture -Name 'missing-armed-banner.txt' -Text (
+        $resetText.Replace(
+            "12:00:00.001 [WARN] Private Phase 1 engine recreation diagnostic is enabled for this build`n",
+            ''))
+    if ((Invoke-Checker -Fixture $missingArmedBanner -Arguments @(
+            '-MinimumRecreates', '1', '-RequireScheduledRecreate')) -eq 0) {
+        throw 'The scheduled recreation without an armed banner was accepted.'
+    }
+
+    $missingSchedule = Write-Fixture -Name 'missing-schedule.txt' -Text (
+        $resetText.Replace(
+            "12:00:01.100 [WARN] Private Phase 1 diagnostic scheduled one engine-owned recreation request`n",
+            ''))
+    if ((Invoke-Checker -Fixture $missingSchedule -Arguments @(
+            '-MinimumRecreates', '1', '-RequireScheduledRecreate')) -eq 0) {
+        throw 'The recreation without a scheduled request was accepted.'
+    }
+
+    if ((Invoke-Checker -Fixture $reset -Arguments @(
+            '-RequireScheduledRecreate')) -eq 0) {
+        throw 'The scheduled recreation check accepted a zero minimum.'
     }
 
     $errorFixture = Write-Fixture -Name 'error.txt' -Text (
