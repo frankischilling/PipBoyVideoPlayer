@@ -40,6 +40,7 @@ try {
     $cadences = Get-Matches -Lines $lines -Pattern $cadencePattern
     $armedBuilds = Get-Matches -Lines $lines -Pattern '\[WARN\] Private Phase 1 engine recreation diagnostic is enabled for this build$'
     $scheduledRecreates = Get-Matches -Lines $lines -Pattern '\[WARN\] Private Phase 1 diagnostic scheduled one engine-owned recreation request$'
+    $restoredRecreateValues = Get-Matches -Lines $lines -Pattern '\[INFO\] Private Phase 1 diagnostic restored the original requested-size values$'
     $consumedRecreates = Get-Matches -Lines $lines -Pattern '\[INFO\] Private Phase 1 diagnostic observed deferred request consumption$'
     $recreateStarts = Get-Matches -Lines $lines -Pattern '\[INFO\] Transient engine-surface state cleared before engine recreation '
     $recreateSuccesses = @(
@@ -81,6 +82,9 @@ try {
     }
     if ($RequireScheduledRecreate -and $consumedRecreates.Count -ne 1) {
         $failures.Add("Expected one consumed recreation request, found $($consumedRecreates.Count).")
+    }
+    if ($RequireScheduledRecreate -and $restoredRecreateValues.Count -ne 1) {
+        $failures.Add("Expected one requested-size restoration, found $($restoredRecreateValues.Count).")
     }
     if ($RequireCleanExit -and $shutdowns.Count -lt 1) {
         $failures.Add('Clean process shutdown record is missing.')

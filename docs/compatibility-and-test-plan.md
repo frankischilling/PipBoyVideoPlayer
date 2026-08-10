@@ -318,9 +318,13 @@ Pass criteria:
 
 The August 10, 2026 private deferred-request run is inconclusive for device recreation. It produced two successful surface uploads and the user saw the checkerboard return, but the verified recreation detour recorded no entry or result. This run counts as surface recovery after a UI transition only. It does not satisfy the reset row of the graphics matrix.
 
-The controlled recreation checker also requires exactly one observed request consumption. A pending request, timeout, or consumed request without a successful detour still fails the reset case.
+The controlled recreation checker also requires exactly one observed request consumption and one verified restoration of the original requested-size values. A pending request, timeout, missing restoration, or consumed request without a successful detour still fails the reset case.
 
 The next clean follow-up run kept the checkerboard visible and produced an orderly renderer summary. It recorded one successful upload at 28.50 microseconds, no upload or recreation failures, and eight visible cadence samples from 131.22 to 144.21 FPS. The guarded diagnostic did not write the request because at least one helper precondition was unavailable. This is a stable uncapped render baseline, not a recreation pass.
+
+The per-field follow-up found a valid renderer and readable requested-size fields, but both size values were zero. The validated backbuffer remained 1920x1080, the checkerboard stayed visible, and the clean summary recorded one 30.00 microsecond upload with no failures. This confirms that a request byte alone reaches only the helper's early return.
+
+The next private candidate may stage 1920x1080 only if the audited active render globals and current backbuffer both report that exact size. The original requested-size values must be zero and writable. The diagnostic must verify each write, set the deferred byte last, and restore the original values after consumption, timeout, or orderly shutdown. Any size mismatch or restoration failure rejects the test.
 
 ## UI matrix
 

@@ -288,6 +288,14 @@ The deferred request byte is no longer accepted as a reset test by itself. The f
 
 Second runtime result and decision update: the clean follow-up run did not write the request because a helper precondition was unavailable. The checkerboard remained visible, the renderer summary recorded one successful upload and no failures, and the process shut down normally. Because the device path had already resolved the renderer singleton from the same address, one or both requested-size values remain the likely failed checks. The next diagnostic will identify each value without changing it. Direct recreation and unguarded writes remain rejected.
 
+Third runtime result and decision update: both requested-size addresses were readable and held zero. The renderer address was readable and nonzero, the Direct3D backbuffer was 1920x1080, the checkerboard stayed visible, and the session ended with a clean summary. The helper therefore returned at its requested-size checks in both earlier runs. A consumed byte with zero requested dimensions cannot exercise recreation.
+
+Decision: the next private test may copy an independently verified active width and height into the two transient requested-size globals before setting the deferred byte. It must require zero original values, writable memory, a matching active render size and Direct3D backbuffer, bounded dimensions, and successful readback. It writes the request only after those checks. After the main loop consumes or cancels the request, the diagnostic restores the original values and verifies the restoration. Shutdown also cancels a still-pending request and restores the values. This remains unavailable in normal builds.
+
+Reason: the maintained Psycho display implementation identifies the target setting objects as `iSize W` and `iSize H`, and the audited helper copies the transient request into those settings before entering the complete engine recreation sequence. Using the already active size requests no display-mode change. It only supplies the values required to traverse the same deferred engine path.
+
+Rejected alternatives: do not leave the transient values changed, accept a mismatch between active and backbuffer dimensions, overwrite an existing nonzero request, call the recreation helper directly, or call `IDirect3DDevice9::Reset`.
+
 ### Reversible compatibility cases
 
 Date: August 9, 2026

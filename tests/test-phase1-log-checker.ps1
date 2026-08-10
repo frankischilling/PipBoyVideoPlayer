@@ -54,6 +54,7 @@ try {
         "12:00:01.100 [WARN] Private Phase 1 diagnostic scheduled one engine-owned recreation request`n" +
         "12:00:01.500 [INFO] Transient engine-surface state cleared before engine recreation 1`n" +
         "12:00:01.600 [INFO] D3D engine recreation applied the requested presentation parameters; resources will be reacquired`n" +
+        "12:00:01.640 [INFO] Private Phase 1 diagnostic restored the original requested-size values`n" +
         "12:00:01.650 [INFO] Private Phase 1 diagnostic observed deferred request consumption`n" +
         "12:00:01.700 [INFO] D3D device validated: adapter=Fixture driver=fixture.dll mode=fullscreen backbuffer=1920x1080 format=22 interval=0x00000001`n" +
         "12:00:01.800 [INFO] Engine texture checkerboard upload took 25.50 microseconds`n" +
@@ -91,6 +92,15 @@ try {
     if ((Invoke-Checker -Fixture $missingConsumption -Arguments @(
             '-MinimumRecreates', '1', '-RequireScheduledRecreate')) -eq 0) {
         throw 'The recreation without observed request consumption was accepted.'
+    }
+
+    $missingRestoration = Write-Fixture -Name 'missing-restoration.txt' -Text (
+        $resetText.Replace(
+            "12:00:01.640 [INFO] Private Phase 1 diagnostic restored the original requested-size values`n",
+            ''))
+    if ((Invoke-Checker -Fixture $missingRestoration -Arguments @(
+            '-MinimumRecreates', '1', '-RequireScheduledRecreate')) -eq 0) {
+        throw 'The recreation without requested-size restoration was accepted.'
     }
 
     if ((Invoke-Checker -Fixture $reset -Arguments @(

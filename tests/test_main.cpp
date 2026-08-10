@@ -5,6 +5,7 @@
 void RunHookProbeTests();
 void RunFrameCadenceTests();
 void RunRecreateGateTests();
+void RunRecreateContextTests();
 void RunRecreateObserverTests();
 void RunRecreateResultTests();
 void RunRectMathTests();
@@ -12,6 +13,7 @@ void RunRectMathTests();
 int main() {
     RunFrameCadenceTests();
     RunHookProbeTests();
+    RunRecreateContextTests();
     RunRecreateGateTests();
     RunRecreateObserverTests();
     RunRecreateResultTests();

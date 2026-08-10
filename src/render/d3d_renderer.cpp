@@ -138,7 +138,7 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
     ++upload_success_count_;
     last_surface_ = surface.d3d_texture;
     PBVP_LOG_INFO("Generated checkerboard uploaded to PBVP_VideoSurface");
-    diagnostics::ScheduleEngineRecreateTest();
+    diagnostics::ScheduleEngineRecreateTest(backbuffer_width_, backbuffer_height_);
 }
 
 void D3dRenderer::RecordVisibleCadence() noexcept {
@@ -227,6 +227,7 @@ void D3dRenderer::AfterDeviceRecreate(void* renderer, const std::uint32_t result
 
 void D3dRenderer::RequestShutdown() noexcept {
     shutdown_requested_ = true;
+    diagnostics::CancelEngineRecreateTest();
     ReleaseResources();
     LogSessionSummary();
 }
@@ -371,6 +372,8 @@ void D3dRenderer::LogDeviceProfile(IDirect3DDevice9* device) noexcept {
     const char* description = "unknown";
     const char* driver = "unknown";
     const char* mode = "unknown";
+    backbuffer_width_ = 0u;
+    backbuffer_height_ = 0u;
 
     if (SUCCEEDED(device->GetCreationParameters(&creation))) {
         IDirect3D9* d3d = nullptr;
@@ -387,6 +390,8 @@ void D3dRenderer::LogDeviceProfile(IDirect3DDevice9* device) noexcept {
     if (SUCCEEDED(device->GetSwapChain(0u, &swap_chain)) && swap_chain != nullptr) {
         if (SUCCEEDED(swap_chain->GetPresentParameters(&presentation))) {
             mode = presentation.Windowed ? "windowed" : "fullscreen";
+            backbuffer_width_ = presentation.BackBufferWidth;
+            backbuffer_height_ = presentation.BackBufferHeight;
         }
         swap_chain->Release();
     }
@@ -431,6 +436,8 @@ void D3dRenderer::ReleaseResources() noexcept {
     device_ = nullptr;
     last_surface_ = 0u;
     last_surface_status_ = 0u;
+    backbuffer_width_ = 0u;
+    backbuffer_height_ = 0u;
 }
 
 } // namespace pbvp

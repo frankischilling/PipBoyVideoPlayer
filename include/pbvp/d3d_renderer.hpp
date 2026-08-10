@@ -54,6 +54,8 @@ private:
     std::uint32_t recreate_success_count_{};
     std::uint32_t recreate_failure_count_{};
     std::uint32_t last_surface_status_{};
+    std::uint32_t backbuffer_width_{};
+    std::uint32_t backbuffer_height_{};
     bool shutdown_requested_{};
     bool device_lost_{};
     bool frame_callback_logged_{};

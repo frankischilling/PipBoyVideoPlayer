@@ -38,3 +38,5 @@
 - Recorded that the first deferred-request run recovered the UI surface but did not enter the verified device-recreation hook. The request alone no longer counts as reset evidence.
 - Added bounded observation of the private recreation request, including precondition checks, consumption evidence, unexpected-value handling, and a five-second timeout.
 - Recorded the clean guarded run that kept the checkerboard visible but refused the recreation request because a helper precondition was unavailable.
+- Identified both transient recreation dimensions as readable zero values and specified a bounded, reversible request-staging test.
+- Required the controlled recreation log check to verify restoration of the transient requested-size values.
