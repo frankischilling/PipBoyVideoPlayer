@@ -255,6 +255,10 @@ The first Base UI run displayed the checkerboard and otherwise looked and ran co
 
 MO2 created an empty local `saves` directory, but no save or co-save file appeared. Later inspection found that the open MO2 process had written the new save-guard mod as disabled when the user switched profiles. This run is not evidence that the guard worked, though it confirms that no save data was created. The guard still needs an in-game exit check after it is enabled with MO2 closed. Test tools now allow an empty MO2-created directory and continue to refuse any profile that contains save data.
 
+Follow-up run: the raised candidate increased the bottom inset from 12 to 64 logical units without changing the panel size or horizontal anchor. The user reported that the new position looked good in the Base UI. This accepts the raised position for the tested Base VNV configuration. The same position still needs an Extended regression check before it can replace the earlier Extended value.
+
+The repaired save guard remained enabled for the follow-up run. After a normal game exit, the Base profile's local `saves` directory contained no files or subdirectories. This is the first in-game confirmation that the isolated multi-INI guard prevents save-on-exit output. It does not replace the later release-candidate save and uninstall tests.
+
 ## Required profiles
 
 | Profile | Purpose |

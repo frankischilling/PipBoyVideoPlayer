@@ -52,3 +52,5 @@
 - Allowed empty MO2-created save directories in isolated profiles while continuing to reject any save data.
 - Raised the diagnostic video panel by 52 logical units after the Base UI test found that the previous position covered its Local Map and World Map buttons.
 - Refused isolated-profile and display-case mutations while the selected Mod Organizer instance is running.
+- Accepted the raised 384x216 panel position for the Base VNV UI after it cleared the Local Map and World Map buttons.
+- Verified in game that the repaired Phase 1 save guard leaves the isolated Base save directory empty after exit.

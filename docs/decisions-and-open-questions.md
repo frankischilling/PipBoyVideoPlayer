@@ -266,6 +266,8 @@ Rejected alternatives: do not shrink the accepted viewport, move it horizontally
 
 Consequence: the next candidate moves the panel up 52 logical units. On the previously measured 1706.67 by 960 canvas, its expected rectangle changes from `42,375` through `426,591` to `42,323` through `426,539`. The candidate needs a Base visual check and an Extended regression check before it becomes the shared Phase 1 position.
 
+Follow-up evidence: the user tested the raised candidate in the same Base VNV windowed configuration and reported that it looked good. The panel no longer blocks the Base map buttons. The Base half of the shared-position check now passes. The Extended regression remains open.
+
 ### Verified reset hook only
 
 Date: August 9, 2026
@@ -389,6 +391,8 @@ Consequence: profile creation verifies the override file, the active Stewie Twea
 Follow-up evidence: the first Base test created no save data, but it did not verify the guard. Mod Organizer had remained open while the local guard mod was added. When the user switched to the Base profile, MO2 wrote that new mod as disabled. External profile edits made while MO2 is running can therefore be lost or replaced by its in-memory state.
 
 Updated consequence: both profile setup and display-case mutation now refuse to run while the selected instance's Mod Organizer process is active. Close MO2, enable or repair the guard, reopen MO2, and verify its checked state before the next in-game exit.
+
+Verification: after the repair, the Base profile retained one enabled guard entry and no disabled duplicate. A normal in-game exit left its local `saves` directory empty. This accepts the guard for isolated Phase 1 sessions while keeping the release-candidate save-safety matrix open.
 
 ### Separate public and private symbols
 
