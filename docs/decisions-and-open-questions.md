@@ -474,6 +474,18 @@ Rejected alternatives: do not use game frames as the media clock, retain a full 
 
 Consequence: low game frame rates reduce video smoothness through bounded frame dropping instead of slowing audio or growing queues. The live 30-minute drift target and the full low-FPS in-game matrix remain release tests.
 
+### Measure the long-file allocation failure before changing layout
+
+Date: August 10, 2026
+
+Decision: retain the 1920 by 1080 source limit and current queue sizes until a measured failure identifies the allocation boundary. Do not claim that the file is malformed, lower the supported source resolution, fragment the MP4, or change decoder output dimensions based on the generic allocation result.
+
+Evidence: the second live attempt used the corrected staging-accounting build and failed before the first presentation. The decoder reported `allocation_failed`, and XAudio2 was still uninitialized. The standalone x86 decoder completed the identical file after the accounting fix. The old record cannot distinguish process address-space fragmentation from allocation inside long-file indexing or the first decoded frame.
+
+Rejected alternatives: do not reduce source limits, queue sizes, decoder threads, or test duration as speculative fixes. Do not treat a C++ allocation exception as a codec or container rejection.
+
+Consequence: one short diagnostic run must record the new allocation site and address-space snapshot. If the failure is the full-resolution BGRA buffer and contiguous space is constrained, revise the decoder to scale into a bounded presentation intermediate while keeping the 720p and 1080p input checks. If container opening fails, investigate MP4 indexing without changing the frame pipeline.
+
 ### System XAudio2 2.9 runtime
 
 Date: August 10, 2026

@@ -51,10 +51,24 @@ enum class MediaDecodeStatus : std::uint32_t {
 
 const char* MediaDecodeStatusName(MediaDecodeStatus status) noexcept;
 
+enum class MediaDecodeFailureSite : std::uint32_t {
+    none,
+    media_open,
+    video_pixel_buffer,
+    video_rotation_buffer,
+    video_queue,
+    audio_sample_buffer,
+    audio_queue,
+    resampler_flush_buffer,
+};
+
+const char* MediaDecodeFailureSiteName(MediaDecodeFailureSite site) noexcept;
+
 struct MediaDecodeFailure {
     MediaDecodeStatus status{MediaDecodeStatus::ok};
     int ffmpeg_error{};
     MediaIoFailure io{};
+    MediaDecodeFailureSite site{MediaDecodeFailureSite::none};
 };
 
 enum class DecoderState : std::uint32_t {
@@ -185,7 +199,10 @@ private:
     void ReleaseMedia() noexcept;
     void SetState(DecoderState state) noexcept;
     void SetInfo(const MediaInfo& info) noexcept;
-    void Fail(MediaDecodeStatus status, int ffmpeg_error = 0) noexcept;
+    void Fail(
+        MediaDecodeStatus status,
+        int ffmpeg_error = 0,
+        MediaDecodeFailureSite site = MediaDecodeFailureSite::none) noexcept;
     void FailIo(const MediaIoFailure& failure) noexcept;
 
     const FfmpegRuntime& runtime_;
@@ -231,6 +248,7 @@ private:
     bool audio_next_pts_valid_{};
     std::uint32_t rotation_degrees_{};
     bool format_opened_{};
+    MediaDecodeFailureSite allocation_site_{MediaDecodeFailureSite::none};
 };
 
 } // namespace pbvp

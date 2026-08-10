@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <limits>
 #include <optional>
 #include <string>
 #include <utility>
@@ -155,6 +156,60 @@ std::uint64_t ProcessPrivateBytes() noexcept {
     }
     return static_cast<std::uint64_t>(counters.PrivateUsage);
 }
+
+struct ProcessAddressSpaceSnapshot {
+    std::uint64_t private_bytes{};
+    std::uint64_t working_set_bytes{};
+    std::uint64_t largest_free_region_bytes{};
+    std::uint64_t total_free_region_bytes{};
+};
+
+ProcessAddressSpaceSnapshot MeasureProcessAddressSpace() noexcept {
+    ProcessAddressSpaceSnapshot result{};
+    PROCESS_MEMORY_COUNTERS_EX counters{};
+    counters.cb = static_cast<DWORD>(sizeof(counters));
+    if (GetProcessMemoryInfo(
+            GetCurrentProcess(),
+            reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters),
+            static_cast<DWORD>(sizeof(counters))) != FALSE) {
+        result.private_bytes = static_cast<std::uint64_t>(counters.PrivateUsage);
+        result.working_set_bytes = static_cast<std::uint64_t>(counters.WorkingSetSize);
+    }
+
+    SYSTEM_INFO system_info{};
+    GetSystemInfo(&system_info);
+    const std::uintptr_t maximum_address = reinterpret_cast<std::uintptr_t>(
+        system_info.lpMaximumApplicationAddress);
+    std::uintptr_t address{};
+    while (address < maximum_address) {
+        MEMORY_BASIC_INFORMATION region{};
+        if (VirtualQuery(
+                reinterpret_cast<const void*>(address),
+                &region, sizeof(region)) == 0u) {
+            break;
+        }
+        if (region.State == MEM_FREE) {
+            const std::uint64_t region_bytes = static_cast<std::uint64_t>(region.RegionSize);
+            result.largest_free_region_bytes = (std::max)(
+                result.largest_free_region_bytes, region_bytes);
+            if (region_bytes <=
+                (std::numeric_limits<std::uint64_t>::max)() -
+                    result.total_free_region_bytes) {
+                result.total_free_region_bytes += region_bytes;
+            }
+        }
+        const std::uintptr_t base = reinterpret_cast<std::uintptr_t>(region.BaseAddress);
+        if (region.RegionSize > (std::numeric_limits<std::uintptr_t>::max)() - base) {
+            break;
+        }
+        const std::uintptr_t next = base + region.RegionSize;
+        if (next <= address) {
+            break;
+        }
+        address = next;
+    }
+    return result;
+}
 #endif
 
 bool PlaybackActive(const pbvp::PlaybackState state) noexcept {
@@ -192,6 +247,15 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
 #endif
         g_playback_smoke_private_baseline = ProcessPrivateBytes();
         g_playback_smoke_peak_private_delta = 0u;
+#if defined(PBVP_ENABLE_PLAYBACK_LONG_TEST)
+        const ProcessAddressSpaceSnapshot address_space = MeasureProcessAddressSpace();
+        PBVP_LOG_INFO(
+            "Integrated playback address space before open: private=%llu working_set=%llu largest_free=%llu total_free=%llu",
+            static_cast<unsigned long long>(address_space.private_bytes),
+            static_cast<unsigned long long>(address_space.working_set_bytes),
+            static_cast<unsigned long long>(address_space.largest_free_region_bytes),
+            static_cast<unsigned long long>(address_space.total_free_region_bytes));
+#endif
         if (g_playback_smoke_root.empty() ||
             !g_playback_controller->Open(g_playback_smoke_root, kPlaybackSmokeFile)) {
             PBVP_LOG_ERROR("Integrated playback smoke could not open its private fixture");
@@ -212,13 +276,32 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
     if (PlaybackActive(before.playback.state)) {
         if (!g_playback_controller->Update(ui_snapshot.visible)) {
             const pbvp::PlaybackControllerSnapshot failed = g_playback_controller->Snapshot();
+#if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
+            const ProcessAddressSpaceSnapshot address_space = MeasureProcessAddressSpace();
             PBVP_LOG_ERROR(
-                "Playback update failed: state=%s error=%s site=%s decoder=%s audio=%s",
+                "Playback update failed: state=%s error=%s site=%s decoder=%s media_site=%s ffmpeg=%d audio=%s private=%llu working_set=%llu largest_free=%llu total_free=%llu",
                 pbvp::PlaybackStateName(failed.playback.state),
                 pbvp::PlaybackErrorName(failed.playback.error),
                 pbvp::PlaybackFailureSiteName(failed.failure_site),
                 pbvp::MediaDecodeStatusName(failed.decoder.failure.status),
+                pbvp::MediaDecodeFailureSiteName(failed.decoder.failure.site),
+                failed.decoder.failure.ffmpeg_error,
+                pbvp::XAudioStreamStatusName(failed.audio.status),
+                static_cast<unsigned long long>(address_space.private_bytes),
+                static_cast<unsigned long long>(address_space.working_set_bytes),
+                static_cast<unsigned long long>(address_space.largest_free_region_bytes),
+                static_cast<unsigned long long>(address_space.total_free_region_bytes));
+#else
+            PBVP_LOG_ERROR(
+                "Playback update failed: state=%s error=%s site=%s decoder=%s media_site=%s ffmpeg=%d audio=%s",
+                pbvp::PlaybackStateName(failed.playback.state),
+                pbvp::PlaybackErrorName(failed.playback.error),
+                pbvp::PlaybackFailureSiteName(failed.failure_site),
+                pbvp::MediaDecodeStatusName(failed.decoder.failure.status),
+                pbvp::MediaDecodeFailureSiteName(failed.decoder.failure.site),
+                failed.decoder.failure.ffmpeg_error,
                 pbvp::XAudioStreamStatusName(failed.audio.status));
+#endif
         }
         std::optional<pbvp::DecodedVideoFrame> frame =
             g_playback_controller->TakeVideoFrame();

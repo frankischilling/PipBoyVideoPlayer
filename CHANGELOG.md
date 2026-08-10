@@ -10,6 +10,7 @@
 - Added a save-free Phase 4 MO2 profile, a generated playback fixture in a separate media mod, a strict playback log checker, and package rejection for an armed integrated diagnostic.
 - Added a pinned 30-minute 720p30 fixture generator, final audio-to-video error metrics, process and queue memory measurements, five-minute progress records, a strict long-playback checker, and package rejection for the separate armed long diagnostic.
 - Fixed the video staging byte counter after the first 720p live run exposed that it subtracted a moved-from frame size. Added named failure sites, a 1080p completion regression, and an optional five-second startup check against the real 30-minute fixture.
+- Added fixed decoder allocation-site codes and diagnostic 32-bit address-space measurements after the second live long-playback attempt failed before its first frame.
 - Added checked audio-sample and QueryPerformanceCounter clocks with pause, resume, seek-origin, 30-minute mapping, and overflow tests.
 - Added a bounded system XAudio2 2.9 stream with a fixed PCM pool, atomics-only callbacks, play, stop, pause, resume, mute, volume, end of stream, and default-device reconstruction.
 - Added tracked COM ownership on the audio thread after the first native mastering-voice test exposed the missing initialization step.

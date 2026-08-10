@@ -568,6 +568,12 @@ int wmain(int argc, wchar_t** argv) {
     }
 
     pbvp::FfmpegRuntime runtime;
+    PBVP_CHECK(std::string(pbvp::MediaDecodeFailureSiteName(
+                   pbvp::MediaDecodeFailureSite::video_pixel_buffer)) ==
+               "video_pixel_buffer");
+    PBVP_CHECK(std::string(pbvp::MediaDecodeFailureSiteName(
+                   pbvp::MediaDecodeFailureSite::resampler_flush_buffer)) ==
+               "resampler_flush_buffer");
     pbvp::FfmpegLoadFailure load_failure{};
     PBVP_CHECK(runtime.Load(argv[1], load_failure));
     if (!runtime.IsLoaded()) {

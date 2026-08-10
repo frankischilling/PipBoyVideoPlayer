@@ -104,6 +104,21 @@ const char* MediaDecodeStatusName(const MediaDecodeStatus status) noexcept {
     return "unknown decoder failure";
 }
 
+const char* MediaDecodeFailureSiteName(const MediaDecodeFailureSite site) noexcept {
+    switch (site) {
+        case MediaDecodeFailureSite::none: return "none";
+        case MediaDecodeFailureSite::media_open: return "media_open";
+        case MediaDecodeFailureSite::video_pixel_buffer: return "video_pixel_buffer";
+        case MediaDecodeFailureSite::video_rotation_buffer: return "video_rotation_buffer";
+        case MediaDecodeFailureSite::video_queue: return "video_queue";
+        case MediaDecodeFailureSite::audio_sample_buffer: return "audio_sample_buffer";
+        case MediaDecodeFailureSite::audio_queue: return "audio_queue";
+        case MediaDecodeFailureSite::resampler_flush_buffer:
+            return "resampler_flush_buffer";
+    }
+    return "unknown";
+}
+
 MediaDecoder::MediaDecoder(
     const FfmpegRuntime& runtime,
     MediaDecoderConfig config)
@@ -159,6 +174,7 @@ bool MediaDecoder::Start(
         requested_seek_us_.store(0, std::memory_order_relaxed);
         requested_generation_.store(1u, std::memory_order_release);
         worker_generation_ = 1u;
+        allocation_site_ = MediaDecodeFailureSite::none;
         {
             std::scoped_lock lock(snapshot_mutex_);
             snapshot_ = {};
@@ -271,7 +287,10 @@ int MediaDecoder::InterruptCallback(void* opaque) noexcept {
 
 void MediaDecoder::WorkerMain() noexcept {
     try {
-        if (OpenMedia()) {
+        allocation_site_ = MediaDecodeFailureSite::media_open;
+        const bool opened = OpenMedia();
+        allocation_site_ = MediaDecodeFailureSite::none;
+        if (opened) {
             while (!stop_requested_.load(std::memory_order_acquire)) {
                 if (!HandlePendingSeek()) {
                     break;
@@ -290,7 +309,9 @@ void MediaDecoder::WorkerMain() noexcept {
             }
         }
     } catch (const std::bad_alloc&) {
-        Fail(MediaDecodeStatus::allocation_failed);
+        const MediaDecodeFailureSite site = allocation_site_;
+        allocation_site_ = MediaDecodeFailureSite::none;
+        Fail(MediaDecodeStatus::allocation_failed, 0, site);
     } catch (...) {
         Fail(MediaDecodeStatus::unexpected_failure);
     }
@@ -749,7 +770,9 @@ MediaDecoder::WorkerResult MediaDecoder::ConvertVideoFrame(const AVFrame& frame)
     }
     scaler_ = updated;
 
+    allocation_site_ = MediaDecodeFailureSite::video_pixel_buffer;
     std::vector<std::uint8_t> source_pixels(source_layout.total_bytes);
+    allocation_site_ = MediaDecodeFailureSite::none;
     std::uint8_t* destination_data[4]{source_pixels.data(), nullptr, nullptr, nullptr};
     int destination_stride[4]{static_cast<int>(source_layout.row_bytes), 0, 0, 0};
     const int converted_rows = runtime_.Api().sws_scale(
@@ -775,7 +798,9 @@ MediaDecoder::WorkerResult MediaDecoder::ConvertVideoFrame(const AVFrame& frame)
     if (rotation_degrees_ == 0u) {
         output.bgra = std::move(source_pixels);
     } else {
+        allocation_site_ = MediaDecodeFailureSite::video_rotation_buffer;
         output.bgra.resize(source_layout.total_bytes);
+        allocation_site_ = MediaDecodeFailureSite::none;
         for (std::uint32_t y = 0u; y < source_height; ++y) {
             for (std::uint32_t x = 0u; x < source_width; ++x) {
                 std::uint32_t destination_x = 0u;
@@ -854,9 +879,13 @@ MediaDecoder::WorkerResult MediaDecoder::ConvertVideoFrame(const AVFrame& frame)
         stop_requested_.load(std::memory_order_acquire)) {
         return WorkerResult::stopped;
     }
-    Fail(pushed == QueuePushStatus::allocation_failed
-             ? MediaDecodeStatus::allocation_failed
-             : MediaDecodeStatus::queue_failure);
+    if (pushed == QueuePushStatus::allocation_failed) {
+        Fail(
+            MediaDecodeStatus::allocation_failed, 0,
+            MediaDecodeFailureSite::video_queue);
+    } else {
+        Fail(MediaDecodeStatus::queue_failure);
+    }
     return WorkerResult::failed;
 }
 
@@ -979,7 +1008,9 @@ MediaDecoder::WorkerResult MediaDecoder::ConvertAudioFrame(const AVFrame& frame)
         return WorkerResult::failed;
     }
 
+    allocation_site_ = MediaDecodeFailureSite::audio_sample_buffer;
     std::vector<std::int16_t> samples(output_bytes / sizeof(std::int16_t));
+    allocation_site_ = MediaDecodeFailureSite::none;
     std::uint8_t* output_planes[1]{
         reinterpret_cast<std::uint8_t*>(samples.data())};
     const auto* input_planes = const_cast<const std::uint8_t* const*>(
@@ -1081,9 +1112,13 @@ MediaDecoder::WorkerResult MediaDecoder::PublishAudio(
         stop_requested_.load(std::memory_order_acquire)) {
         return WorkerResult::stopped;
     }
-    Fail(pushed == QueuePushStatus::allocation_failed
-             ? MediaDecodeStatus::allocation_failed
-             : MediaDecodeStatus::queue_failure);
+    if (pushed == QueuePushStatus::allocation_failed) {
+        Fail(
+            MediaDecodeStatus::allocation_failed, 0,
+            MediaDecodeFailureSite::audio_queue);
+    } else {
+        Fail(MediaDecodeStatus::queue_failure);
+    }
     return WorkerResult::failed;
 }
 
@@ -1117,7 +1152,9 @@ MediaDecoder::WorkerResult MediaDecoder::FlushResampler() {
             Fail(MediaDecodeStatus::source_limit_exceeded);
             return WorkerResult::failed;
         }
+        allocation_site_ = MediaDecodeFailureSite::resampler_flush_buffer;
         std::vector<std::int16_t> samples(output_bytes / sizeof(std::int16_t));
+        allocation_site_ = MediaDecodeFailureSite::none;
         std::uint8_t* output_planes[1]{
             reinterpret_cast<std::uint8_t*>(samples.data())};
         const int produced = runtime_.Api().swr_convert(
@@ -1284,12 +1321,14 @@ void MediaDecoder::SetInfo(const MediaInfo& info) noexcept {
 
 void MediaDecoder::Fail(
     const MediaDecodeStatus status,
-    const int ffmpeg_error) noexcept {
+    const int ffmpeg_error,
+    const MediaDecodeFailureSite site) noexcept {
     std::scoped_lock lock(snapshot_mutex_);
     if (snapshot_.state != DecoderState::failed) {
         snapshot_.state = DecoderState::failed;
         snapshot_.failure.status = status;
         snapshot_.failure.ffmpeg_error = ffmpeg_error;
+        snapshot_.failure.site = site;
     }
 }
 

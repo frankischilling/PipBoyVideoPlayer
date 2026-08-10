@@ -303,6 +303,10 @@ The first live long-test attempt opened the generated container, entered bufferi
 
 A native reproduction added a fixed failure-site code and identified `video_staging_capacity`. The controller moved a selected frame into its presentation slot before subtracting that frame's byte count. The moved-from BGRA vector reported zero bytes, so the staging counter never fell. Small 160x90 fixtures did not reach the 8 MiB budget during their short runs. Two 1280x720 presentations did. The controller now saves the owned byte count before the move and subtracts that value afterward. A full 1080p fixture then completed, and the real 30-minute file stayed in playback for a five-second native check with 151 decoded frames, 145 delivered frames, five startup drops, 245,760 submitted audio samples, and a 4,950,000 microsecond clock.
 
+The corrected long-playback build failed differently on its second live attempt. It stopped about 39 milliseconds after opening, before XAudio2 initialized and before any decoded frame reached the renderer. The decoder reported `allocation_failed` while the controller reported `decoder_state_before_drain`. The same 30-minute file still decodes in the standalone x86 process, so this result does not support the Pip-Boy's "Video format error" message.
+
+The old decoder failure record could not identify which allocation failed. It collapsed exceptions from container opening, the BGRA conversion buffer, rotation, audio conversion, and queue insertion into one status. The next diagnostic assigns a fixed site to each allocation boundary. It also records private bytes, working set, the largest contiguous free virtual-memory region, and total free virtual memory before opening and when playback fails. Normal builds retain only the fixed failure-site code and do not scan the address space.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.
