@@ -21,6 +21,7 @@ This register tracks failures that can change the architecture, support promise,
 | Game updates or patchers change the executable layout | Low | High | Verify runtime identity and fail closed on unknown builds | Signature mismatch or new executable hash | Every release |
 | Rendering overhead harms large VNV lists | Medium | Medium | The first generated draw averaged 91.72 microseconds over 300 frames; measure real 1080p uploads and the 95th percentile | Upload or state preservation exceeds the acceptance budget | Phases 1 and 4 |
 | Logs reveal private media information | Medium | Medium | Log basenames only, omit metadata comments and absolute paths by default | A normal log contains a user directory or embedded comment | Phases 4 and 6 |
+| Debug symbols expose local build paths | High | High | Keep the full PDB private, create a stripped public PDB, write only the PDB filename into the DLL, and scan both archives for local path markers | The August 9 Phase 1 DLL contained its full local PDB path, and the full PDB contained source, build, and temporary paths | Phases 1 and 6 |
 | Feature growth prevents a stable first release | High | Medium | Enforce the first-release scope and move additions to later work | A milestone adds subtitles, streaming, hardware decode, or world screens | All phases |
 
 ## Stop conditions

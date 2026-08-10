@@ -294,6 +294,18 @@ Rejected alternatives: do not edit the original VNV profiles, use VSync as a cap
 
 Consequence: the test-case script accepts only the documented Phase 1 resolutions, frame caps, display modes, VSync states, and isolated profile names. It refuses cross-profile overlap and restores the original files. Manual in-game checks remain necessary for every recorded result.
 
+### Separate public and private symbols
+
+Date: August 9, 2026
+
+Decision: keep the full PDB as a private local build artifact. Generate a second stripped PDB for the symbols archive, omit every PDB from the runtime archive, and make the DLL refer only to `PipBoyVideoPlayer.pdb` without a directory. Scan the DLL and distributed symbols for build-local and user-profile paths before accepting a package.
+
+Evidence: a binary-content scan found the full local build path to `PipBoyVideoPlayer.pdb` in the normal DLL. The full PDB also contains repository, build, and Windows user-profile temporary paths. This disproves the earlier clean-package result, which checked archive entries and ordinary text but did not inspect binary contents. Microsoft documents `/PDBALTPATH` for writing a path-independent PDB reference into the image and `/PDBSTRIPPED` for creating a second PDB with public symbols and stack-walking records.
+
+Rejected alternatives: do not ship the full PDB in either archive, leave an absolute CodeView path in the DLL, or call an archive clean after checking filenames alone. Do not discard symbols entirely because crash diagnosis still needs matching public symbols and frame records.
+
+Consequence: the earlier Phase 1 archives are not clean-package candidates. Packaging must select the stripped PDB, rename it to the DLL's expected PDB filename inside the symbols archive, and reject known local path prefixes in binary as well as text files.
+
 ### Private development licensing
 
 Date: August 9, 2026

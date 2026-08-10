@@ -51,7 +51,6 @@ Data\
   NVSE\
     Plugins\
       PipBoyVideoPlayer.dll
-      PipBoyVideoPlayer.pdb
       PipBoyVideoPlayer\
         bin\
           FFmpeg runtime DLLs
@@ -66,16 +65,18 @@ LICENSES\
 README.txt
 ```
 
-The exact XML filenames may change after the UIO spike. The release should include the PDB because New Vegas crash loggers can produce better stacks when symbols are present.
+The exact XML filenames may change after the UIO spike. The matching stripped PDB belongs in the separate symbols archive because New Vegas crash loggers can produce better stacks when symbols are available. The full PDB remains private and is never packaged.
 
 ## Package separation
 
 Development artifacts should produce two archives:
 
-1. A runtime archive containing the DLL, PDB, private FFmpeg runtime, config, UI, notices, and install instructions.
-2. A symbols and source-reference archive if hosting limits or mod-site conventions make a separate download useful.
+1. A runtime archive containing the DLL, private FFmpeg runtime, config, UI, notices, and install instructions.
+2. A symbols archive containing the matching stripped PDB and source-reference information.
 
 Personal media is never part of either archive.
+
+The linker writes only the PDB filename into the DLL. The symbols archive renames the stripped output to that expected filename. Package checks inspect binary contents for repository, build, temporary, and user-profile paths. Checking archive entry names alone is insufficient.
 
 The private Phase 1 recreation test uses a separate build directory and development-mod install script. CMake marks that directory as armed. The package script checks the marker and refuses to create either archive from it. Running the normal configure command explicitly disables the test and removes the marker from the normal build directory.
 
