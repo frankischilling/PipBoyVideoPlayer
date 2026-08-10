@@ -35,6 +35,13 @@ if(root_stack_offset EQUAL -1)
     message(FATAL_ERROR "UI prefab root must remain above page content and below native controls")
 endif()
 
+set(expected_video_anchor
+    "<rect name=\"PBVP_VideoRect\">\n        <x> 12 </x>\n        <y>\n            <copy src=\"parent\" trait=\"height\" />\n            <sub src=\"me\" trait=\"height\" />\n            <sub> 12 </sub>\n        </y>")
+string(FIND "${prefab_text}" "${expected_video_anchor}" video_anchor_offset)
+if(video_anchor_offset EQUAL -1)
+    message(FATAL_ERROR "UI video rectangle must stay anchored to the lower-left inset")
+endif()
+
 function(require_drawable_depth drawable_name drawable_depth)
     string(REGEX MATCH
         "name=\"${drawable_name}\">[\r\n\t ]*<visible> 1 </visible>[\r\n\t ]*<alpha> [0-9]+ </alpha>[\r\n\t ]*<depth> ${drawable_depth} </depth>"

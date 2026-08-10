@@ -204,7 +204,19 @@ Evidence: the first successful steady presentation placed the diagnostic strip a
 
 Rejected alternatives: the status overlay will not become a permanent panel beside the picture. The final player shows it only on the Videos page and fades it during playback. Ordinary Radio, Map, Quests, and Notes pages must not retain any PBVP playback layer.
 
-Consequence: the next Phase 1 package moves only the diagnostic strip. The verified video rectangle and draw depths remain unchanged. A manual check must confirm the new placement and unchanged input behavior.
+Consequence: the next Phase 1 package moved only the diagnostic strip. The user reported that the checkerboard did not move, which rejects this as the requested placement change. The relative status-strip layout remains useful inside the player, but the complete video rectangle must move with it.
+
+### Lower-left diagnostic video rectangle
+
+Date: August 9, 2026
+
+Decision: anchor `PBVP_VideoRect` 12 units from the left and bottom edges of `PBVP_Root`. Preserve the current 560 by 315 logical size and the tested drawable depths. All child surfaces and overlays move with the rectangle.
+
+Evidence: after the status-only candidate, the user clarified that the checkerboard was expected to move. The current video rectangle still used fixed coordinates `x = 80` and `y = 65`, so moving its children could not satisfy that request.
+
+Rejected alternatives: do not assign new absolute screen coordinates for the active 1920x1080 profile. Derive the vertical position from the parent height and the rectangle height so the candidate responds to UI scaling. Do not resize the video until the new location is seen in game.
+
+Consequence: the next run must show the complete checkerboard lower and farther left, with the black strip and label still attached to its lower-left corner. Final playback-stage size and page isolation remain Phase 5 work.
 
 ### Verified reset hook only
 

@@ -131,6 +131,10 @@ The user confirmed that keyboard and mouse input still worked while the engine-o
 
 The session logged 19 successful surface uploads and no plugin errors. No `NiDX9Renderer::Recreate` callback appeared, so the Alt+Tab result verifies visual persistence but not the forced device-recreation path. The user also requested that the temporary status strip move to the lower-left of the playback area so it does not sit over the top of radio station entries.
 
+Seventh run: placement scope corrected
+
+The lower-left status-strip candidate moved only the black probe and label within the unchanged video rectangle. The user expected the checkerboard to move as part of the UI and reported that it stayed in place. This rejects the narrow interpretation of the placement request. The next candidate anchors the complete `PBVP_VideoRect` to the lower-left of its parent while preserving its tested size and depths.
+
 ## Required profiles
 
 | Profile | Purpose |
