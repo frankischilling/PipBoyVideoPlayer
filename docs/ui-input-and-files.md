@@ -42,7 +42,7 @@ prefabs.
 
 The title, state, and control overlay starts at the lower-left inset of the playback stage. Its position is derived from the named video rectangle so it follows UI scaling and replacement layouts. The overlay fades when playback is stable. It exists only while the Videos page owns focus, so it cannot cover Radio, Map, Quests, or Notes content.
 
-The Phase 1 diagnostic stage uses a 320 by 180 rectangle with a 12-unit lower-left inset inside the active Pip-Boy content rectangle. This size and location are provisional. Phase 5 must test the final playback-stage size and page-specific visibility against every supported UI profile before treating the diagnostic geometry as a release contract.
+The Phase 1 diagnostic stage uses a 384 by 216 rectangle with a 12-unit lower-left inset inside the active Pip-Boy content rectangle. The rectangle establishes the local coordinate origin for its image and status elements. This size and location are provisional. Phase 5 must test the final playback-stage size and page-specific visibility against every supported UI profile before treating the diagnostic geometry as a release contract.
 
 ## Controls
 

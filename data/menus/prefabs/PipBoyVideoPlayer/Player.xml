@@ -14,9 +14,10 @@
             <sub src="me" trait="height" />
             <sub> 12 </sub>
         </y>
-        <width> 320 </width>
-        <height> 180 </height>
+        <width> 384 </width>
+        <height> 216 </height>
         <depth> 10 </depth>
+        <locus> 1 </locus>
         <visible> <copy src="parent()" trait="visible" /> </visible>
         <target> 0 </target>
 

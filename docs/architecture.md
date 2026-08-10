@@ -64,7 +64,7 @@ The plugin does not retain ownership of the UI texture across callbacks. The eng
 
 ### Pip-Boy presentation bridge
 
-UIO injects a prefab into the selected Pip-Boy menu. The prefab owns the video rectangle, engine image, focus region, labels, control prompts, and state traits. In the reviewed Vanilla UI Plus MapMenu, each PBVP drawable has an explicit depth from 10 through 12. Normal map and list content reaches depth 8, while headline cards use depth 15 and the tab line uses depth 22. The parent root also uses depth 10, but the implementation does not rely on that value propagating to drawable children. This places the video above page content and below the existing navigation without a frame-wide overlay.
+UIO injects a prefab into the selected Pip-Boy menu. The prefab owns the video rectangle, engine image, focus region, labels, control prompts, and state traits. `PBVP_VideoRect` establishes a locus, so its surface and status elements use local coordinates and move with the viewport. In the reviewed Vanilla UI Plus MapMenu, each PBVP drawable has an explicit depth from 10 through 12. Normal map and list content reaches depth 8, while headline cards use depth 15 and the tab line uses depth 22. The parent root also uses depth 10, but the implementation does not rely on that value propagating to drawable children. This places the video above page content and below the existing navigation without a frame-wide overlay.
 
 The native bridge resolves the named image and follows the reviewed engine texture layout to its Direct3D resource. It does not write the image's reference-counted fields or change its filename at runtime. Gamebryo owns the texture and draws it. The plugin only updates its pixels while the image is live.
 

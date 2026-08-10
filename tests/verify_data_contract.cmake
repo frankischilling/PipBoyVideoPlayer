@@ -43,10 +43,10 @@ if(video_anchor_offset EQUAL -1)
 endif()
 
 string(FIND "${prefab_text}"
-    "<width> 320 </width>\n        <height> 180 </height>"
+    "<width> 384 </width>\n        <height> 216 </height>\n        <depth> 10 </depth>\n        <locus> 1 </locus>"
     diagnostic_viewport_size_offset)
 if(diagnostic_viewport_size_offset EQUAL -1)
-    message(FATAL_ERROR "UI diagnostic viewport must retain the reviewed compact size")
+    message(FATAL_ERROR "UI diagnostic viewport must retain the reviewed compact size and child locus")
 endif()
 
 function(require_drawable_depth drawable_name drawable_depth)

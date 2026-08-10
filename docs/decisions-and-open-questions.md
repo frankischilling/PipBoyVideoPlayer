@@ -228,7 +228,31 @@ Evidence: the user clarified that the complete checkerboard must move away from 
 
 Rejected alternatives: another coordinate-only change would ignore the measured reason the large surface still reaches the upper-left. Do not change the final aspect-fit or aspect-fill contract based on this diagnostic texture. Those modes still apply inside the selected playback viewport.
 
-Consequence: the next run must show the full checkerboard as a smaller lower-left panel, leave the upper radio station list visible, and preserve keyboard and mouse input.
+Consequence: the next run made the checkerboard smaller but left it at the upper-left. The bridge resolved the container at `42,411` through `362,591`, so the container traits changed while its child image stayed at local `x = 0` and `y = 0` in the existing locus. This rejects the assumption that nesting alone gives children the rectangle's visual origin.
+
+### Locus-owned diagnostic viewport
+
+Date: August 9, 2026
+
+Decision: set `locus = 1` on `PBVP_VideoRect`. Keep the video surface at local `x = 0` and `y = 0`, and keep the status strip derived from the same rectangle. The rectangle remains the single owner of the viewport position.
+
+Evidence: the compact run logged `PBVP_VideoRect` at `42,411` through `362,591`, but the user saw only a resize at the original upper-left position. The active Vanilla UI Plus `MM_MainRect` and its positioned child containers set `locus = 1`. The installed B42 Recoil prefab uses the same trait when a nested window supplies the origin for its children.
+
+Rejected alternatives: do not duplicate the screen position on the surface, strip, and text. That would create several independent anchors and make later scaling changes harder to verify. Do not resize the checkerboard again because the latest run proved that size was not the remaining placement fault.
+
+Consequence: the next run moved the checkerboard and status elements together. The user reported that the result looked great and occupied a good lower-left position. This accepts the locus rule for the active VNV Extended UI stack.
+
+### Slightly larger lower-left diagnostic viewport
+
+Date: August 9, 2026
+
+Decision: increase `PBVP_VideoRect` from 320 by 180 to 384 by 216. This is a 20 percent increase in each dimension and retains the 16:9 shape, 12-unit lower-left inset, locus, and tested draw depths.
+
+Evidence: the user accepted the locus-corrected lower-left position and asked for the complete checkerboard to be a little bigger.
+
+Rejected alternatives: do not return to the 560 by 315 rectangle because it covered the upper radio station list. Do not change the anchor or locus in the same candidate because their visual behavior just passed.
+
+Consequence: the next run resolved the panel at `42,375` through `426,591`. The user reported that the larger panel looked good, so 384 by 216 is the accepted Phase 1 size for the active fullscreen 1920x1080 VNV Extended profile. Other resolutions and UI profiles still need separate checks.
 
 ### Verified reset hook only
 

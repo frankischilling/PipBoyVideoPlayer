@@ -135,17 +135,25 @@ Seventh run: placement scope corrected
 
 The lower-left status-strip candidate moved only the black probe and label within the unchanged video rectangle. The user expected the checkerboard to move as part of the UI and reported that it stayed in place. This rejects the narrow interpretation of the placement request. The next candidate anchors the complete `PBVP_VideoRect` to the lower-left of its parent while preserving its tested size and depths.
 
-Eighth run: full-size lower-left anchor visually rejected
+Eighth run: container anchor did not move its children
 
-The complete rectangle anchor changed the resolved bounds from `110,108` through `670,423` to `42,276` through `602,591`. This proves that the relative XML expression moved the live tile 68 units left and 168 units down. The user still perceived the checkerboard as top-left.
+The complete rectangle anchor changed the resolved bounds from `110,108` through `670,423` to `42,276` through `602,591`. The relative XML expression moved the container traits 68 units left and 168 units down, but the user still saw the checkerboard at the upper-left.
 
-The candidate kept the original 560 by 315 size, so its upper edge still occupies much of the Pip-Boy content area even when its bottom edge is anchored. The placement is not accepted. The next change requires a choice between a smaller lower-left video panel and the documented full-glass playback stage.
+The first analysis blamed the 560 by 315 footprint. The later compact test disproved that explanation because resizing changed the image size without moving its origin. The rectangle did not establish a locus for its children.
 
-Ninth candidate: compact lower-left rectangle
+Ninth run: compact rectangle isolated the missing locus
 
-The user clarified that the entire checkerboard should sit at the lower-left of the Pip-Boy because the large surface still blocked the radio station list at the upper-left. The next candidate reduces `PBVP_VideoRect` from 560 by 315 to 320 by 180 while retaining the verified 12-unit lower-left anchor, texture path, and drawable depths.
+The 320 by 180 candidate resolved at `42,411` through `362,591`, but the user saw a smaller checkerboard at the same upper-left origin. The size traits worked. The child position did not follow the container.
 
-The smaller size should move the top edge 135 logical units lower without changing the bottom edge. It remains a Phase 1 diagnostic geometry until an in-game run confirms the placement and ordinary radio controls remain usable.
+Tenth run: locus-corrected placement accepted
+
+Adding `locus = 1` to `PBVP_VideoRect` made the surface, black strip, and text use the rectangle as their local origin. The user reported that the complete layer looked great in its lower-left position.
+
+Eleventh run: modest size increase accepted
+
+The user asked for the accepted lower-left panel to be slightly larger. The next candidate increased it to 384 by 216, which is 20 percent larger in both dimensions. The anchor, locus, texture path, and draw depths remained unchanged.
+
+The run resolved the panel at `42,375` through `426,591` on the 1706.67 by 960 logical canvas. The managed texture upload took 27.3 microseconds. The user reported that the larger panel looked good. This accepts the size and position for the active fullscreen 1920x1080 VNV Extended profile. It does not extend that result to other resolutions or UI profiles.
 
 ## Required profiles
 
