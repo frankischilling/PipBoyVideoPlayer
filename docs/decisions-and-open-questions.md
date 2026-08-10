@@ -338,13 +338,15 @@ Consequence: Phase 1 uses the xNVSE frame-present notification as its only runti
 
 Date: August 9, 2026
 
-Decision: configure Phase 1 display cases only in the save-free PBVP MO2 profiles. Use the existing FalloutNV.exe RTSS application profile for the required 30, 60, 90, and 120 FPS caps. Save the original profile INIs and RTSS profile before the first case, and restore their exact bytes after the session.
+Decision: configure Phase 1 display cases only in the save-free PBVP MO2 profiles. Use the existing FalloutNV.exe RTSS application profile for the required 30, 60, 90, and 120 FPS caps. Save the original profile INIs and RTSS profile before the first case. Restore exact bytes when the script owns the write. If RTSS requires a manual UI change, require every functional line to match and allow only its `[Info]` timestamp to change.
 
 Evidence: the installed NVTF configuration exposes a maximum timing tolerance, not a general frame limiter. The maintained Fallout NV Performance Guide recommends RTSS and states that VSync is not a limiter. RTSS is already installed with a FalloutNV.exe profile, passive waiting, and front-edge sync. DXVK also supplies a built-in D3D9 cap, but its maintained configuration reference recommends an external limiter when one is available.
 
 Rejected alternatives: do not edit the original VNV profiles, use VSync as a cap, repurpose NVTF's tolerance setting, or change the limiter between native Direct3D 9 and DXVK. Do not automate changes to a profile that contains saves.
 
 Consequence: the test-case script accepts only the documented Phase 1 resolutions, frame caps, display modes, VSync states, and isolated profile names. It refuses cross-profile overlap and restores the original files. Manual in-game checks remain necessary for every recorded result.
+
+Final cleanup result: the user restored `Limit=0`, left `LimitDenominator=1`, and closed RTSS. The current and saved 1,394-byte profiles have identical sections and functional values. Nine bytes differ only in the `[Info]` timestamp written by RTSS when the profile was saved. This disproves the assumption that a normal manual restoration preserves the complete file hash, but it confirms that the test cap was removed without changing another setting.
 
 First capped result: the 1280x720 native windowed case used VSync off and the existing RTSS FalloutNV profile at 30 FPS. Six visible cadence samples measured 30.00 to 30.01 FPS. The user reported that the panel and input looked good. The log confirmed the requested backbuffer, one 25.70-microsecond upload, no failure, both summaries, and a clean shutdown. This accepts the 1280x720, 30 FPS, and VSync-off row. It does not cover another resolution or cap.
 

@@ -341,6 +341,8 @@ DXVK and a safe root-management tool are absent from the target VNV instance. PB
 
 The native windowed focus path did not expose a device recreation. PBVP creates no Direct3D resource, accepts only the engine's managed texture, and releases every temporary COM reference before returning from the callback. A changed device or surface identity triggers validation before use. This satisfies the Phase 1 resource-ownership gate without claiming that a natural Direct3D Reset passed.
 
+Final environment cleanup restored the RTSS FalloutNV limit to zero, preserved its denominator at one, and left RTSS closed. Comparison with the saved control profile found no functional setting difference. RTSS updated only the `[Info]` timestamp, so the final file hash differs from the control copy even though the cap and every other setting match.
+
 ## Required profiles
 
 | Profile | Purpose |

@@ -229,6 +229,8 @@ The final local graphics inventory found no DXVK DLL, DXVK configuration, DXVK m
 
 The native windowed focus path did not expose a repeatable device recreation, and the maintained executable audit found no verified safe in-process display toggle. The accepted resource contract uses only the engine-owned `D3DPOOL_MANAGED` texture, releases every temporary COM reference inside the callback, and treats a changed device or surface identity as new. Together with the clean 50-cycle windowed run, this closes the Phase 1 lifecycle gate without claiming that a natural Direct3D Reset occurred.
 
+The final RTSS cleanup restored `Limit=0` and `LimitDenominator=1`, then closed RTSS. A line and byte comparison against the saved control copy found one difference: RTSS replaced the `[Info]` timestamp. Both files are 1,394 bytes, and the nine differing bytes belong only to that timestamp. Manual UI restoration therefore needs a functional comparison instead of an exact hash comparison.
+
 ## Audio and timing
 
 Microsoft's [`XAUDIO2_VOICE_STATE` documentation](https://learn.microsoft.com/en-us/windows/win32/api/xaudio2/ns-xaudio2-xaudio2_voice_state) defines `SamplesPlayed` as the number of decoded samples processed by a source voice. The [XAudio2 streaming guide](https://learn.microsoft.com/en-us/windows/win32/xaudio2/xaudio2-streaming-audio-data) recommends queued buffers and a worker thread for long audio streams, and warns that underruns create audible gaps.
