@@ -6,16 +6,17 @@ param(
         'PBVP Phase 1 VUI Plus',
         'PBVP Phase 1 Extended',
         'PBVP Phase 1 Extended No Pip-Boy Tweaks')][string]$ProfileName,
-    [Parameter(Mandatory)][string]$RtssProfilePath,
+    [string]$RtssProfilePath,
     [Parameter(Mandatory, ParameterSetName = 'Apply')][int]$Width,
     [Parameter(Mandatory, ParameterSetName = 'Apply')][int]$Height,
     [Parameter(Mandatory, ParameterSetName = 'Apply')]
     [ValidateSet('Fullscreen', 'Windowed')][string]$DisplayMode,
-    [Parameter(Mandatory, ParameterSetName = 'Apply')]
-    [ValidateSet(30, 60, 90, 120)][int]$FpsCap,
+    [Parameter(ParameterSetName = 'Apply')]
+    [ValidateSet(30, 60, 90, 120)][int]$FpsCap = 60,
     [Parameter(Mandatory, ParameterSetName = 'Apply')]
     [ValidateSet('On', 'Off')][string]$VSync,
-    [Parameter(Mandatory, ParameterSetName = 'Restore')][switch]$Restore
+    [Parameter(Mandatory, ParameterSetName = 'Restore')][switch]$Restore,
+    [switch]$SkipFrameCap
 )
 
 $ErrorActionPreference = 'Stop'
@@ -122,12 +123,22 @@ if (-not (Test-Path -LiteralPath $modList -PathType Leaf) -or
     throw 'The development mod is not enabled exactly once in the selected profile.'
 }
 
-$rtssProfile = [IO.Path]::GetFullPath($RtssProfilePath)
-if ([IO.Path]::GetFileName($rtssProfile) -cne 'FalloutNV.exe.cfg') {
-    throw 'The RTSS profile must be named FalloutNV.exe.cfg.'
-}
-if (-not (Test-Path -LiteralPath $rtssProfile -PathType Leaf)) {
-    throw 'Create a FalloutNV.exe application profile in RTSS before configuring a test case.'
+$rtssProfile = $null
+if ($SkipFrameCap) {
+    if (-not [string]::IsNullOrWhiteSpace($RtssProfilePath)) {
+        throw 'Do not provide an RTSS profile when -SkipFrameCap is present.'
+    }
+} else {
+    if ([string]::IsNullOrWhiteSpace($RtssProfilePath)) {
+        throw 'Provide an RTSS profile or use -SkipFrameCap for a display-only case.'
+    }
+    $rtssProfile = [IO.Path]::GetFullPath($RtssProfilePath)
+    if ([IO.Path]::GetFileName($rtssProfile) -cne 'FalloutNV.exe.cfg') {
+        throw 'The RTSS profile must be named FalloutNV.exe.cfg.'
+    }
+    if (-not (Test-Path -LiteralPath $rtssProfile -PathType Leaf)) {
+        throw 'Create a FalloutNV.exe application profile in RTSS before configuring a test case.'
+    }
 }
 
 $profileFiles = @(
@@ -141,12 +152,19 @@ foreach ($path in $profileFiles) {
     }
 }
 
-$allFiles = @($profileFiles) + @($rtssProfile)
+$allFiles = @($profileFiles)
+if (-not $SkipFrameCap) {
+    $allFiles += @($rtssProfile)
+}
 foreach ($path in $allFiles) {
     Assert-FileWritable -Path $path
 }
 $backupSuffix = '.pbvp-phase1.bak'
-$statePath = "$rtssProfile.pbvp-phase1.state.json"
+$statePath = if ($SkipFrameCap) {
+    Join-Path $profile '.pbvp-phase1-display.state.json'
+} else {
+    "$rtssProfile.pbvp-phase1.state.json"
+}
 
 if ($Restore) {
     if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
@@ -211,21 +229,24 @@ foreach ($path in $profileFiles) {
     $newContent[$path] = $content
 }
 
-$rtssContent = [IO.File]::ReadAllText($rtssProfile)
-$rtssContent = Set-IniValue -Content $rtssContent -Key 'Limit' `
-    -Value ([string]$FpsCap) -FileName 'FalloutNV.exe.cfg'
-$rtssContent = Set-IniValue -Content $rtssContent -Key 'LimitDenominator' `
-    -Value '1' -FileName 'FalloutNV.exe.cfg'
-$newContent[$rtssProfile] = $rtssContent
+if (-not $SkipFrameCap) {
+    $rtssContent = [IO.File]::ReadAllText($rtssProfile)
+    $rtssContent = Set-IniValue -Content $rtssContent -Key 'Limit' `
+        -Value ([string]$FpsCap) -FileName 'FalloutNV.exe.cfg'
+    $rtssContent = Set-IniValue -Content $rtssContent -Key 'LimitDenominator' `
+        -Value '1' -FileName 'FalloutNV.exe.cfg'
+    $newContent[$rtssProfile] = $rtssContent
+}
 
 $snapshots = @{}
 foreach ($path in $allFiles) {
     $snapshots[$path] = [IO.File]::ReadAllBytes($path)
 }
 
+$capDescription = if ($SkipFrameCap) { 'frame cap unchanged' } else { "$FpsCap FPS" }
 if (-not $PSCmdlet.ShouldProcess(
         $ProfileName,
-        "Set $resolution $DisplayMode, $FpsCap FPS, VSync $VSync")) {
+        "Set $resolution $DisplayMode, $capDescription, VSync $VSync")) {
     return
 }
 
@@ -260,5 +281,5 @@ try {
     throw
 }
 
-Write-Host "Configured $ProfileName for $resolution $DisplayMode, $FpsCap FPS, VSync $VSync."
+Write-Host "Configured $ProfileName for $resolution $DisplayMode, $capDescription, VSync $VSync."
 Write-Host 'Exit FalloutNV before selecting another case. Use -Restore when this profile is finished.'

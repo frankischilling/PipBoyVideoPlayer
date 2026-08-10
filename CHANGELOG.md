@@ -46,3 +46,4 @@
 - Validated the hook-free managed-texture build in fullscreen 1920x1080 VNV Extended. The checkerboard survived Alt+Tab, the upload took 26.30 microseconds, no upload failed, and the process shut down normally.
 - Made the Phase 1 case configurator check every target file for write access before it creates backups or changes test settings.
 - Added an external foreground-process counter that measures completed Alt+Tab cycles without installing a Windows hook or changing the game process.
+- Added a display-only test-case mode that leaves RTSS unchanged and still restores every isolated-profile INI byte.

@@ -121,6 +121,34 @@ try {
         throw 'The matrix configurator left backup or state files after restoration.'
     }
 
+    & $script -InstanceRoot $tempRoot `
+        -ProfileName 'PBVP Phase 1 Extended' `
+        -Width 1280 -Height 960 `
+        -DisplayMode Windowed -VSync Off `
+        -SkipFrameCap -Confirm:$false
+
+    $prefs = Get-Content -LiteralPath (Join-Path $profile 'falloutprefs.ini') -Raw
+    if ($prefs -notmatch '(?m)^iSize W=1280\r?$' -or
+        $prefs -notmatch '(?m)^iSize H=960\r?$' -or
+        $prefs -notmatch '(?m)^bFull Screen=0\r?$' -or
+        $prefs -notmatch '(?m)^iPresentInterval=0\r?$' -or
+        [IO.File]::ReadAllText($rtssProfile) -cne $rtssOriginal) {
+        throw 'The display-only matrix case changed the wrong settings.'
+    }
+
+    & $script -InstanceRoot $tempRoot `
+        -ProfileName 'PBVP Phase 1 Extended' `
+        -SkipFrameCap -Restore -Confirm:$false
+
+    if ([IO.File]::ReadAllText((Join-Path $profile 'falloutprefs.ini')) -cne $prefsOriginal -or
+        [IO.File]::ReadAllText((Join-Path $profile 'falloutcustom.ini')) -cne $commonDisplay -or
+        [IO.File]::ReadAllText($rtssProfile) -cne $rtssOriginal -or
+        @(Get-ChildItem -LiteralPath $tempRoot -Recurse -File | Where-Object {
+            $_.Name -match '\.pbvp-phase1(?:-display)?\.(?:bak|state\.json)$'
+        }).Count -ne 0) {
+        throw 'The display-only matrix case did not restore its files.'
+    }
+
     Write-Host 'Phase 1 test-case configurator tests passed.'
 } finally {
     $resolvedTemp = [IO.Path]::GetFullPath($tempRoot)

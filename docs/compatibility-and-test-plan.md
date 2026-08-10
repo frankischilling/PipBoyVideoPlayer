@@ -305,6 +305,8 @@ Restore the files before testing a different profile:
 
 The restore operation puts the saved bytes back and removes its temporary state. Before creating a backup, the script checks that every profile and RTSS file is writable. It refuses a protected file without changing settings or leaving temporary state. It also refuses a second profile while another profile has an active case, profiles with saves, a missing development mod, an unexpected RTSS filename, or an undocumented resolution. Its automated fixture covers the protected-file refusal, two successive cases, other rejection behavior, and byte-for-byte restoration. This tooling prepares repeatable cases but does not count as an in-game result.
 
+For a display or VSync check that must leave RTSS untouched, omit `-RtssProfilePath` and add `-SkipFrameCap`. The script then changes only the three INI files inside the selected save-free PBVP profile. It stores the restore state in that profile and reports that the frame cap is unchanged. A display-only result cannot be used as evidence for any FPS-cap row.
+
 ENB and New Vegas Reloaded begin as unsupported configurations. They may enter the matrix after the native D3D9 path is stable and a maintainer can reproduce them.
 
 ## Graphics matrix
