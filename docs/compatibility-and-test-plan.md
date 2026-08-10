@@ -271,6 +271,16 @@ The first save-isolation result failed. Normal exit created one named `.fos` sav
 
 Corrected guard result: the two-section guard remained enabled exactly once during a fresh Goodsprings test-world session. Normal menu exit left the isolated save directory empty, and DiaMove recorded no save-game message. PBVP completed two uploads from 24.30 to 28.70 microseconds with no failure, wrote both summaries, and shut down cleanly. The strict Phase 1 log check passed. This accepts the test-only guard for the remaining isolated Phase 1 profiles.
 
+### Vanilla UI Plus placement result
+
+Date: August 10, 2026
+
+Profile: PBVP Phase 1 VUI Plus, native Direct3D 9, windowed 1920x1080, VSync on, RTSS limit unchanged
+
+This isolated profile keeps Vanilla UI Plus and disables Clean Vanilla HUD and both Pip-Boy UI Tweaks mods. The user reported that the raised checkerboard looked good and that mouse and keyboard input remained usable. The panel resolved at `42,323` through `426,539` on the 1706.67x960 logical canvas.
+
+The plugin completed one texture upload in 22.70 microseconds, recorded no upload failure, wrote both session summaries, and shut down cleanly. The strict Phase 1 log check passed. The isolated save directory remained empty after exit.
+
 ## Required profiles
 
 | Profile | Purpose |

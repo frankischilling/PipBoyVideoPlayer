@@ -266,7 +266,7 @@ Rejected alternatives: do not shrink the accepted viewport, move it horizontally
 
 Consequence: the next candidate moves the panel up 52 logical units. On the previously measured 1706.67 by 960 canvas, its expected rectangle changes from `42,375` through `426,591` to `42,323` through `426,539`. The candidate needs a Base visual check and an Extended regression check before it becomes the shared Phase 1 position.
 
-Follow-up evidence: the user tested the raised candidate in the same Base VNV windowed configuration and reported that it looked good. The panel no longer blocks the Base map buttons. A later run with the full Extended UI stack also looked good. The raised 384 by 216 panel is now the shared Phase 1 position for these two tested profiles.
+Follow-up evidence: the user tested the raised candidate in the same Base VNV windowed configuration and reported that it looked good. The panel no longer blocks the Base map buttons. Later runs with the full Extended stack and the isolated Vanilla UI Plus stack also looked good. The raised 384 by 216 panel is now the shared Phase 1 position for these three tested profiles.
 
 ### Verified reset hook only
 
