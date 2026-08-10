@@ -129,11 +129,15 @@ bool ScheduleEngineRecreateTest() noexcept {
     std::uintptr_t renderer = 0u;
     std::uint32_t width = 0u;
     std::uint32_t height = 0u;
-    if (!ReadValue(kRendererSingletonPointerAddress, renderer) || renderer == 0u ||
-        !ReadValue(kConfiguredWidthAddress, width) || width == 0u ||
-        !ReadValue(kConfiguredHeightAddress, height) || height == 0u) {
-        PBVP_LOG_ERROR("Deferred recreation helper preconditions are unavailable; "
-                       "the test request was not written");
+    const bool renderer_read = ReadValue(kRendererSingletonPointerAddress, renderer);
+    const bool width_read = ReadValue(kConfiguredWidthAddress, width);
+    const bool height_read = ReadValue(kConfiguredHeightAddress, height);
+    if (!renderer_read || renderer == 0u || !width_read || width == 0u ||
+        !height_read || height == 0u) {
+        PBVP_LOG_ERROR(
+            "Deferred recreation helper context unavailable: renderer-read=%u renderer=0x%08X requested-width-read=%u requested-width=%u requested-height-read=%u requested-height=%u; the test request was not written",
+            renderer_read ? 1u : 0u, static_cast<unsigned>(renderer),
+            width_read ? 1u : 0u, width, height_read ? 1u : 0u, height);
         return false;
     }
 
@@ -180,7 +184,7 @@ bool ScheduleEngineRecreateTest() noexcept {
     g_observer.Arm();
 
     PBVP_LOG_INFO(
-        "Private Phase 1 request context: byte=1 renderer=0x%08X width=%u height=%u",
+        "Private Phase 1 request context: byte=1 renderer=0x%08X requested-width=%u requested-height=%u",
         static_cast<unsigned>(renderer), width, height);
 
     PBVP_LOG_WARN(

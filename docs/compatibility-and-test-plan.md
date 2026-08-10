@@ -165,7 +165,7 @@ The host and Win32 suites verify the audited `NiDX9Renderer::Recreate` return va
 
 ### Controlled engine recreation candidate
 
-The normal game flow has not exposed a repeatable recreation action. The current executable audit found one main-loop read and one clear of the deferred request byte. When set, the main loop calls the complete renderer and window helper with the active dimensions. The helper owns the `NiDX9Renderer::Recreate` call.
+The normal game flow has not exposed a repeatable recreation action. The current executable audit found one main-loop read and one clear of the deferred request byte. When set, the main loop calls the complete renderer and window helper. That helper requires separate nonzero requested width and height values before it reaches `NiDX9Renderer::Recreate`.
 
 The repository has a private build option that schedules this request once, after a successful checkerboard upload and shared-thread validation. It first checks the exact 23-byte main-loop gate. The option is off by default, and the package script refuses any normal build directory marked as armed.
 
@@ -319,6 +319,8 @@ Pass criteria:
 The August 10, 2026 private deferred-request run is inconclusive for device recreation. It produced two successful surface uploads and the user saw the checkerboard return, but the verified recreation detour recorded no entry or result. This run counts as surface recovery after a UI transition only. It does not satisfy the reset row of the graphics matrix.
 
 The controlled recreation checker also requires exactly one observed request consumption. A pending request, timeout, or consumed request without a successful detour still fails the reset case.
+
+The next clean follow-up run kept the checkerboard visible and produced an orderly renderer summary. It recorded one successful upload at 28.50 microseconds, no upload or recreation failures, and eight visible cadence samples from 131.22 to 144.21 FPS. The guarded diagnostic did not write the request because at least one helper precondition was unavailable. This is a stable uncapped render baseline, not a recreation pass.
 
 ## UI matrix
 
