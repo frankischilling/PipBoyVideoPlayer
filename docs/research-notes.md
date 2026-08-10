@@ -287,6 +287,10 @@ A second x86 test connects the real Phase 2 decoder to the bounded XAudio2 strea
 
 The live Phase 3 diagnostic used the same generated 44.1 kHz stereo MP4 through the isolated MO2 profile. The user heard its two-second tone at 10 percent source-voice volume. XAudio2 consumed all 96,967 output samples, reported the expected 2,020,125 microsecond end time, completed 88 buffers, and raised one stream-end callback without an underrun. The pool stayed at its fixed 262,144 byte capacity. Shutdown stopped and flushed audio, joined the decoder, released the voices and callback targets, and then unloaded FFmpeg. The strict checker accepted the lifecycle and privacy-safe log.
 
+The pinned xNVSE 6.4.5 source at `nvse/nvse/GameTiles.h` defines `Tile::SetStringValue` at `0x00A01350` for the supported runtime. `Commands_UI.cpp` uses that member function to update a resolved tile value and propagate the change. PBVP uses the same reviewed entry point only after it finds the injected `PBVP_LayerProbe` tile and confirms that its string value points back to that tile.
+
+This gives the game-thread playback owner a small status channel without replacing MapMenu XML or exposing a tile pointer to the decoder, audio callback, or renderer. The visible messages are fixed PBVP strings. Media paths and embedded metadata never enter the tile.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

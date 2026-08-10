@@ -188,6 +188,11 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
     }
 
     const pbvp::PlaybackControllerSnapshot after = g_playback_controller->Snapshot();
+    if (ui_snapshot.visible &&
+        !pbvp::UiBridge::Instance().SetPlaybackStatus(after.playback) &&
+        after.playback.state == pbvp::PlaybackState::error) {
+        PBVP_LOG_WARN("The Pip-Boy status text could not display the playback error");
+    }
     if (after.playback.state != g_last_playback_state) {
         PBVP_LOG_INFO(
             "Playback state changed: %s -> %s generation=%llu",

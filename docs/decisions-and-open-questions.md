@@ -578,6 +578,14 @@ Rejected alternatives: do not share FFmpeg contexts across threads, expose FFmpe
 
 Consequence: the owner must join this worker before unloading FFmpeg. The live diagnostic follows that order, and packaging rejects any DLL that retains the diagnostic marker.
 
+### Playback status uses the pinned xNVSE tile setter
+
+Date: August 10, 2026
+
+Decision: update the injected `PBVP_LayerProbe` string from the game thread with the `Tile::SetStringValue` member documented by the pinned xNVSE 6.4.5 source. The bridge first resolves the named tile and verifies its owned string trait. It caches the tile identity, state, and error so it does not repeat the same write every frame.
+
+Reason: Phase 4 needs visible opening, buffering, paused, and failure states. Replacing menu XML is out of scope, and workers cannot touch game objects. The existing injected status strip is already at the reviewed depth and position. Fixed messages also keep local paths and media metadata out of the UI.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.

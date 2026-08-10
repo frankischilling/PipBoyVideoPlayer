@@ -70,6 +70,8 @@ UIO injects a prefab into the selected Pip-Boy menu. The prefab owns the video r
 
 The native bridge resolves the named image and follows the reviewed engine texture layout to its Direct3D resource. It does not write the image's reference-counted fields or change its filename at runtime. Gamebryo owns the texture and draws it. The plugin only updates its pixels while the image is live.
 
+Playback state and errors use the existing `PBVP_LayerProbe` text tile. On the game thread, the bridge verifies that the named tile has a string trait owned by that tile, then calls the `Tile::SetStringValue` entry point documented by the pinned xNVSE 6.4.5 source for runtime 1.4.0.525. The bridge writes only when the tile identity, playback state, or error changes. Workers and callbacks never touch the tile.
+
 The bridge must prove three things before decoder work begins:
 
 1. Tile coordinates can be converted to the correct backbuffer rectangle at 4:3, 16:9, 16:10, and ultrawide resolutions.
@@ -90,6 +92,8 @@ If those statements cannot be proven, the project needs a different presentation
 | Player state machine | Game thread | Workers post events without changing state directly |
 
 Current code may hold only one PBVP mutex at a time. A caller must release any player, command, or queue lock before it waits on a queue. Queue methods do not call external code while locked. XAudio2 callbacks acquire no PBVP mutex. The audio owner calls XAudio2 only from its owning thread and observes callback results through atomics. Any future need to hold two locks at once requires a documented order and a focused deadlock test before implementation.
+
+The renderer mailbox follows the same rule. The game thread holds its mutex only long enough to replace or clear one owned CPU frame. The render callback moves that frame out, releases the mutex, and only then scales pixels, resolves the UI surface, or calls Direct3D. It never waits for the decoder or audio callback while holding the mailbox mutex.
 
 No callback may wait on the game thread. A completed XAudio2 buffer is not reused until its `OnBufferEnd` notification arrives. Pause stops the source voice without flushing it. Seek and stop halt the source voice and flush pending buffers, then the owner waits outside any PBVP lock until XAudio2 reports no queued buffers. Shutdown destroys the source voice before releasing its callback target or buffer pool. XAudio2 documents that `DestroyVoice` returns only after audio processing is idle, so no callback or buffer read can reach those targets afterward. Shutdown then joins the decode worker before releasing libraries and hooks.
 

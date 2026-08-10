@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstdint>
 
+#include "pbvp/playback_state.hpp"
 #include "pbvp/rect_math.hpp"
 
 namespace pbvp {
@@ -49,6 +50,8 @@ public:
     static UiBridge& Instance() noexcept;
 
     void UpdateOnGameThread() noexcept;
+    [[nodiscard]] bool SetPlaybackStatus(
+        const PlaybackStateSnapshot& playback) noexcept;
     UiRectSnapshot ReadForRenderThread() const noexcept;
     UiSurfaceSnapshot ResolveSurfaceOnSharedThread(std::uint32_t game_thread_id) const noexcept;
     void Clear() noexcept;
@@ -70,6 +73,9 @@ private:
     bool polling_logged_{};
     bool map_visible_logged_{};
     std::uint32_t last_failure_{};
+    std::uintptr_t last_status_tile_{};
+    PlaybackState last_status_state_{PlaybackState::unavailable};
+    PlaybackError last_status_error_{PlaybackError::none};
     bool found_logged_{};
 };
 
