@@ -819,7 +819,7 @@ MediaDecoder::WorkerResult MediaDecoder::ConvertVideoFrame(const AVFrame& frame)
     scaler_ = updated;
 
     allocation_site_ = MediaDecodeFailureSite::video_pixel_buffer;
-    std::vector<std::uint8_t> source_pixels(converted_layout.total_bytes);
+    VideoPixelBuffer source_pixels(converted_layout.total_bytes);
     allocation_site_ = MediaDecodeFailureSite::none;
     std::uint8_t* destination_data[4]{source_pixels.data(), nullptr, nullptr, nullptr};
     int destination_stride[4]{static_cast<int>(converted_layout.row_bytes), 0, 0, 0};

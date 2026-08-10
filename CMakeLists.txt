@@ -65,7 +65,8 @@ if(PBVP_BUILD_PLUGIN)
     add_library(pbvp_media STATIC
         src/media/ffmpeg_runtime.cpp
         src/media/media_decoder.cpp
-        src/media/win32_avio.cpp)
+        src/media/win32_avio.cpp
+        src/media/win32_virtual_allocator.cpp)
     target_include_directories(pbvp_media PUBLIC include)
     target_include_directories(pbvp_media SYSTEM PUBLIC "${PBVP_FFMPEG_ROOT}/include")
     target_compile_features(pbvp_media PUBLIC cxx_std_20)

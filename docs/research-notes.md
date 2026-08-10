@@ -321,6 +321,12 @@ The first bounded-output live run opened the long fixture, entered playback, upl
 
 This result disproves the assumption that reducing each payload would make repeated C++ heap allocation reliable inside the loaded game. The allocation failed after source scaling had reduced the payload by 84 percent, while more than 1.5 GB remained free in one region. Queue and staging totals remained bounded.
 
+The video payload allocator uses checked `VirtualAlloc` and `VirtualFree` calls while retaining the vector interface shared by the decoder, scheduler, and renderer. A native stress test completed 512 allocation, move, and release cycles for 589,824-byte payloads. It retained less than 8 MiB of private memory and address space after the loop.
+
+The updated 1080p full-queue test held three frames at exactly 1,769,472 bytes. Process private memory increased by 35,106,816 bytes and committed address space increased by 43,192,320 bytes. Targeted decoder, audio pipeline, integrated playback, rotation, seek, cancellation, and media failure tests passed with the new payload type.
+
+The real 30-minute fixture passed another five-second native startup run. Playback stayed in `playing` with no error or failure site. It decoded 150 frames, delivered 143, dropped six late frames, submitted 245,760 audio samples, and reached a 4,940,000-microsecond clock.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

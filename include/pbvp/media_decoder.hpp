@@ -4,6 +4,7 @@
 #include "pbvp/ffmpeg_runtime.hpp"
 #include "pbvp/media_limits.hpp"
 #include "pbvp/win32_avio.hpp"
+#include "pbvp/win32_virtual_allocator.hpp"
 
 #include <atomic>
 #include <condition_variable>
@@ -15,6 +16,9 @@
 #include <vector>
 
 namespace pbvp {
+
+using VideoPixelBuffer =
+    std::vector<std::uint8_t, Win32VirtualAllocator<std::uint8_t>>;
 
 enum class MediaDecodeStatus : std::uint32_t {
     ok,
@@ -95,7 +99,7 @@ struct MediaInfo {
 };
 
 struct DecodedVideoFrame {
-    std::vector<std::uint8_t> bgra{};
+    VideoPixelBuffer bgra{};
     std::uint32_t width{};
     std::uint32_t height{};
     std::uint32_t stride{};

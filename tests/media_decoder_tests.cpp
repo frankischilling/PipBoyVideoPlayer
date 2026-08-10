@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <limits>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -204,6 +205,31 @@ void CheckAllGeneration(
     PBVP_CHECK(std::all_of(
         generations.begin(), generations.end(),
         [expected](const std::uint64_t value) { return value == expected; }));
+}
+
+void TestVideoPayloadAllocator() {
+    constexpr std::size_t payload_bytes = 512u * 288u * 4u;
+    constexpr std::uint64_t retained_limit = 8u * 1024u * 1024u;
+    const ProcessUsage baseline = MeasureProcessUsage();
+    for (std::size_t iteration = 0u; iteration < 512u; ++iteration) {
+        pbvp::VideoPixelBuffer pixels(payload_bytes);
+        PBVP_CHECK(pixels.size() == payload_bytes);
+        MEMORY_BASIC_INFORMATION region{};
+        PBVP_CHECK(VirtualQuery(
+            pixels.data(), &region, sizeof(region)) == sizeof(region));
+        PBVP_CHECK(region.AllocationBase == pixels.data());
+        PBVP_CHECK(region.State == MEM_COMMIT);
+        PBVP_CHECK(region.Type == MEM_PRIVATE);
+
+        pbvp::VideoPixelBuffer moved(std::move(pixels));
+        PBVP_CHECK(pixels.empty());
+        PBVP_CHECK(moved.size() == payload_bytes);
+    }
+    const ProcessUsage completed = MeasureProcessUsage();
+    PBVP_CHECK(PositiveDelta(
+        completed.private_bytes, baseline.private_bytes) < retained_limit);
+    PBVP_CHECK(PositiveDelta(
+        completed.address_space_bytes, baseline.address_space_bytes) < retained_limit);
 }
 
 std::wstring CreateTemporaryDirectory() {
@@ -591,6 +617,7 @@ int wmain(int argc, wchar_t** argv) {
     }
 
     const std::wstring temporary_root = CreateTemporaryDirectory();
+    TestVideoPayloadAllocator();
     TestFullHdMemory(runtime, argv[2]);
     TestFullHdDecodePerformance(runtime, argv[2]);
     TestBaseDecode(runtime, argv[2]);
