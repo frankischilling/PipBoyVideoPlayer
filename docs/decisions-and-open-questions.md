@@ -402,6 +402,8 @@ Reason: Stewie Tweaks resolves settings by section and key. The installed 9.80 r
 
 Consequence: profile verification must require both sections and reject a save-related key in the wrong section. The corrected guard needs a fresh full Extended exit with an empty local save directory before isolated profile safety is accepted.
 
+Runtime verification: the corrected two-section guard remained enabled exactly once in the full Extended profile. After a normal test-world session and menu exit, the isolated save directory was empty. DiaMove recorded the exit-game message without a following save-game message. The strict PBVP log check also passed with two successful uploads, no upload failure, and a clean shutdown. This accepts the guard for the remaining isolated Phase 1 sessions. Release-candidate save, uninstall, and reinstallation tests remain separate Phase 6 requirements.
+
 ### Separate public and private symbols
 
 Date: August 9, 2026

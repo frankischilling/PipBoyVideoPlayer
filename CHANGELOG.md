@@ -58,3 +58,4 @@
 - Accepted the raised 384x216 panel in the full Extended UI regression.
 - Recorded that the first save guard used the wrong section for two Save Manager settings and preserved the resulting isolated test save pair in quarantine.
 - Corrected the test-only guard, added section-aware validation, and limited automatic repair to the exact known legacy layout.
+- Verified that the corrected guard leaves the full Extended test profile empty after a normal test-world exit.

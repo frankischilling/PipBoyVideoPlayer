@@ -267,7 +267,9 @@ Profile: PBVP Phase 1 Extended, native Direct3D 9, windowed 1920x1080, VSync on,
 
 The full Extended UI regression used the same 64-unit bottom inset and unchanged 384 by 216 panel. The user reported that it looked good. This accepts the raised position for both tested UI stacks.
 
-The save-isolation result failed. Normal exit created one named `.fos` save and its `.nvse` co-save inside the isolated profile. The pair was moved to the ignored quarantine and remains recoverable. Inspection found that the guard placed the exit-save and timer keys under `[Tweaks]`, while the active Stewie Tweaks INI defines them under `[Save Manager]`. A corrected section-aware guard and another clean Extended exit are required.
+The first save-isolation result failed. Normal exit created one named `.fos` save and its `.nvse` co-save inside the isolated profile. The pair was moved to the ignored quarantine and remains recoverable. Inspection found that the guard placed the exit-save and timer keys under `[Tweaks]`, while the active Stewie Tweaks INI defines them under `[Save Manager]`.
+
+Corrected guard result: the two-section guard remained enabled exactly once during a fresh Goodsprings test-world session. Normal menu exit left the isolated save directory empty, and DiaMove recorded no save-game message. PBVP completed two uploads from 24.30 to 28.70 microseconds with no failure, wrote both summaries, and shut down cleanly. The strict Phase 1 log check passed. This accepts the test-only guard for the remaining isolated Phase 1 profiles.
 
 ## Required profiles
 
