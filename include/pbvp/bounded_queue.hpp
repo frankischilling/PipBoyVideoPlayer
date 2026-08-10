@@ -104,7 +104,7 @@ public:
 
     bool AdvanceGeneration(const std::uint64_t generation) noexcept {
         std::unique_lock lock(mutex_);
-        if (generation <= generation_) {
+        if (closed_ || generation <= generation_) {
             return false;
         }
         items_.clear();

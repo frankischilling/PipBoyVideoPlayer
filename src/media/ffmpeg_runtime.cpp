@@ -192,10 +192,50 @@ bool FfmpegRuntime::Load(
         TextFunction configuration = nullptr;
         if (!ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_malloc", api_.av_malloc, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_free", api_.av_free, failure) ||
+            !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_frame_alloc", api_.av_frame_alloc, failure) ||
+            !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_frame_free", api_.av_frame_free, failure) ||
+            !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_frame_unref", api_.av_frame_unref, failure) ||
+            !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_rescale_q", api_.av_rescale_q, failure) ||
+            !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_rescale_rnd", api_.av_rescale_rnd, failure) ||
+            !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_display_rotation_get", api_.av_display_rotation_get, failure) ||
+            !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_channel_layout_default", api_.av_channel_layout_default, failure) ||
+            !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_channel_layout_copy", api_.av_channel_layout_copy, failure) ||
+            !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_channel_layout_uninit", api_.av_channel_layout_uninit, failure) ||
+            !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_channel_layout_compare", api_.av_channel_layout_compare, failure) ||
             !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "avio_alloc_context", api_.avio_alloc_context, failure) ||
             !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "avio_context_free", api_.avio_context_free, failure) ||
             !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "avio_read", api_.avio_read, failure) ||
             !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "avio_seek", api_.avio_seek, failure) ||
+            !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "avformat_alloc_context", api_.avformat_alloc_context, failure) ||
+            !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "avformat_open_input", api_.avformat_open_input, failure) ||
+            !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "avformat_find_stream_info", api_.avformat_find_stream_info, failure) ||
+            !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "av_find_best_stream", api_.av_find_best_stream, failure) ||
+            !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "av_read_frame", api_.av_read_frame, failure) ||
+            !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "avformat_seek_file", api_.avformat_seek_file, failure) ||
+            !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "avformat_flush", api_.avformat_flush, failure) ||
+            !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "avformat_close_input", api_.avformat_close_input, failure) ||
+            !ResolveSymbol(modules_[avformat], kModuleNames[avformat], "avformat_free_context", api_.avformat_free_context, failure) ||
+            !ResolveSymbol(modules_[avcodec], kModuleNames[avcodec], "avcodec_find_decoder", api_.avcodec_find_decoder, failure) ||
+            !ResolveSymbol(modules_[avcodec], kModuleNames[avcodec], "avcodec_alloc_context3", api_.avcodec_alloc_context3, failure) ||
+            !ResolveSymbol(modules_[avcodec], kModuleNames[avcodec], "avcodec_parameters_to_context", api_.avcodec_parameters_to_context, failure) ||
+            !ResolveSymbol(modules_[avcodec], kModuleNames[avcodec], "avcodec_open2", api_.avcodec_open2, failure) ||
+            !ResolveSymbol(modules_[avcodec], kModuleNames[avcodec], "avcodec_send_packet", api_.avcodec_send_packet, failure) ||
+            !ResolveSymbol(modules_[avcodec], kModuleNames[avcodec], "avcodec_receive_frame", api_.avcodec_receive_frame, failure) ||
+            !ResolveSymbol(modules_[avcodec], kModuleNames[avcodec], "avcodec_flush_buffers", api_.avcodec_flush_buffers, failure) ||
+            !ResolveSymbol(modules_[avcodec], kModuleNames[avcodec], "avcodec_free_context", api_.avcodec_free_context, failure) ||
+            !ResolveSymbol(modules_[avcodec], kModuleNames[avcodec], "av_packet_alloc", api_.av_packet_alloc, failure) ||
+            !ResolveSymbol(modules_[avcodec], kModuleNames[avcodec], "av_packet_free", api_.av_packet_free, failure) ||
+            !ResolveSymbol(modules_[avcodec], kModuleNames[avcodec], "av_packet_unref", api_.av_packet_unref, failure) ||
+            !ResolveSymbol(modules_[avcodec], kModuleNames[avcodec], "av_packet_get_side_data", api_.av_packet_get_side_data, failure) ||
+            !ResolveSymbol(modules_[avcodec], kModuleNames[avcodec], "av_packet_side_data_get", api_.av_packet_side_data_get, failure) ||
+            !ResolveSymbol(modules_[swscale], kModuleNames[swscale], "sws_getCachedContext", api_.sws_getCachedContext, failure) ||
+            !ResolveSymbol(modules_[swscale], kModuleNames[swscale], "sws_scale", api_.sws_scale, failure) ||
+            !ResolveSymbol(modules_[swscale], kModuleNames[swscale], "sws_freeContext", api_.sws_freeContext, failure) ||
+            !ResolveSymbol(modules_[swresample], kModuleNames[swresample], "swr_alloc_set_opts2", api_.swr_alloc_set_opts2, failure) ||
+            !ResolveSymbol(modules_[swresample], kModuleNames[swresample], "swr_init", api_.swr_init, failure) ||
+            !ResolveSymbol(modules_[swresample], kModuleNames[swresample], "swr_get_delay", api_.swr_get_delay, failure) ||
+            !ResolveSymbol(modules_[swresample], kModuleNames[swresample], "swr_convert", api_.swr_convert, failure) ||
+            !ResolveSymbol(modules_[swresample], kModuleNames[swresample], "swr_free", api_.swr_free, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "avutil_version", avutil_version, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_version_info", version_info, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "avutil_configuration", configuration, failure) ||

@@ -43,9 +43,10 @@ if(PBVP_BUILD_PLUGIN)
 
     add_library(pbvp_media STATIC
         src/media/ffmpeg_runtime.cpp
+        src/media/media_decoder.cpp
         src/media/win32_avio.cpp)
     target_include_directories(pbvp_media PUBLIC include)
-    target_include_directories(pbvp_media SYSTEM PRIVATE "${PBVP_FFMPEG_ROOT}/include")
+    target_include_directories(pbvp_media SYSTEM PUBLIC "${PBVP_FFMPEG_ROOT}/include")
     target_compile_features(pbvp_media PUBLIC cxx_std_20)
     target_compile_definitions(pbvp_media PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
     target_compile_options(pbvp_media PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
@@ -103,6 +104,17 @@ if(PBVP_BUILD_PLUGIN)
         target_compile_options(pbvp_win32_avio_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
         set_target_properties(pbvp_win32_avio_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
         add_test(NAME pbvp_win32_avio_test COMMAND pbvp_win32_avio_test "${PBVP_FFMPEG_ROOT}/bin")
+
+        add_executable(pbvp_media_decoder_test tests/media_decoder_tests.cpp)
+        target_link_libraries(pbvp_media_decoder_test PRIVATE pbvp_media pbvp_core)
+        target_compile_features(pbvp_media_decoder_test PRIVATE cxx_std_20)
+        target_compile_options(pbvp_media_decoder_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus /Zm200)
+        set_target_properties(pbvp_media_decoder_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        add_test(
+            NAME pbvp_media_decoder_test
+            COMMAND pbvp_media_decoder_test
+                "${PBVP_FFMPEG_ROOT}/bin"
+                "${CMAKE_SOURCE_DIR}/tests/fixtures")
 
         find_program(PBVP_LLVM_PDBUTIL_EXECUTABLE NAMES llvm-pdbutil REQUIRED)
         find_program(PBVP_LLVM_READOBJ_EXECUTABLE NAMES llvm-readobj REQUIRED)

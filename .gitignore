@@ -27,3 +27,4 @@ CMakeUserPresets.json
 *.mov
 *.mp4
 *.webm
+!tests/fixtures/*.mp4

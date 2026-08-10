@@ -66,6 +66,7 @@ void RunBoundedQueueTests() {
     PBVP_CHECK(waiter.wait_for(50ms) == std::future_status::timeout);
     queue.Close();
     PBVP_CHECK(queue.IsClosed());
+    PBVP_CHECK(!queue.AdvanceGeneration(10u));
     PBVP_CHECK(waiter.wait_for(1s) == std::future_status::ready);
     PBVP_CHECK(waiter.get() == QueuePushStatus::closed);
 

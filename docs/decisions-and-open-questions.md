@@ -508,6 +508,20 @@ Rejected alternatives: do not rely on frame count alone, allow allocation arithm
 
 Consequence: the decoder may block only through the queue API and may hold no other PBVP lock while waiting. Queue capacities remain a profiling decision, but they must fit the release memory budget and cannot be changed by untrusted media metadata.
 
+### Single-owner decoder worker
+
+Date: August 10, 2026
+
+Decision: one worker owns the custom AVIO context, demuxer, codec contexts, packet, frames, scaler, and resampler. It accepts H.264 video with optional AAC audio from MP4 or MOV. Output consists of owned BGRA frames and interleaved signed 16-bit PCM chunks tagged with the active seek generation. Right-angle display matrices are applied during BGRA conversion. Other rotation angles are rejected.
+
+Evidence: synthetic x86 tests decode a 160x90 H.264 and AAC file, resample 44.1 kHz stereo audio to 48 kHz, preserve both 100 ms and 200 ms frame intervals in a variable frame rate file, and turn a display matrix into a 90x160 output frame. Forward and backward seeks return only the requested generation. Cancellation wakes a worker blocked by a full queue. Unsupported codecs, random input, source limits, missing files, and a half-truncated MP4 produce structured failures. All 13 Win32 Release tests pass.
+
+The truncated fixture exposed a demuxer edge case. FFmpeg dropped the final partial packet and returned ordinary end of file. PBVP now compares the last decoded video timestamp with the declared track end, using a 250 ms tolerance, and reports damaged media when too much of the track is missing.
+
+Rejected alternatives: do not share FFmpeg contexts across threads, expose FFmpeg-owned frame buffers to the renderer, retain output from an old seek generation, or treat every demuxer end-of-file result as proof of a complete track.
+
+Consequence: the owner must join this worker before unloading FFmpeg. Phase 2 still needs live MO2 virtual-file access, broader audio fixtures, a measured 1080p memory run, and an in-game smoke test before its gate can close.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.

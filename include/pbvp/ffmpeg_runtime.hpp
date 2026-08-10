@@ -5,13 +5,20 @@
 #endif
 #include <Windows.h>
 
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libavutil/channel_layout.h>
+#include <libavutil/display.h>
+#include <libavutil/frame.h>
+#include <libavutil/mathematics.h>
+#include <libswresample/swresample.h>
+#include <libswscale/swscale.h>
+}
+
 #include <array>
 #include <cstdint>
 #include <string>
-
-extern "C" {
-struct AVIOContext;
-}
 
 namespace pbvp {
 
@@ -50,13 +57,56 @@ struct FfmpegApi {
     using WritePacket = int (*)(void*, const std::uint8_t*, int);
     using Seek = std::int64_t (*)(void*, std::int64_t, int);
 
-    void* (*av_malloc)(std::size_t){};
-    void (*av_free)(void*){};
-    AVIOContext* (*avio_alloc_context)(
-        unsigned char*, int, int, void*, ReadPacket, WritePacket, Seek){};
-    void (*avio_context_free)(AVIOContext**){};
-    int (*avio_read)(AVIOContext*, unsigned char*, int){};
-    std::int64_t (*avio_seek)(AVIOContext*, std::int64_t, int){};
+    decltype(&::av_malloc) av_malloc{};
+    decltype(&::av_free) av_free{};
+    decltype(&::av_frame_alloc) av_frame_alloc{};
+    decltype(&::av_frame_free) av_frame_free{};
+    decltype(&::av_frame_unref) av_frame_unref{};
+    decltype(&::av_rescale_q) av_rescale_q{};
+    decltype(&::av_rescale_rnd) av_rescale_rnd{};
+    decltype(&::av_display_rotation_get) av_display_rotation_get{};
+    decltype(&::av_channel_layout_default) av_channel_layout_default{};
+    decltype(&::av_channel_layout_copy) av_channel_layout_copy{};
+    decltype(&::av_channel_layout_uninit) av_channel_layout_uninit{};
+    decltype(&::av_channel_layout_compare) av_channel_layout_compare{};
+
+    decltype(&::avio_alloc_context) avio_alloc_context{};
+    decltype(&::avio_context_free) avio_context_free{};
+    decltype(&::avio_read) avio_read{};
+    decltype(&::avio_seek) avio_seek{};
+    decltype(&::avformat_alloc_context) avformat_alloc_context{};
+    decltype(&::avformat_open_input) avformat_open_input{};
+    decltype(&::avformat_find_stream_info) avformat_find_stream_info{};
+    decltype(&::av_find_best_stream) av_find_best_stream{};
+    decltype(&::av_read_frame) av_read_frame{};
+    decltype(&::avformat_seek_file) avformat_seek_file{};
+    decltype(&::avformat_flush) avformat_flush{};
+    decltype(&::avformat_close_input) avformat_close_input{};
+    decltype(&::avformat_free_context) avformat_free_context{};
+
+    decltype(&::avcodec_find_decoder) avcodec_find_decoder{};
+    decltype(&::avcodec_alloc_context3) avcodec_alloc_context3{};
+    decltype(&::avcodec_parameters_to_context) avcodec_parameters_to_context{};
+    decltype(&::avcodec_open2) avcodec_open2{};
+    decltype(&::avcodec_send_packet) avcodec_send_packet{};
+    decltype(&::avcodec_receive_frame) avcodec_receive_frame{};
+    decltype(&::avcodec_flush_buffers) avcodec_flush_buffers{};
+    decltype(&::avcodec_free_context) avcodec_free_context{};
+    decltype(&::av_packet_alloc) av_packet_alloc{};
+    decltype(&::av_packet_free) av_packet_free{};
+    decltype(&::av_packet_unref) av_packet_unref{};
+    decltype(&::av_packet_get_side_data) av_packet_get_side_data{};
+    decltype(&::av_packet_side_data_get) av_packet_side_data_get{};
+
+    decltype(&::sws_getCachedContext) sws_getCachedContext{};
+    decltype(&::sws_scale) sws_scale{};
+    decltype(&::sws_freeContext) sws_freeContext{};
+
+    decltype(&::swr_alloc_set_opts2) swr_alloc_set_opts2{};
+    decltype(&::swr_init) swr_init{};
+    decltype(&::swr_get_delay) swr_get_delay{};
+    decltype(&::swr_convert) swr_convert{};
+    decltype(&::swr_free) swr_free{};
 };
 
 const char* FfmpegLoadStatusName(FfmpegLoadStatus status) noexcept;
