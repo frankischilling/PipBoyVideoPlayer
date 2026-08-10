@@ -518,6 +518,20 @@ Consequence: add a typed allocator with checked byte arithmetic, use it only for
 
 Implementation evidence: the allocator stress test completed 512 allocation, move, and release cycles for 589,824-byte payloads and retained less than 8 MiB after the loop. The 1080p queue and complete decode passed, and the real long fixture completed a five-second native startup run with no error or failure site. The live build then displayed continuous video for about 56 seconds with 1,659 successful uploads and no playback or allocation error. This passes the short live startup check. The complete 30-minute run remains open.
 
+### Apply the synchronization tolerance on both sides of the media end
+
+Date: August 10, 2026
+
+Decision: the strict long-playback checker accepts the final audio clock within 50 milliseconds on either side of the exact 1,800-second duration. It also retains the separate requirement that the absolute audio-to-video difference is at most 50 milliseconds.
+
+Reason: the acceptance target measures absolute synchronization error. Requiring the audio clock to reach or exceed the video end adds a one-sided condition that the specification does not require.
+
+Evidence: the first complete live run ended with a 1,799,971,875-microsecond audio clock and a 1,800,000,000-microsecond video end. Their 28,125-microsecond difference satisfies the target. The run decoded all 54,000 frames, submitted 86,400,000 audio samples, and reported zero underruns. The old checker rejected only the audio clock's lower bound.
+
+Rejected alternatives: do not round the runtime clock, change the playback metrics, treat a valid early offset as zero, or widen the 50-millisecond target.
+
+Consequence: align the checker's lower and upper duration bounds with the 50-millisecond target, add boundary regression cases, and rerun it against the untouched live log before accepting the result.
+
 ### System XAudio2 2.9 runtime
 
 Date: August 10, 2026

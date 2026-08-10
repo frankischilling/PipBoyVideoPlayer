@@ -331,6 +331,10 @@ The same `VirtualAlloc` build passed its short in-game startup gate. The user sa
 
 The long diagnostic used 3 percent source-voice volume. The user did not hear its tone, while the earlier Phase 3 tone was audible at 10 percent. The log contained no audio-device or playback error. The run confirms the live video allocation path but does not add an audible-audio result. The complete 30-minute synchronization test remains open.
 
+The first uninterrupted 30-minute run reached its final playback record. It decoded 54,000 frames, presented 53,993, dropped seven startup frames, submitted 86,400,000 audio samples, and reported zero underruns. The audio clock ended at 1,799,971,875 microseconds, the video ended at 1,800,000,000 microseconds, and the absolute difference was 28,125 microseconds. Peak private-memory growth was 41,811,968 bytes. The renderer uploaded all 53,993 submitted frames, with 18.30 microseconds minimum, 24.64 microseconds average, and 150.40 microseconds maximum upload time.
+
+The strict checker rejected this record because its audio-clock lower bound was exactly 1,800,000,000 microseconds. That one-sided bound conflicts with the documented absolute 50-millisecond synchronization target. The result remains provisional until the decision record is implemented, the checker gains boundary regressions, and the untouched log passes.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.
