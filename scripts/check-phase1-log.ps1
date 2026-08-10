@@ -5,6 +5,8 @@ param(
     [ValidateRange(0, 16384)][int]$ExpectedHeight = 0,
     [ValidateRange(0, 100000)][int]$MinimumUploads = 1,
     [ValidateRange(0, 100000)][int]$MinimumRecreates = 0,
+    [ValidateRange(0.0, 240.0)][double]$ExpectedFps = 0.0,
+    [ValidateRange(0.0, 60.0)][double]$FpsTolerance = 0.0,
     [switch]$RequireCleanExit
 )
 
@@ -33,6 +35,8 @@ try {
     $devices = Get-Matches -Lines $lines -Pattern '\[INFO\] D3D device validated:'
     $uploads = Get-Matches -Lines $lines -Pattern '\[INFO\] Generated checkerboard uploaded to PBVP_VideoSurface$'
     $uploadTimes = Get-Matches -Lines $lines -Pattern '\[INFO\] Engine texture checkerboard upload took ([0-9]+(?:\.[0-9]+)?) microseconds$'
+    $cadencePattern = '\[INFO\] Visible frame cadence: frames=(?<frames>[0-9]+) elapsed-ms=(?<elapsed>[0-9]+(?:\.[0-9]+)?) fps=(?<fps>[0-9]+(?:\.[0-9]+)?)$'
+    $cadences = Get-Matches -Lines $lines -Pattern $cadencePattern
     $recreateStarts = Get-Matches -Lines $lines -Pattern '\[INFO\] Transient engine-surface state cleared before engine recreation '
     $recreateSuccesses = @(
         Get-Matches -Lines $lines -Pattern '\[INFO\] D3D engine recreation (?:recovered the original|applied the requested) presentation parameters; resources will be reacquired$'
@@ -41,6 +45,8 @@ try {
     $resetFailures = Get-Matches -Lines $lines -Pattern '\[(?:WARN|ERROR)\] D3D engine recreation (?:failed|returned)'
     $summaryPattern = '\[INFO\] Phase 1 renderer summary: callbacks=(?<callbacks>[0-9]+) visible=(?<visible>[0-9]+) devices=(?<devices>[0-9]+) upload-successes=(?<uploadSuccesses>[0-9]+) upload-attempts=(?<uploadAttempts>[0-9]+) upload-failures=(?<uploadFailures>[0-9]+) upload-us=[0-9]+(?:\.[0-9]+)?/[0-9]+(?:\.[0-9]+)?/[0-9]+(?:\.[0-9]+)? recreation-successes=(?<recreateSuccesses>[0-9]+) recreation-starts=(?<recreateStarts>[0-9]+) recreation-failures=(?<recreateFailures>[0-9]+)$'
     $summaries = Get-Matches -Lines $lines -Pattern $summaryPattern
+    $cadenceSummaryPattern = '\[INFO\] Phase 1 cadence summary: samples=(?<samples>[0-9]+) fps=(?<minimum>[0-9]+(?:\.[0-9]+)?)/(?<average>[0-9]+(?:\.[0-9]+)?)/(?<maximum>[0-9]+(?:\.[0-9]+)?)$'
+    $cadenceSummaries = Get-Matches -Lines $lines -Pattern $cadenceSummaryPattern
     $shutdowns = Get-Matches -Lines $lines -Pattern '\[INFO\] Process shutdown requested$'
 
     if ($loads.Count -lt 1) { $failures.Add('Plugin load record is missing.') }
@@ -65,6 +71,9 @@ try {
     }
     if ($RequireCleanExit -and $summaries.Count -ne 1) {
         $failures.Add("Expected one renderer session summary, found $($summaries.Count).")
+    }
+    if ($RequireCleanExit -and $cadences.Count -gt 0 -and $cadenceSummaries.Count -ne 1) {
+        $failures.Add("Expected one cadence session summary, found $($cadenceSummaries.Count).")
     }
     if ($RequireCleanExit -and $summaries.Count -eq 1) {
         $summary = [regex]::Match($summaries[0].Line, $summaryPattern)
@@ -100,6 +109,75 @@ try {
         }
     }
 
+    $cadenceValues = [System.Collections.Generic.List[double]]::new()
+    foreach ($match in $cadences) {
+        $parsed = [regex]::Match($match.Line, $cadencePattern)
+        $frames = [uint64]$parsed.Groups['frames'].Value
+        $elapsed = [double]::Parse(
+            $parsed.Groups['elapsed'].Value,
+            [Globalization.CultureInfo]::InvariantCulture)
+        $fps = [double]::Parse(
+            $parsed.Groups['fps'].Value,
+            [Globalization.CultureInfo]::InvariantCulture)
+        if ($frames -lt 2 -or $elapsed -le 0.0) {
+            $failures.Add('A visible frame cadence record has an invalid frame or time count.')
+            continue
+        }
+        $calculated = ([double]($frames - 1) * 1000.0) / $elapsed
+        if ([Math]::Abs($calculated - $fps) -gt 0.05) {
+            $failures.Add('A visible frame cadence record does not match its frame and time counts.')
+        }
+        $cadenceValues.Add($fps)
+    }
+
+    if ($cadenceSummaries.Count -gt 1) {
+        $failures.Add("Expected at most one cadence summary, found $($cadenceSummaries.Count).")
+    } elseif ($cadenceSummaries.Count -eq 1) {
+        $cadenceSummary = [regex]::Match(
+            $cadenceSummaries[0].Line,
+            $cadenceSummaryPattern)
+        $summarySamples = [uint64]$cadenceSummary.Groups['samples'].Value
+        $summaryMinimum = [double]::Parse(
+            $cadenceSummary.Groups['minimum'].Value,
+            [Globalization.CultureInfo]::InvariantCulture)
+        $summaryAverage = [double]::Parse(
+            $cadenceSummary.Groups['average'].Value,
+            [Globalization.CultureInfo]::InvariantCulture)
+        $summaryMaximum = [double]::Parse(
+            $cadenceSummary.Groups['maximum'].Value,
+            [Globalization.CultureInfo]::InvariantCulture)
+        if ($summarySamples -ne $cadenceValues.Count) {
+            $failures.Add('Cadence summary sample count does not match the log.')
+        } elseif ($cadenceValues.Count -gt 0) {
+            $measuredMinimum = ($cadenceValues | Measure-Object -Minimum).Minimum
+            $measuredAverage = ($cadenceValues | Measure-Object -Average).Average
+            $measuredMaximum = ($cadenceValues | Measure-Object -Maximum).Maximum
+            if ([Math]::Abs($summaryMinimum - $measuredMinimum) -gt 0.02 -or
+                [Math]::Abs($summaryAverage - $measuredAverage) -gt 0.02 -or
+                [Math]::Abs($summaryMaximum - $measuredMaximum) -gt 0.02) {
+                $failures.Add('Cadence summary values do not match the log samples.')
+            }
+        }
+    }
+
+    if ($ExpectedFps -gt 0.0) {
+        if ($cadenceValues.Count -lt 1) {
+            $failures.Add('No visible frame cadence sample was recorded.')
+        } else {
+            $measuredFps = ($cadenceValues | Measure-Object -Average).Average
+            $allowedFpsError = if ($FpsTolerance -gt 0.0) {
+                $FpsTolerance
+            } else {
+                [Math]::Max(2.0, $ExpectedFps * 0.05)
+            }
+            if ([Math]::Abs($measuredFps - $ExpectedFps) -gt $allowedFpsError) {
+                $failures.Add(
+                    ('Measured visible cadence {0:F2} FPS is outside {1:F2} FPS of expected {2:F2} FPS.' -f
+                        $measuredFps, $allowedFpsError, $ExpectedFps))
+            }
+        }
+    }
+
     if (($ExpectedWidth -eq 0) -xor ($ExpectedHeight -eq 0)) {
         $failures.Add('ExpectedWidth and ExpectedHeight must be supplied together.')
     } elseif ($ExpectedWidth -gt 0) {
@@ -131,6 +209,11 @@ try {
     Write-Host "Successful uploads: $($uploads.Count)"
     Write-Host ("Upload time range: {0:F2} to {1:F2} microseconds" -f $minimumTime, $maximumTime)
     Write-Host "Successful recreations: $($recreateSuccesses.Count)"
+    if ($cadenceValues.Count -gt 0) {
+        $cadenceAverage = ($cadenceValues | Measure-Object -Average).Average
+        Write-Host ("Visible cadence: {0:F2} FPS across {1} samples" -f
+            $cadenceAverage, $cadenceValues.Count)
+    }
     if ($RequireCleanExit) {
         Write-Host 'Renderer session summary: present'
         Write-Host 'Clean shutdown record: present'

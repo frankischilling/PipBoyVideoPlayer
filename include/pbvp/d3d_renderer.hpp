@@ -1,5 +1,7 @@
 #pragma once
 
+#include "pbvp/frame_cadence.hpp"
+
 #include <cstdint>
 
 struct IDirect3DDevice9;
@@ -23,6 +25,7 @@ private:
     IDirect3DDevice9* FindDevice() noexcept;
     bool ValidateDevice(IDirect3DDevice9* device) noexcept;
     bool UploadCheckerboard(IDirect3DDevice9* device, std::uintptr_t surface) noexcept;
+    void RecordVisibleCadence() noexcept;
     void RecordUploadDuration(double microseconds) noexcept;
     void LogDeviceProfile(IDirect3DDevice9* device) noexcept;
     void LogSessionSummary() noexcept;
@@ -39,6 +42,12 @@ private:
     double upload_total_microseconds_{};
     double upload_minimum_microseconds_{};
     double upload_maximum_microseconds_{};
+    FrameCadenceTracker cadence_tracker_{};
+    std::int64_t cadence_frequency_{};
+    std::uint32_t cadence_sample_count_{};
+    double cadence_total_fps_{};
+    double cadence_minimum_fps_{};
+    double cadence_maximum_fps_{};
     std::uint32_t error_count_{};
     std::uint32_t device_validation_count_{};
     std::uint32_t reset_count_{};

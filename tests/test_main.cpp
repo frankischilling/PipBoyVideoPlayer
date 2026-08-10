@@ -3,11 +3,13 @@
 #include <cstdio>
 
 void RunHookProbeTests();
+void RunFrameCadenceTests();
 void RunRecreateGateTests();
 void RunRecreateResultTests();
 void RunRectMathTests();
 
 int main() {
+    RunFrameCadenceTests();
     RunHookProbeTests();
     RunRecreateGateTests();
     RunRecreateResultTests();

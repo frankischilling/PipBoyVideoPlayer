@@ -18,6 +18,7 @@ constexpr std::uintptr_t kRendererSingletonPointer = 0x011C73B4u;
 constexpr std::size_t kRendererDeviceOffset = 0x288u;
 constexpr UINT kTextureWidth = 256u;
 constexpr UINT kTextureHeight = 256u;
+constexpr std::uint32_t kMaximumCadenceSamples = 8u;
 
 IDirect3DDevice9* DeviceFromRenderer(void* renderer) noexcept {
     if (renderer == nullptr) {
@@ -65,9 +66,11 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
         frame_callback_logged_ = true;
     }
     if (device_lost_) {
+        cadence_tracker_.Reset();
         return;
     }
     if (!ui_rect.visible) {
+        cadence_tracker_.Reset();
         last_surface_ = 0u;
         last_surface_status_ = 0u;
         return;
@@ -87,6 +90,7 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
         PBVP_LOG_INFO("Game and Direct3D callbacks share thread %u", current_thread);
         thread_identity_logged_ = true;
     }
+    RecordVisibleCadence();
 
     const UiSurfaceSnapshot surface =
         UiBridge::Instance().ResolveSurfaceOnSharedThread(ui_rect.game_thread_id);
@@ -134,6 +138,47 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
     last_surface_ = surface.d3d_texture;
     PBVP_LOG_INFO("Generated checkerboard uploaded to PBVP_VideoSurface");
     diagnostics::ScheduleEngineRecreateTest();
+}
+
+void D3dRenderer::RecordVisibleCadence() noexcept {
+    if (cadence_sample_count_ >= kMaximumCadenceSamples) {
+        return;
+    }
+    if (cadence_frequency_ <= 0) {
+        LARGE_INTEGER frequency{};
+        if (!QueryPerformanceFrequency(&frequency) || frequency.QuadPart <= 0) {
+            return;
+        }
+        cadence_frequency_ = frequency.QuadPart;
+    }
+
+    LARGE_INTEGER counter{};
+    if (!QueryPerformanceCounter(&counter)) {
+        cadence_tracker_.Reset();
+        return;
+    }
+    const FrameCadenceSample sample =
+        cadence_tracker_.Observe(counter.QuadPart, cadence_frequency_);
+    if (!sample.ready || sample.frames_per_second < 0.0) {
+        return;
+    }
+
+    if (cadence_sample_count_ == 0u) {
+        cadence_minimum_fps_ = sample.frames_per_second;
+        cadence_maximum_fps_ = sample.frames_per_second;
+    } else {
+        if (sample.frames_per_second < cadence_minimum_fps_) {
+            cadence_minimum_fps_ = sample.frames_per_second;
+        }
+        if (sample.frames_per_second > cadence_maximum_fps_) {
+            cadence_maximum_fps_ = sample.frames_per_second;
+        }
+    }
+    cadence_total_fps_ += sample.frames_per_second;
+    ++cadence_sample_count_;
+    PBVP_LOG_INFO(
+        "Visible frame cadence: frames=%u elapsed-ms=%.2f fps=%.2f",
+        sample.frames, sample.elapsed_seconds * 1000.0, sample.frames_per_second);
 }
 
 void D3dRenderer::BeforeDeviceRecreate(void* renderer) noexcept {
@@ -370,9 +415,18 @@ void D3dRenderer::LogSessionSummary() noexcept {
         static_cast<unsigned long long>(upload_failure_count_), upload_minimum_microseconds_,
         average, upload_maximum_microseconds_, recreate_success_count_, reset_count_,
         recreate_failure_count_);
+    const double cadence_average = cadence_sample_count_ > 0u
+                                       ? cadence_total_fps_ /
+                                             static_cast<double>(cadence_sample_count_)
+                                       : 0.0;
+    PBVP_LOG_INFO(
+        "Phase 1 cadence summary: samples=%u fps=%.2f/%.2f/%.2f",
+        cadence_sample_count_, cadence_minimum_fps_, cadence_average,
+        cadence_maximum_fps_);
 }
 
 void D3dRenderer::ReleaseResources() noexcept {
+    cadence_tracker_.Reset();
     device_ = nullptr;
     last_surface_ = 0u;
     last_surface_status_ = 0u;

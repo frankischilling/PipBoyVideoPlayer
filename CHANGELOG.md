@@ -32,3 +32,4 @@
 - Added RadioCaptions-style build, test, package, and MO2 development-install scripts.
 - Added guarded creation and verification of save-free Phase 1 MO2 profiles for base VNV, Extended, and Extended without Pip-Boy UI Tweaks.
 - Added a reversible Phase 1 case configurator for the documented resolutions, display modes, VSync states, and RTSS frame caps.
+- Added bounded visible-frame cadence samples and an independent log check for the expected game FPS.

@@ -205,16 +205,21 @@ Maintainers can check a Phase 1 game log from the repository root:
   -LogPath '...\PipBoyVideoPlayer.log' `
   -ExpectedWidth 1920 `
   -ExpectedHeight 1080 `
+  -ExpectedFps 60 `
   -MinimumUploads 1
 ```
 
-The check requires a plugin load record, the verified recreation hook, a resolved UIO rectangle, a validated Direct3D device, and the requested number of successful texture uploads. It rejects plugin errors, failed or unknown recreation results, and a backbuffer that does not match the expected dimensions. Add `-MinimumRecreates 1` after a controlled display recreation. Add `-RequireCleanExit` when the test includes an orderly process exit. A clean-exit check also requires the renderer session summary.
+The check requires a plugin load record, the verified recreation hook, a resolved UIO rectangle, a validated Direct3D device, and the requested number of successful texture uploads. When `-ExpectedFps` is present, it also requires at least one visible-frame cadence sample. The default allowance is the greater of 2 FPS or 5 percent of the requested cap. `-FpsTolerance` can set a different allowance for a recorded case.
+
+The plugin measures up to eight three-second windows while the Pip-Boy is visible. It resets a partial window when the menu hides, the device is unavailable, or the performance counter regresses. Each log record contains the frame count, elapsed time, and calculated FPS. The checker recalculates that FPS before comparing it with the requested cap.
+
+The checker rejects plugin errors, failed or unknown recreation results, inconsistent cadence records, and a backbuffer that does not match the expected dimensions. Add `-MinimumRecreates 1` after a controlled display recreation. Add `-RequireCleanExit` when the test includes an orderly process exit. A clean-exit check requires the renderer summary and, when samples exist, the cadence summary.
 
 The accepted 1920x1080 VNV Extended run passes with one validated device and one upload at 27.30 microseconds. The log contains no plugin errors. It has zero recreation records, so this result does not satisfy the device-recreation test.
 
-CTest runs the checker against generated logs. The fixtures cover a normal clean exit and a successful recreation. They also confirm rejection of an error record, a wrong backbuffer, a missing required recreation, and a clean exit without the renderer summary. The generated logs contain no game data or personal media.
+CTest runs the checker against generated logs. The fixtures cover a normal clean exit, a 60 FPS cadence, and a successful recreation. They also confirm rejection of an error record, a wrong backbuffer, a missing required recreation, a wrong frame rate, inconsistent cadence arithmetic, and a clean exit without the renderer summary. The generated logs contain no game data or personal media.
 
-The next installed candidate records fixed-size session totals for frame callbacks, visible frames, device validations, texture uploads, and recreation outcomes. It also reports minimum, average, and maximum successful upload time. This summary still needs an in-game orderly-exit check before it can be counted as runtime evidence.
+The next normal installed candidate records fixed-size session totals for frame callbacks, visible frames, device validations, texture uploads, recreation outcomes, and cadence samples. It also reports minimum, average, and maximum successful upload time and visible FPS. These summaries still need an in-game orderly-exit check before they can be counted as runtime evidence.
 
 ## Required profiles
 
