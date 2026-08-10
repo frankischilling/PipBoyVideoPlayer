@@ -8,6 +8,7 @@ option(PBVP_BUILD_PLUGIN "Build the Win32 xNVSE plugin" ON)
 option(PBVP_BUILD_TESTS "Build automated tests" ON)
 option(PBVP_ENABLE_MEDIA_SMOKE_TEST "Arm the private live MO2 media decoder diagnostic" OFF)
 option(PBVP_ENABLE_AUDIO_SMOKE_TEST "Arm the private live MO2 decoded-audio diagnostic" OFF)
+option(PBVP_ENABLE_PLAYBACK_SMOKE_TEST "Arm the private live integrated playback diagnostic" OFF)
 set(PBVP_XNVSE_ROOT "${CMAKE_SOURCE_DIR}/external/NVSE-6.4.5" CACHE PATH "xNVSE 6.4.5 release source root")
 set(PBVP_FFMPEG_ROOT "${CMAKE_SOURCE_DIR}/external/ffmpeg-8.1.2-i686" CACHE PATH "Verified FFmpeg 8.1.2 x86 install root")
 
@@ -21,6 +22,7 @@ add_library(pbvp_core STATIC
     src/core/playback_state.cpp
     src/core/rect_math.cpp
     src/core/texture_contract.cpp
+    src/core/video_scaler.cpp
     src/core/video_scheduler.cpp)
 target_include_directories(pbvp_core PUBLIC include)
 target_compile_features(pbvp_core PUBLIC cxx_std_20)
@@ -99,6 +101,9 @@ if(PBVP_BUILD_PLUGIN)
     if(PBVP_ENABLE_AUDIO_SMOKE_TEST)
         target_sources(PipBoyVideoPlayer PRIVATE src/diagnostics/audio_smoke_test.cpp)
         target_compile_definitions(PipBoyVideoPlayer PRIVATE PBVP_ENABLE_AUDIO_SMOKE_TEST=1)
+    endif()
+    if(PBVP_ENABLE_PLAYBACK_SMOKE_TEST)
+        target_compile_definitions(PipBoyVideoPlayer PRIVATE PBVP_ENABLE_PLAYBACK_SMOKE_TEST=1)
     endif()
     target_compile_options(PipBoyVideoPlayer PRIVATE
         /W4 /permissive- /utf-8 /Zc:__cplusplus /guard:cf
@@ -297,6 +302,7 @@ if(PBVP_BUILD_TESTS)
         tests/playback_state_tests.cpp
         tests/rect_math_tests.cpp
         tests/texture_contract_tests.cpp
+        tests/video_scaler_tests.cpp
         tests/video_scheduler_tests.cpp
         tests/test_main.cpp)
     target_link_libraries(pbvp_tests PRIVATE pbvp_core)

@@ -32,6 +32,7 @@ enum class PlaybackTerminalReason : std::uint32_t {
     completed,
     stopped,
     presentation_hidden,
+    lifecycle_transition,
     failed,
     shutdown,
 };
@@ -90,6 +91,7 @@ public:
     [[nodiscard]] bool Pause() noexcept;
     [[nodiscard]] bool Resume() noexcept;
     [[nodiscard]] bool Seek(std::int64_t target_us) noexcept;
+    void NotifyRenderFailure() noexcept;
     void Stop(PlaybackTerminalReason reason = PlaybackTerminalReason::stopped) noexcept;
     void Shutdown() noexcept;
     [[nodiscard]] bool AcknowledgeError() noexcept;

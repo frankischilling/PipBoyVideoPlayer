@@ -3,6 +3,7 @@
 #include "pbvp/d3d_renderer.hpp"
 #include "pbvp/ffmpeg_runtime.hpp"
 #include "pbvp/log.hpp"
+#include "pbvp/playback_controller.hpp"
 #if defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
 #include "pbvp/audio_smoke_test.hpp"
 #endif
@@ -19,7 +20,9 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <string>
+#include <utility>
 
 namespace {
 
@@ -32,8 +35,17 @@ NVSEMessagingInterface* g_messaging = nullptr;
 std::atomic<bool> g_shutdown{false};
 std::atomic<bool> g_presentation_ready{false};
 pbvp::FfmpegRuntime g_ffmpeg_runtime;
+std::unique_ptr<pbvp::PlaybackController> g_playback_controller;
+pbvp::PlaybackState g_last_playback_state{pbvp::PlaybackState::idle};
 #if defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
 std::wstring g_audio_smoke_root;
+#endif
+#if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST)
+constexpr wchar_t kPlaybackSmokeFile[] = L"PBVP-Phase4-Playback.mp4";
+std::wstring g_playback_smoke_root;
+ULONGLONG g_playback_smoke_deadline{};
+bool g_playback_smoke_attempted{};
+bool g_playback_smoke_reported{};
 #endif
 
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
@@ -98,7 +110,8 @@ std::wstring PrivateFfmpegDirectory(const char* runtime_directory) noexcept {
     }
 }
 
-#if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST) || defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
+#if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST) || defined(PBVP_ENABLE_AUDIO_SMOKE_TEST) || \
+    defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST)
 std::wstring PrivateMediaDirectory(const char* runtime_directory) noexcept {
     try {
         std::wstring path = WidenRuntimeDirectory(runtime_directory);
@@ -115,6 +128,107 @@ std::wstring PrivateMediaDirectory(const char* runtime_directory) noexcept {
     }
 }
 #endif
+
+bool PlaybackActive(const pbvp::PlaybackState state) noexcept {
+    return state == pbvp::PlaybackState::opening ||
+           state == pbvp::PlaybackState::buffering ||
+           state == pbvp::PlaybackState::playing ||
+           state == pbvp::PlaybackState::paused;
+}
+
+void StopPlayback(const pbvp::PlaybackTerminalReason reason) noexcept {
+    if (g_playback_controller == nullptr) {
+        return;
+    }
+    const pbvp::PlaybackState state = g_playback_controller->Snapshot().playback.state;
+    if (state != pbvp::PlaybackState::idle && state != pbvp::PlaybackState::unavailable) {
+        g_playback_controller->Stop(reason);
+    }
+    pbvp::D3dRenderer::Instance().ClearVideoFrame();
+}
+
+void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
+    if (g_playback_controller == nullptr) {
+        return;
+    }
+
+#if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST)
+    if (!g_playback_smoke_attempted && ui_snapshot.visible) {
+        g_playback_smoke_attempted = true;
+        PBVP_LOG_INFO(
+            "PBVP_PLAYBACK_SMOKE_TEST_ARMED: opening the generated Phase 4 fixture at volume 0.10");
+        if (g_playback_smoke_root.empty() ||
+            !g_playback_controller->Open(g_playback_smoke_root, kPlaybackSmokeFile)) {
+            PBVP_LOG_ERROR("Integrated playback smoke could not open its private fixture");
+            g_playback_smoke_reported = true;
+        } else {
+            g_playback_smoke_deadline = GetTickCount64() + 20'000u;
+        }
+    }
+#endif
+
+    pbvp::PlaybackControllerSnapshot before = g_playback_controller->Snapshot();
+    if (PlaybackActive(before.playback.state)) {
+        if (!g_playback_controller->Update(ui_snapshot.visible)) {
+            const pbvp::PlaybackControllerSnapshot failed = g_playback_controller->Snapshot();
+            PBVP_LOG_ERROR(
+                "Playback update failed: state=%s error=%s decoder=%s audio=%s",
+                pbvp::PlaybackStateName(failed.playback.state),
+                pbvp::PlaybackErrorName(failed.playback.error),
+                pbvp::MediaDecodeStatusName(failed.decoder.failure.status),
+                pbvp::XAudioStreamStatusName(failed.audio.status));
+        }
+        std::optional<pbvp::DecodedVideoFrame> frame =
+            g_playback_controller->TakeVideoFrame();
+        if (frame.has_value() &&
+            !pbvp::D3dRenderer::Instance().SubmitVideoFrame(std::move(*frame))) {
+            g_playback_controller->NotifyRenderFailure();
+            PBVP_LOG_ERROR("Playback stopped because the render mailbox rejected a decoded frame");
+        }
+    }
+
+    const pbvp::PlaybackControllerSnapshot after = g_playback_controller->Snapshot();
+    if (after.playback.state != g_last_playback_state) {
+        PBVP_LOG_INFO(
+            "Playback state changed: %s -> %s generation=%llu",
+            pbvp::PlaybackStateName(g_last_playback_state),
+            pbvp::PlaybackStateName(after.playback.state),
+            static_cast<unsigned long long>(after.generation));
+        g_last_playback_state = after.playback.state;
+    }
+    if (!PlaybackActive(after.playback.state) && PlaybackActive(before.playback.state)) {
+        pbvp::D3dRenderer::Instance().ClearVideoFrame();
+    }
+
+#if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST)
+    if (!g_playback_smoke_reported && g_playback_smoke_attempted &&
+        g_playback_smoke_deadline != 0u && GetTickCount64() >= g_playback_smoke_deadline &&
+        PlaybackActive(after.playback.state)) {
+        g_playback_controller->Stop(pbvp::PlaybackTerminalReason::failed);
+        pbvp::D3dRenderer::Instance().ClearVideoFrame();
+        PBVP_LOG_ERROR("Integrated playback smoke timed out before clean completion");
+        g_playback_smoke_reported = true;
+    } else if (!g_playback_smoke_reported &&
+               after.terminal_reason == pbvp::PlaybackTerminalReason::completed) {
+        const pbvp::D3dRendererSnapshot render = pbvp::D3dRenderer::Instance().Snapshot();
+        PBVP_LOG_INFO(
+            "Integrated playback smoke passed: decoded=%llu presented=%llu dropped=%llu audio_samples=%llu clock_us=%lld underruns=%llu seeks=%llu video_submitted=%llu video_uploaded=%llu mailbox_replaced=%llu upload_us=%.2f/%.2f/%.2f generation=%llu",
+            static_cast<unsigned long long>(after.metrics.decoded_video_frames),
+            static_cast<unsigned long long>(after.metrics.presented_video_frames),
+            static_cast<unsigned long long>(after.metrics.dropped_video_frames),
+            static_cast<unsigned long long>(after.metrics.submitted_audio_samples),
+            static_cast<long long>(after.metrics.last_media_time_us),
+            static_cast<unsigned long long>(after.audio.underruns),
+            static_cast<unsigned long long>(after.metrics.seek_count),
+            static_cast<unsigned long long>(render.submitted_video_frames),
+            static_cast<unsigned long long>(render.uploaded_video_frames),
+            static_cast<unsigned long long>(render.replaced_mailbox_frames),
+            render.upload_minimum_us, render.upload_average_us, render.upload_maximum_us,
+            static_cast<unsigned long long>(after.generation));
+        g_playback_smoke_reported = true;
+    }
+#endif
+}
 
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
 void StopMediaSmoke() noexcept {
@@ -374,6 +488,7 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
         case NVSEMessagingInterface::kMessage_MainGameLoop:
             if (!g_shutdown.load(std::memory_order_acquire)) {
                 pbvp::UiBridge::Instance().UpdateOnGameThread();
+                UpdatePlayback(pbvp::UiBridge::Instance().ReadForRenderThread());
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
                 UpdateMediaSmoke();
 #endif
@@ -397,6 +512,7 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
         case NVSEMessagingInterface::kMessage_PreLoadGame:
         case NVSEMessagingInterface::kMessage_ExitToMainMenu:
         case NVSEMessagingInterface::kMessage_NewGame:
+            StopPlayback(pbvp::PlaybackTerminalReason::lifecycle_transition);
             pbvp::UiBridge::Instance().Clear();
             PBVP_LOG_INFO("Game transition cleared the Pip-Boy presentation snapshot");
             break;
@@ -404,6 +520,11 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
         case NVSEMessagingInterface::kMessage_ExitGame_Console:
             g_shutdown.store(true, std::memory_order_release);
             g_presentation_ready.store(false, std::memory_order_release);
+            if (g_playback_controller != nullptr) {
+                g_playback_controller->Shutdown();
+                g_playback_controller.reset();
+                PBVP_LOG_INFO("Playback audio stopped and decoder worker joined");
+            }
             pbvp::UiBridge::Instance().Clear();
             pbvp::D3dRenderer::Instance().RequestShutdown();
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
@@ -467,6 +588,9 @@ extern "C" bool NVSEPlugin_Load(NVSEInterface* nvse) {
 #if defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
     g_audio_smoke_root = PrivateMediaDirectory(nvse->GetRuntimeDirectory());
 #endif
+#if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST)
+    g_playback_smoke_root = PrivateMediaDirectory(nvse->GetRuntimeDirectory());
+#endif
     if (ffmpeg_directory.empty()) {
         ffmpeg_failure.status = pbvp::FfmpegLoadStatus::path_not_absolute;
     }
@@ -485,11 +609,31 @@ extern "C" bool NVSEPlugin_Load(NVSEInterface* nvse) {
         "Private FFmpeg runtime accepted: avcodec=0x%06X avformat=0x%06X avutil=0x%06X swresample=0x%06X swscale=0x%06X",
         ffmpeg_versions.avcodec, ffmpeg_versions.avformat, ffmpeg_versions.avutil,
         ffmpeg_versions.swresample, ffmpeg_versions.swscale);
+    try {
+        pbvp::PlaybackControllerConfig playback_config{};
+#if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST)
+        playback_config.volume = 0.10f;
+#endif
+        g_playback_controller = std::make_unique<pbvp::PlaybackController>(
+            g_ffmpeg_runtime, playback_config);
+    } catch (...) {
+        PBVP_LOG_ERROR("Playback controller allocation failed");
+        g_ffmpeg_runtime.Unload();
+        return false;
+    }
+    if (g_playback_controller->Snapshot().playback.state ==
+        pbvp::PlaybackState::unavailable) {
+        PBVP_LOG_ERROR("Playback controller rejected its bounded configuration");
+        g_playback_controller.reset();
+        g_ffmpeg_runtime.Unload();
+        return false;
+    }
     g_messaging = static_cast<NVSEMessagingInterface*>(nvse->QueryInterface(kInterface_Messaging));
     if (g_messaging == nullptr || g_messaging->version < NVSEMessagingInterface::kVersion ||
         g_messaging->RegisterListener == nullptr ||
         !g_messaging->RegisterListener(g_plugin_handle, "NVSE", &HandleMessage)) {
         PBVP_LOG_ERROR("Required xNVSE messaging interface is unavailable");
+        g_playback_controller.reset();
         g_ffmpeg_runtime.Unload();
         return false;
     }

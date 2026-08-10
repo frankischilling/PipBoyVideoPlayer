@@ -74,6 +74,9 @@ if ($binaryText.Contains('PBVP_MEDIA_SMOKE_TEST_ARMED')) {
 if ($binaryText.Contains('PBVP_AUDIO_SMOKE_TEST_ARMED')) {
     throw 'Packaging rejected a DLL with the private audio smoke test armed.'
 }
+if ($binaryText.Contains('PBVP_PLAYBACK_SMOKE_TEST_ARMED')) {
+    throw 'Packaging rejected a DLL with the private playback smoke test armed.'
+}
 if ($Configuration -ne 'Release') {
     throw 'Packaging requires the Release configuration and its stripped public PDB.'
 }

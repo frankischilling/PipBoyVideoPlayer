@@ -11,6 +11,7 @@ void RunPlaybackStateTests();
 void RunBoundedQueueTests();
 void RunRectMathTests();
 void RunTextureContractTests();
+void RunVideoScalerTests();
 void RunVideoSchedulerTests();
 
 int main() {
@@ -23,6 +24,7 @@ int main() {
     RunFrameCadenceTests();
     RunRectMathTests();
     RunTextureContractTests();
+    RunVideoScalerTests();
     RunVideoSchedulerTests();
     if (pbvp::test::failures != 0) {
         std::fprintf(stderr, "%d test check(s) failed\n", pbvp::test::failures);

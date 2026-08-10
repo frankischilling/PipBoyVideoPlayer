@@ -273,6 +273,13 @@ bool PlaybackController::Seek(std::int64_t target_us) noexcept {
     return true;
 }
 
+void PlaybackController::NotifyRenderFailure() noexcept {
+    if (!IsOwnerThread() || !IsActiveState(state_.Snapshot().state)) {
+        return;
+    }
+    Fail(PlaybackError::render_failed);
+}
+
 void PlaybackController::Stop(const PlaybackTerminalReason reason) noexcept {
     if (owner_thread_id_ != 0u && !IsOwnerThread()) {
         return;
