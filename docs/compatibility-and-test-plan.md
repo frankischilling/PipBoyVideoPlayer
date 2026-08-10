@@ -161,7 +161,7 @@ The host and Win32 suites convert the accepted logical rectangle through represe
 
 Automated recreation result contract
 
-The host and Win32 suites verify the audited `NiDX9Renderer::Recreate` return values. Zero keeps texture uploads disabled. One permits device reacquisition after the engine recovers the original presentation parameters. Two permits reacquisition after the requested parameters are applied. Every other value is unknown and keeps uploads disabled. An in-game display recreation is still required to exercise the detour and replacement device.
+The earlier host and Win32 suites verified the audited `NiDX9Renderer::Recreate` return values while the observation detour was present. The managed-texture decision removes that detour because PBVP owns no reset-sensitive resource. The replacement tests must require `D3DPOOL_MANAGED`, reject every other pool, and prove that a changed device or surface receives fresh validation and upload. An in-game natural display transition is still required.
 
 ### Retired controlled engine recreation candidate
 

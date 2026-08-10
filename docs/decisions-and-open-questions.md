@@ -304,6 +304,20 @@ Reason: PBVP owns no persistent Direct3D resource in the current renderer path. 
 
 Consequence: Phase 1 still needs a safe lifecycle result, but forced recreation is no longer an acceptance route. The next architecture change must either observe a naturally initiated engine recreation or remove the recreation detour after proving that PBVP retains no default-pool resource across callbacks. No DXVK or untested display-mode claim follows from the managed-texture result.
 
+### Managed texture without a reset detour
+
+Date: August 10, 2026
+
+Decision: require the engine-owned video texture to report `D3DPOOL_MANAGED`, release every temporary texture and device reference before the frame callback returns, and remove the `NiDX9Renderer::Recreate` detour. If a UI stack supplies a default-pool or unknown-pool texture, disable video updates for that session.
+
+Evidence: the accepted VNV Extended runs report pool value `1`, which is `D3DPOOL_MANAGED`. The renderer acquires the texture only for validation and upload, releases the device reference returned by `GetDevice`, and releases the texture reference before returning. It stores only non-owning identities so a later frame can detect and validate a replacement device or surface. Five Alt+Tab cycles and ten Pip-Boy reopen cycles kept the checkerboard visible, and the 19-upload run reacquired changing engine surface identities without a recreation callback.
+
+Reason: Direct3D 9 owns managed-resource eviction and restoration across `Reset`. PBVP has no default-pool allocation, state block, render target, vertex buffer, or retained COM reference to release before that operation. Detouring a game-wide reset function adds a conflict and failure boundary without protecting a PBVP-owned reset-sensitive object.
+
+Rejected alternatives: do not keep the detour only for observation, patch the Direct3D device vtable, call the renderer directly, or accept a default-pool texture without an audited pre-reset owner. A future upload path that introduces a default-pool resource must reopen this decision before the resource is added.
+
+Consequence: Phase 1 uses the xNVSE frame-present notification as its only runtime callback boundary and performs no executable or device-vtable patch. The next implementation must enforce the managed-pool contract and treat a changed device or surface as a fresh validation. Natural display-transition testing remains required, but no synthetic reset is permitted.
+
 ### Reversible compatibility cases
 
 Date: August 9, 2026
