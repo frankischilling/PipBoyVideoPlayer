@@ -195,6 +195,7 @@ bool FfmpegRuntime::Load(
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_frame_alloc", api_.av_frame_alloc, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_frame_free", api_.av_frame_free, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_frame_unref", api_.av_frame_unref, failure) ||
+            !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_log_set_level", api_.av_log_set_level, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_rescale_q", api_.av_rescale_q, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_rescale_rnd", api_.av_rescale_rnd, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_display_rotation_get", api_.av_display_rotation_get, failure) ||
@@ -288,6 +289,7 @@ bool FfmpegRuntime::Load(
             return false;
         }
 
+        api_.av_log_set_level(AV_LOG_QUIET);
         loaded_ = true;
         return true;
     } catch (const std::bad_alloc&) {

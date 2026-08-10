@@ -244,6 +244,15 @@ DecoderSnapshot MediaDecoder::Snapshot() const noexcept {
     return result;
 }
 
+DecoderBufferUsage MediaDecoder::BufferUsage() const noexcept {
+    DecoderBufferUsage result{};
+    result.video_items = video_queue_.Size();
+    result.video_bytes = video_queue_.PayloadBytes();
+    result.audio_items = audio_queue_.Size();
+    result.audio_bytes = audio_queue_.PayloadBytes();
+    return result;
+}
+
 QueuePopResult<DecodedVideoFrame> MediaDecoder::TryPopVideo() noexcept {
     return video_queue_.TryPop();
 }
@@ -337,6 +346,25 @@ bool MediaDecoder::OpenMedia() {
             Fail(MediaDecodeStatus::stream_info_failed, result);
         }
         return false;
+    }
+
+    for (unsigned int index = 0u; index < format_->nb_streams; ++index) {
+        const AVStream* stream = format_->streams[index];
+        if (stream == nullptr || stream->codecpar == nullptr) {
+            continue;
+        }
+        const AVPacketSideData* initialization = api.av_packet_side_data_get(
+            stream->codecpar->coded_side_data,
+            stream->codecpar->nb_coded_side_data,
+            AV_PKT_DATA_ENCRYPTION_INIT_INFO);
+        const AVPacketSideData* samples = api.av_packet_side_data_get(
+            stream->codecpar->coded_side_data,
+            stream->codecpar->nb_coded_side_data,
+            AV_PKT_DATA_ENCRYPTION_INFO);
+        if (initialization != nullptr || samples != nullptr) {
+            Fail(MediaDecodeStatus::encrypted_media);
+            return false;
+        }
     }
 
     video_stream_index_ = api.av_find_best_stream(

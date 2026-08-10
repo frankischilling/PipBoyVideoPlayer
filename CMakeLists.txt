@@ -6,6 +6,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 option(PBVP_BUILD_PLUGIN "Build the Win32 xNVSE plugin" ON)
 option(PBVP_BUILD_TESTS "Build automated tests" ON)
+option(PBVP_ENABLE_MEDIA_SMOKE_TEST "Arm the private live MO2 media decoder diagnostic" OFF)
 set(PBVP_XNVSE_ROOT "${CMAKE_SOURCE_DIR}/external/NVSE-6.4.5" CACHE PATH "xNVSE 6.4.5 release source root")
 set(PBVP_FFMPEG_ROOT "${CMAKE_SOURCE_DIR}/external/ffmpeg-8.1.2-i686" CACHE PATH "Verified FFmpeg 8.1.2 x86 install root")
 
@@ -59,7 +60,7 @@ if(PBVP_BUILD_PLUGIN)
         src/diagnostics/logger.cpp
         src/plugin/version.rc
         src/plugin/exports.def)
-    target_link_libraries(PipBoyVideoPlayer PRIVATE pbvp_core pbvp_media d3d9)
+    target_link_libraries(PipBoyVideoPlayer PRIVATE pbvp_core pbvp_media d3d9 psapi)
     target_include_directories(PipBoyVideoPlayer PRIVATE
         include
         "${PBVP_XNVSE_ROOT}"
@@ -69,6 +70,9 @@ if(PBVP_BUILD_PLUGIN)
         WIN32 _WINDOWS RUNTIME RUNTIME_VERSION=0x040020D0
         WIN32_LEAN_AND_MEAN _CRT_SECURE_NO_WARNINGS
         PBVP_VERSION_STRING="${PROJECT_VERSION}")
+    if(PBVP_ENABLE_MEDIA_SMOKE_TEST)
+        target_compile_definitions(PipBoyVideoPlayer PRIVATE PBVP_ENABLE_MEDIA_SMOKE_TEST=1)
+    endif()
     target_compile_options(PipBoyVideoPlayer PRIVATE
         /W4 /permissive- /utf-8 /Zc:__cplusplus /guard:cf
         "/FI${CMAKE_SOURCE_DIR}/include/pbvp/xnvse_prefix.hpp")
@@ -106,7 +110,7 @@ if(PBVP_BUILD_PLUGIN)
         add_test(NAME pbvp_win32_avio_test COMMAND pbvp_win32_avio_test "${PBVP_FFMPEG_ROOT}/bin")
 
         add_executable(pbvp_media_decoder_test tests/media_decoder_tests.cpp)
-        target_link_libraries(pbvp_media_decoder_test PRIVATE pbvp_media pbvp_core)
+        target_link_libraries(pbvp_media_decoder_test PRIVATE pbvp_media pbvp_core psapi)
         target_compile_features(pbvp_media_decoder_test PRIVATE cxx_std_20)
         target_compile_options(pbvp_media_decoder_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus /Zm200)
         set_target_properties(pbvp_media_decoder_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -186,6 +190,23 @@ if(PBVP_BUILD_TESTS)
             -ManifestPath ${CMAKE_SOURCE_DIR}/dependencies/ffmpeg-8.1.2.json
             -FetchScript ${CMAKE_SOURCE_DIR}/scripts/fetch-dependencies.ps1
             -BuildScript ${CMAKE_SOURCE_DIR}/scripts/build-ffmpeg.ps1)
+
+    add_test(
+        NAME pbvp_phase2_media_profile_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase2-media-profile.ps1
+            -ProfileScript ${CMAKE_SOURCE_DIR}/scripts/create-phase2-media-profile.ps1
+            -FixturePath ${CMAKE_SOURCE_DIR}/tests/fixtures/h264-aac-1080p.mp4)
+
+    add_test(
+        NAME pbvp_phase2_media_smoke_log_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase2-media-smoke-log.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase2-media-smoke-log.ps1)
 
     add_test(
         NAME pbvp_data_contract_test

@@ -121,6 +121,13 @@ struct DecoderSnapshot {
     std::uint64_t audio_chunks{};
 };
 
+struct DecoderBufferUsage {
+    std::size_t video_items{};
+    std::size_t video_bytes{};
+    std::size_t audio_items{};
+    std::size_t audio_bytes{};
+};
+
 class MediaDecoder final {
 public:
     explicit MediaDecoder(
@@ -139,6 +146,7 @@ public:
     void Stop() noexcept;
 
     DecoderSnapshot Snapshot() const noexcept;
+    DecoderBufferUsage BufferUsage() const noexcept;
     QueuePopResult<DecodedVideoFrame> TryPopVideo() noexcept;
     QueuePopResult<DecodedAudioChunk> TryPopAudio() noexcept;
 

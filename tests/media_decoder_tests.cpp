@@ -3,11 +3,13 @@
 #include "test_support.hpp"
 
 #include <Windows.h>
+#include <Psapi.h>
 
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <limits>
 #include <string>
 #include <vector>
@@ -24,6 +26,7 @@ struct CollectedOutput {
     std::vector<std::int64_t> audio_pts{};
     std::vector<std::uint64_t> audio_generations{};
     std::uint64_t audio_samples{};
+    std::uint64_t absolute_sample_sum{};
     std::uint32_t first_video_width{};
     std::uint32_t first_video_height{};
 };
@@ -59,6 +62,10 @@ void DrainAvailable(pbvp::MediaDecoder& decoder, CollectedOutput& output) {
         output.audio_pts.push_back(audio.value->pts_us);
         output.audio_generations.push_back(audio.value->generation);
         output.audio_samples += audio.value->samples_per_channel;
+        for (const std::int16_t sample : audio.value->samples) {
+            output.absolute_sample_sum += static_cast<std::uint64_t>(
+                std::abs(static_cast<int>(sample)));
+        }
     }
 }
 
@@ -98,6 +105,96 @@ bool WaitForDecoding(pbvp::MediaDecoder& decoder) {
         Sleep(1u);
     }
     return false;
+}
+
+bool WaitForVideoFrames(
+    pbvp::MediaDecoder& decoder,
+    const std::uint64_t frame_count) {
+    const auto deadline = std::chrono::steady_clock::now() + 10s;
+    while (std::chrono::steady_clock::now() < deadline) {
+        const pbvp::DecoderSnapshot snapshot = decoder.Snapshot();
+        if (snapshot.video_frames >= frame_count) {
+            return true;
+        }
+        if (snapshot.state == pbvp::DecoderState::failed ||
+            snapshot.state == pbvp::DecoderState::stopped ||
+            snapshot.state == pbvp::DecoderState::end_of_stream) {
+            return false;
+        }
+        Sleep(1u);
+    }
+    return false;
+}
+
+struct ProcessUsage {
+    std::uint64_t working_set_bytes{};
+    std::uint64_t private_bytes{};
+    std::uint64_t address_space_bytes{};
+};
+
+ProcessUsage MeasureProcessUsage() {
+    PROCESS_MEMORY_COUNTERS_EX counters{};
+    counters.cb = static_cast<DWORD>(sizeof(counters));
+    PBVP_CHECK(GetProcessMemoryInfo(
+        GetCurrentProcess(),
+        reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters),
+        static_cast<DWORD>(sizeof(counters))) != FALSE);
+
+    SYSTEM_INFO system_info{};
+    GetSystemInfo(&system_info);
+    const std::uintptr_t maximum_address = reinterpret_cast<std::uintptr_t>(
+        system_info.lpMaximumApplicationAddress);
+    std::uintptr_t address = 0u;
+    std::uint64_t used_address_space = 0u;
+    while (address < maximum_address) {
+        MEMORY_BASIC_INFORMATION region{};
+        if (VirtualQuery(
+                reinterpret_cast<const void*>(address),
+                &region, sizeof(region)) == 0u) {
+            break;
+        }
+        if (region.State != MEM_FREE) {
+            used_address_space += static_cast<std::uint64_t>(region.RegionSize);
+        }
+        const std::uintptr_t base = reinterpret_cast<std::uintptr_t>(
+            region.BaseAddress);
+        if (region.RegionSize > (std::numeric_limits<std::uintptr_t>::max)() - base) {
+            break;
+        }
+        const std::uintptr_t next = base + region.RegionSize;
+        if (next <= address) {
+            break;
+        }
+        address = next;
+    }
+    return {
+        static_cast<std::uint64_t>(counters.WorkingSetSize),
+        static_cast<std::uint64_t>(counters.PrivateUsage),
+        used_address_space,
+    };
+}
+
+std::uint64_t PositiveDelta(
+    const std::uint64_t value,
+    const std::uint64_t baseline) {
+    return value > baseline ? value - baseline : 0u;
+}
+
+std::uint64_t FileTimeValue(const FILETIME& value) {
+    ULARGE_INTEGER combined{};
+    combined.LowPart = value.dwLowDateTime;
+    combined.HighPart = value.dwHighDateTime;
+    return combined.QuadPart;
+}
+
+std::uint64_t ProcessCpuTime100ns() {
+    FILETIME creation{};
+    FILETIME exit{};
+    FILETIME kernel{};
+    FILETIME user{};
+    PBVP_CHECK(GetProcessTimes(
+        GetCurrentProcess(), &creation, &exit, &kernel, &user) != FALSE);
+    return FileTimeValue(kernel) + FileTimeValue(user);
 }
 
 void CheckAllGeneration(
@@ -206,6 +303,108 @@ void TestBaseDecode(
     CheckAllGeneration(output.audio_generations, 1u);
 }
 
+void TestAudioLayouts(
+    const pbvp::FfmpegRuntime& runtime,
+    const std::wstring& fixture_root) {
+    struct AudioCase {
+        const wchar_t* name;
+        std::uint32_t channels;
+    };
+    constexpr AudioCase cases[]{
+        {L"h264-aac-48000-mono.mp4", 1u},
+        {L"h264-aac-48000-51.mp4", 6u},
+    };
+    for (const AudioCase& test : cases) {
+        pbvp::MediaDecoder decoder(runtime);
+        pbvp::MediaDecodeFailure failure{};
+        PBVP_CHECK(decoder.Start(fixture_root, test.name, failure));
+        CollectedOutput output = CollectUntilTerminal(decoder);
+        decoder.Stop();
+        PBVP_CHECK(output.snapshot.state == pbvp::DecoderState::end_of_stream);
+        PBVP_CHECK(output.snapshot.info.source_audio_channels == test.channels);
+        PBVP_CHECK(output.snapshot.info.source_audio_rate == 48000u);
+        PBVP_CHECK(output.snapshot.info.output_audio_channels == 2u);
+        PBVP_CHECK(output.snapshot.info.output_audio_rate == 48000u);
+        PBVP_CHECK(output.audio_samples >= 47000u && output.audio_samples <= 49000u);
+        PBVP_CHECK(output.absolute_sample_sum > 0u);
+    }
+}
+
+void TestFullHdMemory(
+    const pbvp::FfmpegRuntime& runtime,
+    const std::wstring& fixture_root) {
+    constexpr std::uint64_t mebibyte = 1024u * 1024u;
+    const ProcessUsage baseline = MeasureProcessUsage();
+    pbvp::MediaDecoder decoder(runtime);
+    pbvp::MediaDecodeFailure failure{};
+    PBVP_CHECK(decoder.Start(fixture_root, L"h264-aac-1080p.mp4", failure));
+    PBVP_CHECK(WaitForVideoFrames(decoder, 3u));
+    const pbvp::DecoderSnapshot snapshot = decoder.Snapshot();
+    const pbvp::DecoderBufferUsage buffers = decoder.BufferUsage();
+    const ProcessUsage filled = MeasureProcessUsage();
+
+    PBVP_CHECK(snapshot.state == pbvp::DecoderState::decoding);
+    PBVP_CHECK(snapshot.info.source_width == 1920u);
+    PBVP_CHECK(snapshot.info.source_height == 1080u);
+    PBVP_CHECK(buffers.video_items == 3u);
+    PBVP_CHECK(buffers.video_bytes == 3u * 1920u * 1080u * 4u);
+    PBVP_CHECK(buffers.video_bytes <= 32u * mebibyte);
+    PBVP_CHECK(buffers.audio_bytes <= 4u * mebibyte);
+
+    const std::uint64_t working_delta = PositiveDelta(
+        filled.working_set_bytes, baseline.working_set_bytes);
+    const std::uint64_t private_delta = PositiveDelta(
+        filled.private_bytes, baseline.private_bytes);
+    const std::uint64_t address_delta = PositiveDelta(
+        filled.address_space_bytes, baseline.address_space_bytes);
+    std::printf(
+        "1080p buffered usage: working=%llu private=%llu address=%llu video_queue=%zu audio_queue=%zu\n",
+        static_cast<unsigned long long>(working_delta),
+        static_cast<unsigned long long>(private_delta),
+        static_cast<unsigned long long>(address_delta),
+        buffers.video_bytes,
+        buffers.audio_bytes);
+    PBVP_CHECK(private_delta < 128u * mebibyte);
+    PBVP_CHECK(address_delta < 192u * mebibyte);
+
+    const auto stop_start = std::chrono::steady_clock::now();
+    decoder.Stop();
+    PBVP_CHECK(std::chrono::steady_clock::now() - stop_start < 2s);
+    PBVP_CHECK(decoder.Snapshot().state == pbvp::DecoderState::stopped);
+}
+
+void TestFullHdDecodePerformance(
+    const pbvp::FfmpegRuntime& runtime,
+    const std::wstring& fixture_root) {
+    pbvp::MediaDecoder decoder(runtime);
+    pbvp::MediaDecodeFailure failure{};
+    const std::uint64_t cpu_start = ProcessCpuTime100ns();
+    const auto wall_start = std::chrono::steady_clock::now();
+    PBVP_CHECK(decoder.Start(fixture_root, L"h264-aac-1080p.mp4", failure));
+    CollectedOutput output = CollectUntilTerminal(decoder);
+    const auto wall_end = std::chrono::steady_clock::now();
+    const std::uint64_t cpu_end = ProcessCpuTime100ns();
+    decoder.Stop();
+
+    const auto wall_us = std::chrono::duration_cast<std::chrono::microseconds>(
+        wall_end - wall_start).count();
+    const std::uint64_t cpu_us = cpu_end >= cpu_start
+        ? (cpu_end - cpu_start) / 10u
+        : 0u;
+    std::printf(
+        "1080p decode performance: wall_us=%lld process_cpu_us=%llu video=%zu audio_samples=%llu\n",
+        static_cast<long long>(wall_us),
+        static_cast<unsigned long long>(cpu_us),
+        output.video_pts.size(),
+        static_cast<unsigned long long>(output.audio_samples));
+    PBVP_CHECK(output.snapshot.state == pbvp::DecoderState::end_of_stream);
+    PBVP_CHECK(output.snapshot.failure.status == pbvp::MediaDecodeStatus::ok);
+    PBVP_CHECK(output.video_pts.size() == 30u);
+    PBVP_CHECK(output.audio_samples >= 47000u && output.audio_samples <= 49000u);
+    PBVP_CHECK(wall_us > 0 && wall_us < 5'000'000);
+    PBVP_CHECK(cpu_us > 0u && cpu_us < 5'000'000u);
+}
+
 void TestRotation(
     const pbvp::FfmpegRuntime& runtime,
     const std::wstring& fixture_root) {
@@ -304,6 +503,15 @@ void TestFailures(
     PBVP_CHECK(unsupported.failure.status ==
                pbvp::MediaDecodeStatus::unsupported_video_codec);
 
+    pbvp::DecoderSnapshot unsupported_audio = DecodeFailure(
+        runtime, fixture_root, L"h264-unsupported-mp3.mp4");
+    PBVP_CHECK(unsupported_audio.failure.status ==
+               pbvp::MediaDecodeStatus::unsupported_audio_codec);
+
+    pbvp::DecoderSnapshot encrypted = DecodeFailure(
+        runtime, fixture_root, L"encrypted-cenc.mp4");
+    PBVP_CHECK(encrypted.failure.status == pbvp::MediaDecodeStatus::encrypted_media);
+
     pbvp::MediaDecoderConfig limited{};
     limited.payload_limits.maximum_width = 100u;
     pbvp::DecoderSnapshot oversized = DecodeFailure(
@@ -315,6 +523,19 @@ void TestFailures(
         runtime, fixture_root, L"missing.mp4");
     PBVP_CHECK(missing.failure.status == pbvp::MediaDecodeStatus::io_failure);
     PBVP_CHECK(missing.failure.io.status == pbvp::MediaIoStatus::file_missing);
+
+    const std::wstring empty_path = temporary_root + L"\\empty.mp4";
+    HANDLE empty = CreateFileW(
+        empty_path.c_str(), GENERIC_WRITE, 0u, nullptr,
+        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    PBVP_CHECK(empty != INVALID_HANDLE_VALUE);
+    if (empty != INVALID_HANDLE_VALUE) {
+        CloseHandle(empty);
+    }
+    pbvp::DecoderSnapshot empty_result = DecodeFailure(
+        runtime, temporary_root, L"empty.mp4");
+    PBVP_CHECK(empty_result.failure.status == pbvp::MediaDecodeStatus::io_failure);
+    PBVP_CHECK(empty_result.failure.io.status == pbvp::MediaIoStatus::empty_file);
 
     const std::wstring random_path = temporary_root + L"\\random.mp4";
     WriteRandomFixture(random_path);
@@ -335,6 +556,7 @@ void TestFailures(
 
     DeleteFileW(random_path.c_str());
     DeleteFileW(truncated_path.c_str());
+    DeleteFileW(empty_path.c_str());
 }
 
 } // namespace
@@ -353,7 +575,10 @@ int wmain(int argc, wchar_t** argv) {
     }
 
     const std::wstring temporary_root = CreateTemporaryDirectory();
+    TestFullHdMemory(runtime, argv[2]);
+    TestFullHdDecodePerformance(runtime, argv[2]);
     TestBaseDecode(runtime, argv[2]);
+    TestAudioLayouts(runtime, argv[2]);
     TestRotation(runtime, argv[2]);
     TestVariableFrameRate(runtime, argv[2]);
     TestSeeking(runtime, argv[2]);

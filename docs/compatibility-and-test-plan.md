@@ -463,6 +463,16 @@ The guarded same-size candidate met those checks, staged 1920x1080, and entered 
 
 The current development DLL installs no recreation detour and has SHA-256 `0091FF35675409A8612B24A113AC1571C9D5EFE6E55939813E12EF8565C8F547`. The reviewed managed-texture decision establishes that PBVP retains no reset-sensitive resource to release. The hook-free path passed its visual, measured windowed Alt+Tab, log, and clean-shutdown checks. The game exposes no verified safe in-process display toggle in this setup, so the accepted result is the managed-resource ownership contract rather than an observed Reset. This evidence does not permit a DXVK claim.
 
+## Phase 2 media-core evidence
+
+The standalone Win32 Release test filled all three bounded 1920x1080 BGRA queue slots. Process private memory increased by 65,880,064 bytes, committed address space increased by 74,383,360 bytes, and the video queue held exactly 24,883,200 bytes. A separate full decode produced 30 frames and 48,128 audio samples in 165,342 microseconds of wall time and 312,500 microseconds of process CPU time.
+
+The first live MO2 measurement used a baseline taken during `DeferredInit`. It decoded the expected output but reported 167,104,512 additional private bytes while other initialization was still active. That result failed the memory target and does not count as decoder memory evidence.
+
+The corrected run waited five seconds, recorded a zero-byte private-memory change during a one-second no-decode control, and reset the baseline before starting the worker. The same 1080p fixture then added 62,976,000 private bytes, produced all 30 frames and 48,128 samples, and kept its video and audio queue peaks at 16,588,800 and 24,576 bytes. The worker joined before FFmpeg unloaded, and the log contained no absolute media path.
+
+The fixture existed only in the enabled `Pip-Boy Video Player - Media Test` mod. It was absent from the physical game directory, the PBVP development mod, and MO2 overwrite. This proves custom AVIO visibility through the active USVFS session. It does not complete the larger release media matrix, long-duration stability tests, or integrated playback measurements assigned to later phases.
+
 ## UI matrix
 
 Test these layouts independently:

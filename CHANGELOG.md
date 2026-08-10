@@ -7,7 +7,10 @@
 - Added custom Win32 AVIO with Unicode direct-child paths, file and buffer limits, overlapped reads, cancellation, and 64-bit seeks.
 - Added checked media layout arithmetic and count-and-byte bounded queues with seek generations, cancellation wakeups, and portable x86 tests.
 - Added a single-owner FFmpeg worker for MP4 and MOV demuxing, H.264 and AAC decoding, BGRA conversion, right-angle rotation, PCM resampling, forward and backward seeking, and orderly cancellation.
-- Added deterministic synthetic media fixtures and x86 tests for variable frame rate timestamps, rotated video, unsupported codecs, truncated files, source limits, and queue generation isolation.
+- Added redistribution-safe synthetic media fixtures and x86 tests for variable frame rate timestamps, rotated video, mono and multichannel AAC, unsupported codecs, CENC encryption, truncated and empty files, source limits, and queue generation isolation.
+- Measured a full 1080p x86 queue at 65,880,064 additional private bytes and decoded its one-second fixture in 165,342 microseconds of wall time and 312,500 microseconds of process CPU time.
+- Verified live MO2 virtual-file access with a 1080p fixture stored only in an isolated media mod. The stable run produced 30 frames and 48,128 samples, added 62,976,000 private bytes, and joined the worker before unloading FFmpeg.
+- Added a delayed no-decode memory control for the private in-game media diagnostic and made release packaging reject any DLL that retains the diagnostic marker.
 - Added verified FFmpeg and winpthreads license material to the private release package.
 - Added the Win32 xNVSE plugin scaffold and strict FalloutNV 1.4.0.525 runtime check.
 - Added xNVSE lifecycle logging and a guarded texture-upload boundary through `kMessage_OnFramePresent`.

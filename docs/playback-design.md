@@ -93,7 +93,7 @@ HDR transfer functions are unsupported in the first release. The player should w
 
 ## Audio handling
 
-The first required output format is 48 kHz stereo 32-bit float PCM if XAudio2 2.7 support proves reliable. A 16-bit PCM fallback should remain available for systems or APIs that reject the preferred format. Mono input is mapped to both channels; multichannel input is downmixed through FFmpeg's channel-layout API.
+The media core outputs 48 kHz stereo interleaved signed 16-bit PCM. Mono input is mapped to both channels, and multichannel input is downmixed through FFmpeg's channel-layout API. Phase 3 will keep this format unless XAudio2 testing proves that another bounded format is required.
 
 Volume changes apply to the source voice. Muting audio keeps the audio cursor active so video timing does not change. Files with no audio use the QPC clock.
 

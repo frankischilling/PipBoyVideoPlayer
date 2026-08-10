@@ -11,6 +11,7 @@ extern "C" {
 #include <libavutil/channel_layout.h>
 #include <libavutil/display.h>
 #include <libavutil/frame.h>
+#include <libavutil/log.h>
 #include <libavutil/mathematics.h>
 #include <libswresample/swresample.h>
 #include <libswscale/swscale.h>
@@ -62,6 +63,7 @@ struct FfmpegApi {
     decltype(&::av_frame_alloc) av_frame_alloc{};
     decltype(&::av_frame_free) av_frame_free{};
     decltype(&::av_frame_unref) av_frame_unref{};
+    decltype(&::av_log_set_level) av_log_set_level{};
     decltype(&::av_rescale_q) av_rescale_q{};
     decltype(&::av_rescale_rnd) av_rescale_rnd{};
     decltype(&::av_display_rotation_get) av_display_rotation_get{};

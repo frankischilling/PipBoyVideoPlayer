@@ -67,6 +67,10 @@ $pdb = Join-Path $build "$Configuration\PipBoyVideoPlayer.pdb"
 $publicPdb = Join-Path $build "$Configuration\PipBoyVideoPlayer-public.pdb"
 if (-not (Test-Path -LiteralPath $binary)) { throw "Missing build output: $binary" }
 if (-not (Test-Path -LiteralPath $pdb)) { throw "Missing symbols: $pdb" }
+$binaryText = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($binary))
+if ($binaryText.Contains('PBVP_MEDIA_SMOKE_TEST_ARMED')) {
+    throw 'Packaging rejected a DLL with the private media smoke test armed.'
+}
 if ($Configuration -ne 'Release') {
     throw 'Packaging requires the Release configuration and its stripped public PDB.'
 }
