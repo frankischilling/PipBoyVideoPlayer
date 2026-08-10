@@ -138,6 +138,17 @@ if(PBVP_BUILD_PLUGIN)
         set_target_properties(pbvp_xaudio_stream_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
         add_test(NAME pbvp_xaudio_stream_test COMMAND pbvp_xaudio_stream_test)
 
+        add_executable(pbvp_media_audio_pipeline_test tests/media_audio_pipeline_tests.cpp)
+        target_link_libraries(pbvp_media_audio_pipeline_test PRIVATE pbvp_audio pbvp_media)
+        target_compile_features(pbvp_media_audio_pipeline_test PRIVATE cxx_std_20)
+        target_compile_options(pbvp_media_audio_pipeline_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus /Zm200)
+        set_target_properties(pbvp_media_audio_pipeline_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        add_test(
+            NAME pbvp_media_audio_pipeline_test
+            COMMAND pbvp_media_audio_pipeline_test
+                "${PBVP_FFMPEG_ROOT}/bin"
+                "${CMAKE_SOURCE_DIR}/tests/fixtures")
+
         find_program(PBVP_LLVM_PDBUTIL_EXECUTABLE NAMES llvm-pdbutil REQUIRED)
         find_program(PBVP_LLVM_READOBJ_EXECUTABLE NAMES llvm-readobj REQUIRED)
         add_test(

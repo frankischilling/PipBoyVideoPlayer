@@ -21,7 +21,7 @@ The initial dimension cap should be 1920 by 1080. A later release can raise it a
 
 The player waits for a minimum amount of decoded audio and at least one displayable video frame. It then submits the first audio buffers, records the playback origin, and enters `Playing`.
 
-The buffering threshold must be small enough for a responsive Pip-Boy and large enough to avoid immediate XAudio2 starvation. The starting experiment should compare 100, 200, and 300 milliseconds of PCM. The final default comes from measured underruns on the slowest supported test system.
+The buffering threshold must be small enough for a responsive Pip-Boy and large enough to avoid immediate XAudio2 starvation. Native x86 tests compare 100, 200, and 300 milliseconds of PCM. All three completed without an underrun on the current reference system. The implementation keeps 200 milliseconds as its provisional default until the live MO2 run measures decoder and game-thread scheduling together.
 
 Video-only files start against QueryPerformanceCounter after the first frame is ready. Audio-only MP4 files are outside the first-release scope because the feature is a video player.
 
@@ -93,7 +93,7 @@ HDR transfer functions are unsupported in the first release. The player should w
 
 ## Audio handling
 
-The media core outputs 48 kHz stereo interleaved signed 16-bit PCM. Mono input is mapped to both channels, and multichannel input is downmixed through FFmpeg's channel-layout API. Phase 3 will keep this format unless XAudio2 testing proves that another bounded format is required.
+The media core outputs 48 kHz stereo interleaved signed 16-bit PCM. Mono input is mapped to both channels, and multichannel input is downmixed through FFmpeg's channel-layout API. The native Phase 3 pipeline test accepted that format for 44.1 kHz stereo, 48 kHz mono, and 48 kHz 5.1 sources, so no second output format is needed.
 
 Volume changes apply to the source voice. Muting audio keeps the audio cursor active so video timing does not change. Files with no audio use the QPC clock.
 

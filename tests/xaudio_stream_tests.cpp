@@ -96,6 +96,24 @@ void TestInvalidConfiguration() {
     CHECK(!stream.MediaTimeUs().has_value());
     CHECK(std::string_view(pbvp::XAudioStreamStatusName(
         static_cast<pbvp::XAudioStreamStatus>(999u))) == "unknown");
+
+    config.channels = 2u;
+    config.prebuffer_ms = 50u;
+    config.slot_count = 2u;
+    config.slot_bytes = 1u * 1024u;
+    CHECK_STATUS(stream.Initialize(config), pbvp::XAudioStreamStatus::ok);
+    const auto one_slot = SilentPcm(config.sample_rate, config.channels, 5u);
+    CHECK_STATUS(
+        stream.SubmitPcm(one_slot, 0, 1u, false),
+        pbvp::XAudioStreamStatus::ok);
+    CHECK_STATUS(
+        stream.SubmitPcm(one_slot, 5'000, 1u, false),
+        pbvp::XAudioStreamStatus::ok);
+    CHECK_STATUS(
+        stream.SubmitPcm(one_slot, 10'000, 1u, false),
+        pbvp::XAudioStreamStatus::queue_full);
+    CHECK(stream.Snapshot().pool_bytes == 2u * 1024u);
+    CHECK_STATUS(stream.StopAndFlush(), pbvp::XAudioStreamStatus::ok);
 }
 
 void TestPrebufferDepth(const std::uint32_t prebuffer_ms) {
@@ -288,6 +306,25 @@ void TestSilentClock() {
     CHECK(!clock.MediaTimeUs().has_value());
 }
 
+void TestRepeatedLifetime() {
+    for (std::uint32_t cycle = 0u; cycle < 25u; ++cycle) {
+        pbvp::XAudioStream stream;
+        pbvp::XAudioStreamConfig config{};
+        config.prebuffer_ms = 50u;
+        config.slot_count = 4u;
+        config.slot_bytes = 4u * 1024u;
+        if (!CHECK_STATUS(stream.Initialize(config), pbvp::XAudioStreamStatus::ok)) {
+            return;
+        }
+        const auto pcm = SilentPcm(config.sample_rate, config.channels, 50u);
+        CHECK_STATUS(
+            stream.SubmitPcm(pcm, 0, cycle + 1u, true),
+            pbvp::XAudioStreamStatus::ok);
+        CHECK_STATUS(stream.Start(), pbvp::XAudioStreamStatus::ok);
+        CHECK(WaitForEnd(stream, 1'000u));
+    }
+}
+
 } // namespace
 
 int main() {
@@ -298,6 +335,7 @@ int main() {
     TestPauseResumeVolumeAndSeek();
     TestPcmFormats();
     TestSilentClock();
+    TestRepeatedLifetime();
 
     if (failures != 0) {
         std::fprintf(stderr, "%d check(s) failed\n", failures);
