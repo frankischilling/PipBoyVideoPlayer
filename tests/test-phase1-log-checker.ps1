@@ -11,18 +11,23 @@ $tempRoot = [IO.Path]::GetFullPath(
 function Write-Fixture {
     param([Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)][string]$Text)
     $path = Join-Path $tempRoot $Name
-    [IO.File]::WriteAllText($path, $Text.Replace("`n", "`r`n"))
+    $normalized = $Text.Replace("`r`n", "`n").Replace("`r", "`n").Replace("`n", "`r`n")
+    [IO.File]::WriteAllText($path, $normalized)
     return $path
 }
 
 function Invoke-Checker {
     param(
         [Parameter(Mandatory)][string]$Fixture,
-        [string[]]$Arguments = @()
+        [string[]]$Arguments = @(),
+        [switch]$ReportFailure
     )
-    & $shell -NoProfile -ExecutionPolicy Bypass -File $checker -LogPath $Fixture @Arguments 2>&1 |
-        Out-Null
-    return $LASTEXITCODE
+    $output = @(& $shell -NoProfile -ExecutionPolicy Bypass -File $checker -LogPath $Fixture @Arguments 2>&1)
+    $exitCode = $LASTEXITCODE
+    if ($ReportFailure -and $exitCode -ne 0) {
+        $output | ForEach-Object { Write-Host $_ }
+    }
+    return $exitCode
 }
 
 try {
@@ -42,7 +47,7 @@ try {
     $normal = Write-Fixture -Name 'normal.txt' -Text $base
     if ((Invoke-Checker -Fixture $normal -Arguments @(
             '-ExpectedWidth', '1920', '-ExpectedHeight', '1080',
-            '-ExpectedFps', '60', '-RequireCleanExit')) -ne 0) {
+            '-ExpectedFps', '60', '-RequireCleanExit') -ReportFailure) -ne 0) {
         throw 'The valid normal fixture failed.'
     }
 
