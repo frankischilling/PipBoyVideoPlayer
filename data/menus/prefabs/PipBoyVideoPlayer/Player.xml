@@ -1,0 +1,74 @@
+<rect name="PBVP_Root">
+    <x> 0 </x>
+    <y> 0 </y>
+    <width> <copy src="parent()" trait="width" /> </width>
+    <height> <copy src="parent()" trait="height" /> </height>
+    <depth> 10 </depth>
+    <visible> 1 </visible>
+    <target> 0 </target>
+
+    <rect name="PBVP_VideoRect">
+        <x> 12 </x>
+        <y>
+            <copy src="parent" trait="height" />
+            <sub src="me" trait="height" />
+            <sub> 64 </sub>
+        </y>
+        <width> 384 </width>
+        <height> 216 </height>
+        <depth> 10 </depth>
+        <locus> 1 </locus>
+        <visible> <copy src="parent()" trait="visible" /> </visible>
+        <target> 0 </target>
+
+        <image name="PBVP_VideoSurface">
+            <visible> 1 </visible>
+            <alpha> 255 </alpha>
+            <depth> 10 </depth>
+            <x> 0 </x>
+            <y> 0 </y>
+            <width> <copy src="parent()" trait="width" /> </width>
+            <height> <copy src="parent()" trait="height" /> </height>
+            <zoom> &scale; </zoom>
+            <systemcolor> 0 </systemcolor>
+            <red> 255 </red>
+            <green> 255 </green>
+            <blue> 255 </blue>
+            <filename> Interface\PipBoyVideoPlayer\Surface.dds </filename>
+        </image>
+
+        <image name="PBVP_LayerProbeBackground">
+            <visible> 1 </visible>
+            <alpha> 220 </alpha>
+            <depth> 11 </depth>
+            <x> 12 </x>
+            <y>
+                <copy src="parent" trait="height" />
+                <sub src="me" trait="height" />
+                <sub> 12 </sub>
+            </y>
+            <width> 250 </width>
+            <height> 38 </height>
+            <zoom> &scale; </zoom>
+            <systemcolor> 0 </systemcolor>
+            <red> 0 </red>
+            <green> 0 </green>
+            <blue> 0 </blue>
+            <filename> Interface\Shared\Background\solid_black.dds </filename>
+        </image>
+
+        <text name="PBVP_LayerProbe">
+            <visible> 1 </visible>
+            <alpha> 255 </alpha>
+            <depth> 12 </depth>
+            <x> <copy src="sibling(PBVP_LayerProbeBackground)" trait="x" /> <add> 10 </add> </x>
+            <y> <copy src="sibling(PBVP_LayerProbeBackground)" trait="y" /> <add> 3 </add> </y>
+            <zoom> 60 </zoom>
+            <systemcolor> 1 </systemcolor>
+            <brightness> 255 </brightness>
+            <font> 3 </font>
+            <justify> &left; </justify>
+            <string> PBVP UI LAYER </string>
+        </text>
+    </rect>
+</rect>

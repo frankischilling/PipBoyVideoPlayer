@@ -1,0 +1,424 @@
+[CmdletBinding(SupportsShouldProcess)]
+param(
+    [Parameter(Mandatory)][string]$InstanceRoot,
+    [switch]$VerifyOnly,
+    [switch]$CreateMissing,
+    [switch]$InstallSaveGuard
+)
+
+$ErrorActionPreference = 'Stop'
+if ($VerifyOnly -and ($CreateMissing -or $InstallSaveGuard)) {
+    throw 'VerifyOnly cannot be combined with a mutating setup option.'
+}
+$instance = (Resolve-Path -LiteralPath $InstanceRoot).Path
+$profiles = Join-Path $instance 'profiles'
+if (-not (Test-Path -LiteralPath $profiles -PathType Container)) {
+    throw 'The selected MO2 instance has no profiles directory.'
+}
+$mods = Join-Path $instance 'mods'
+if (-not (Test-Path -LiteralPath $mods -PathType Container)) {
+    throw 'The selected MO2 instance has no mods directory.'
+}
+
+function Test-InstanceOrganizerRunning {
+    foreach ($process in Get-Process -Name 'ModOrganizer' -ErrorAction SilentlyContinue) {
+        try {
+            if (-not [string]::IsNullOrWhiteSpace($process.Path) -and
+                [IO.Path]::GetFullPath((Split-Path -Parent $process.Path)).TrimEnd(
+                    [IO.Path]::DirectorySeparatorChar) -ieq $instance.TrimEnd(
+                    [IO.Path]::DirectorySeparatorChar)) {
+                return $true
+            }
+        } catch {
+            continue
+        }
+    }
+    return $false
+}
+
+if (-not $VerifyOnly -and (Test-InstanceOrganizerRunning)) {
+    throw 'Close Mod Organizer before creating or updating isolated test profiles.'
+}
+
+$saveGuardModName = 'Pip-Boy Video Player - Phase 1 Save Guard'
+$saveGuardRelativePath = 'NVSE\Plugins\Tweaks\INIs\PipBoyVideoPlayerPhase1.ini'
+$saveGuardContent = @'
+; PBVP isolated compatibility profiles only.
+[Tweaks]
+bImprovedAutoSave = 0
+
+[Save Manager]
+bSaveOnExitGame = 0
+iAutoSaveTimer = 0
+'@
+
+$specifications = @(
+    [pscustomobject]@{
+        Source = 'Viva New Vegas'
+        Target = 'PBVP Phase 1 Base'
+        DisablePipBoyTweaks = $false
+        DisableCleanVanillaHud = $false
+        SeedPrefsFromExtended = $true
+    },
+    [pscustomobject]@{
+        Source = 'Viva New Vegas Extended'
+        Target = 'PBVP Phase 1 VUI Plus'
+        DisablePipBoyTweaks = $true
+        DisableCleanVanillaHud = $true
+        SeedPrefsFromExtended = $false
+    },
+    [pscustomobject]@{
+        Source = 'Viva New Vegas Extended'
+        Target = 'PBVP Phase 1 Extended'
+        DisablePipBoyTweaks = $false
+        DisableCleanVanillaHud = $false
+        SeedPrefsFromExtended = $false
+    },
+    [pscustomobject]@{
+        Source = 'Viva New Vegas Extended'
+        Target = 'PBVP Phase 1 Extended No Pip-Boy Tweaks'
+        DisablePipBoyTweaks = $true
+        DisableCleanVanillaHud = $false
+        SeedPrefsFromExtended = $false
+    }
+)
+
+function Resolve-ProfileChild {
+    param([Parameter(Mandatory)][string]$Name)
+    $candidate = [IO.Path]::GetFullPath((Join-Path $profiles $Name))
+    if (-not $candidate.StartsWith(
+            $profiles + [IO.Path]::DirectorySeparatorChar,
+            [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Profile path escaped the MO2 profiles directory: $Name"
+    }
+    return $candidate
+}
+
+function Resolve-ModChild {
+    param([Parameter(Mandatory)][string]$Name)
+    $candidate = [IO.Path]::GetFullPath((Join-Path $mods $Name))
+    if (-not $candidate.StartsWith(
+            $mods + [IO.Path]::DirectorySeparatorChar,
+            [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Mod path escaped the MO2 mods directory: $Name"
+    }
+    return $candidate
+}
+
+function Read-ModList {
+    param([Parameter(Mandatory)][string]$Path)
+    $lines = [Collections.Generic.List[string]]::new()
+    foreach ($line in Get-Content -LiteralPath $Path) {
+        $lines.Add($line)
+    }
+    return ,$lines
+}
+
+function Write-ModList {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][Collections.Generic.List[string]]$Lines
+    )
+    [IO.File]::WriteAllLines($Path, $Lines, [Text.UTF8Encoding]::new($false))
+}
+
+function Enable-ModExactlyOnce {
+    param(
+        [Parameter(Mandatory)][Collections.Generic.List[string]]$Lines,
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][int]$InsertAt
+    )
+    $indices = @()
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index] -eq "+$Name" -or $Lines[$index] -eq "-$Name") {
+            $indices += $index
+        }
+    }
+    if ($indices.Count -eq 0) {
+        $Lines.Insert($InsertAt, "+$Name")
+        return $InsertAt
+    }
+    $keep = $indices[0]
+    $Lines[$keep] = "+$Name"
+    for ($match = $indices.Count - 1; $match -ge 1; $match--) {
+        $Lines.RemoveAt($indices[$match])
+    }
+    return $keep
+}
+
+function Add-TestMods {
+    param([Parameter(Mandatory)][string]$Path)
+    $lines = Read-ModList -Path $Path
+    $insertAt = if ($lines.Count -gt 0 -and
+        $lines[0] -eq '# This file was automatically generated by Mod Organizer.') { 1 } else { 0 }
+    if (-not $lines.Contains('# PBVP Phase 1 test profile. Existing VNV profiles remain unchanged.')) {
+        $lines.Insert($insertAt, '# PBVP Phase 1 test profile. Existing VNV profiles remain unchanged.')
+        $insertAt++
+    }
+    $guardIndex = Enable-ModExactlyOnce `
+        -Lines $lines -Name $saveGuardModName -InsertAt $insertAt
+    [void](Enable-ModExactlyOnce `
+        -Lines $lines -Name 'Pip-Boy Video Player - Dev' -InsertAt ($guardIndex + 1))
+    Write-ModList -Path $Path -Lines $lines
+}
+
+function Test-MultiIniSupport {
+    param([Parameter(Mandatory)][string]$ModListPath)
+    $providers = @(Get-Content -LiteralPath $ModListPath | Where-Object {
+        $_ -eq '+Stewie_Tweaks-VNV_Extended_INI' -or
+        $_ -eq '+Stewie_Tweaks-VNV_INI'
+    })
+    if ($providers.Count -ne 1) {
+        throw 'The test profile must enable exactly one supported Stewie Tweaks INI.'
+    }
+    $providerName = $providers[0].Substring(1)
+    $provider = Resolve-ModChild -Name $providerName
+    $mainIni = Join-Path $provider 'nvse\plugins\nvse_stewie_tweaks.ini'
+    if (-not (Test-Path -LiteralPath $mainIni -PathType Leaf)) {
+        throw "The active Stewie Tweaks INI is missing: $providerName"
+    }
+    $matches = @(Select-String -LiteralPath $mainIni -Pattern '^bMultiINISupport\s*=\s*1\s*$')
+    if ($matches.Count -ne 1) {
+        throw "The active Stewie Tweaks INI does not enable multi-INI support: $providerName"
+    }
+}
+
+function Test-SaveGuardMod {
+    $guardRoot = Resolve-ModChild -Name $saveGuardModName
+    $guardIni = Join-Path $guardRoot $saveGuardRelativePath
+    if (-not (Test-Path -LiteralPath $guardIni -PathType Leaf)) {
+        throw "The Phase 1 save guard is missing: $guardIni"
+    }
+    $expectedSections = @{
+        'Tweaks' = @{
+            bImprovedAutoSave = $false
+        }
+        'Save Manager' = @{
+            bSaveOnExitGame = $false
+            iAutoSaveTimer = $false
+        }
+    }
+    $sectionsSeen = @{}
+    $currentSection = $null
+    foreach ($rawLine in [IO.File]::ReadAllLines($guardIni)) {
+        $line = $rawLine.Trim()
+        if ($line.Length -eq 0 -or $line.StartsWith(';') -or $line.StartsWith('#')) {
+            continue
+        }
+        if ($line -match '^\[(?<section>[^\]]+)\]$') {
+            $section = $Matches.section
+            if (-not $expectedSections.ContainsKey($section) -or
+                $sectionsSeen.ContainsKey($section)) {
+                throw 'The Phase 1 save guard has an unexpected section.'
+            }
+            $sectionsSeen[$section] = $true
+            $currentSection = $section
+            continue
+        }
+        if ($null -eq $currentSection -or
+            $line -notmatch '^(?<key>[^=]+?)\s*=\s*(?<value>.*)$') {
+            throw 'The Phase 1 save guard has an unexpected setting line.'
+        }
+        $key = $Matches.key.Trim()
+        $value = $Matches.value.Trim()
+        $sectionKeys = $expectedSections[$currentSection]
+        if (-not $sectionKeys.ContainsKey($key) -or $sectionKeys[$key] -or
+            $value -cne '0') {
+            throw 'The Phase 1 save guard has an unexpected setting or value.'
+        }
+        $sectionKeys[$key] = $true
+    }
+    foreach ($section in $expectedSections.Keys) {
+        if (-not $sectionsSeen.ContainsKey($section) -or
+            @($expectedSections[$section].Values | Where-Object { -not $_ }).Count -ne 0) {
+            throw 'The Phase 1 save guard is missing a required section or setting.'
+        }
+    }
+}
+
+function Test-LegacySaveGuardMod {
+    param([Parameter(Mandatory)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $false
+    }
+    $actual = @([IO.File]::ReadAllLines($Path) | ForEach-Object { $_.Trim() } |
+        Where-Object { $_.Length -ne 0 -and -not $_.StartsWith(';') -and
+            -not $_.StartsWith('#') })
+    $legacy = @(
+        '[Tweaks]',
+        'bImprovedAutoSave = 0',
+        'bSaveOnExitGame = 0',
+        'iAutoSaveTimer = 0'
+    )
+    if ($actual.Count -ne $legacy.Count) {
+        return $false
+    }
+    for ($index = 0; $index -lt $legacy.Count; $index++) {
+        if ($actual[$index] -cne $legacy[$index]) {
+            return $false
+        }
+    }
+    return $true
+}
+
+function Install-SaveGuardMod {
+    $guardRoot = Resolve-ModChild -Name $saveGuardModName
+    $guardIni = Join-Path $guardRoot $saveGuardRelativePath
+    if (Test-Path -LiteralPath $guardRoot) {
+        try {
+            Test-SaveGuardMod
+            return
+        } catch {
+            if (-not (Test-LegacySaveGuardMod -Path $guardIni)) {
+                throw
+            }
+        }
+        if (-not $PSCmdlet.ShouldProcess($guardIni, 'Repair the legacy Phase 1 save guard')) {
+            return
+        }
+        [IO.File]::WriteAllText(
+            $guardIni,
+            $saveGuardContent.TrimEnd() + [Environment]::NewLine,
+            [Text.UTF8Encoding]::new($false))
+        Test-SaveGuardMod
+        return
+    }
+    if (-not $PSCmdlet.ShouldProcess($guardRoot, 'Create the Phase 1 save guard mod')) {
+        return
+    }
+    [IO.Directory]::CreateDirectory((Split-Path -Parent $guardIni)) | Out-Null
+    [IO.File]::WriteAllText(
+        $guardIni,
+        $saveGuardContent.TrimEnd() + [Environment]::NewLine,
+        [Text.UTF8Encoding]::new($false))
+}
+
+function Disable-PipBoyTweaks {
+    param([Parameter(Mandatory)][string]$Path)
+    $lines = Read-ModList -Path $Path
+    for ($index = 0; $index -lt $lines.Count; $index++) {
+        if ($lines[$index] -eq '+Pip-Boy UI Tweaks' -or
+            $lines[$index] -eq '+Pip-Boy UI Tweaks - INI') {
+            $lines[$index] = '-' + $lines[$index].Substring(1)
+        }
+    }
+    Write-ModList -Path $Path -Lines $lines
+}
+
+function Disable-CleanVanillaHud {
+    param([Parameter(Mandatory)][string]$Path)
+    $lines = Read-ModList -Path $Path
+    for ($index = 0; $index -lt $lines.Count; $index++) {
+        if ($lines[$index] -eq '+Clean Vanilla Hud') {
+            $lines[$index] = '-Clean Vanilla Hud'
+        }
+    }
+    Write-ModList -Path $Path -Lines $lines
+}
+
+function Test-Profile {
+    param([Parameter(Mandatory)]$Specification)
+    $target = Resolve-ProfileChild -Name $Specification.Target
+    if (-not (Test-Path -LiteralPath $target -PathType Container)) {
+        throw "Test profile is missing: $($Specification.Target)"
+    }
+    $saves = Join-Path $target 'saves'
+    if ((Test-Path -LiteralPath $saves -PathType Container) -and
+        @(Get-ChildItem -LiteralPath $saves -Force).Count -ne 0) {
+        throw "Test profile contains save data: $($Specification.Target)"
+    }
+    $prefs = Join-Path $target 'falloutprefs.ini'
+    if (-not (Test-Path -LiteralPath $prefs -PathType Leaf) -or
+        (Get-Item -LiteralPath $prefs).Length -eq 0) {
+        throw "Test profile has no usable display preferences: $($Specification.Target)"
+    }
+    $modList = Join-Path $target 'modlist.txt'
+    $lines = @(Get-Content -LiteralPath $modList)
+    if (@($lines | Where-Object { $_ -eq '+Pip-Boy Video Player - Dev' }).Count -ne 1) {
+        throw "Development mod is not enabled exactly once: $($Specification.Target)"
+    }
+    if (@($lines | Where-Object { $_ -eq "+$saveGuardModName" }).Count -ne 1 -or
+        @($lines | Where-Object { $_ -eq "-$saveGuardModName" }).Count -ne 0) {
+        throw "Phase 1 save guard is not enabled exactly once: $($Specification.Target)"
+    }
+    Test-MultiIniSupport -ModListPath $modList
+    if ($Specification.DisablePipBoyTweaks -and
+        @($lines | Where-Object {
+            $_ -eq '+Pip-Boy UI Tweaks' -or $_ -eq '+Pip-Boy UI Tweaks - INI'
+        }).Count -ne 0) {
+        throw 'Pip-Boy UI Tweaks remains enabled in its isolation profile.'
+    }
+    if ($Specification.DisableCleanVanillaHud -and
+        @($lines | Where-Object { $_ -eq '+Clean Vanilla Hud' }).Count -ne 0) {
+        throw 'Clean Vanilla Hud remains enabled in the VUI Plus isolation profile.'
+    }
+    if ($Specification.Target -eq 'PBVP Phase 1 VUI Plus' -and
+        @($lines | Where-Object { $_ -eq '+Vanilla UI Plus (New Vegas)' }).Count -ne 1) {
+        throw 'Vanilla UI Plus is not enabled exactly once in its isolation profile.'
+    }
+}
+
+if (-not $VerifyOnly) {
+    Install-SaveGuardMod
+}
+Test-SaveGuardMod
+
+if (-not $VerifyOnly) {
+    foreach ($specification in $specifications) {
+        $source = Resolve-ProfileChild -Name $specification.Source
+        $target = Resolve-ProfileChild -Name $specification.Target
+        if (-not (Test-Path -LiteralPath $source -PathType Container)) {
+            throw "Source profile is missing: $($specification.Source)"
+        }
+        if (Test-Path -LiteralPath $target) {
+            if ($InstallSaveGuard) {
+                $saves = Join-Path $target 'saves'
+                if ((Test-Path -LiteralPath $saves -PathType Container) -and
+                    @(Get-ChildItem -LiteralPath $saves -Force).Count -ne 0) {
+                    throw "Refusing to update a test profile that contains save data: $($specification.Target)"
+                }
+                Add-TestMods -Path (Join-Path $target 'modlist.txt')
+                Test-Profile -Specification $specification
+                continue
+            }
+            if ($CreateMissing) {
+                Test-Profile -Specification $specification
+                continue
+            }
+            throw "Refusing to replace an existing test profile: $($specification.Target)"
+        }
+        if (-not $PSCmdlet.ShouldProcess($target, "Create $($specification.Target) without saves")) {
+            return
+        }
+
+        [IO.Directory]::CreateDirectory($target) | Out-Null
+        Get-ChildItem -LiteralPath $source -File | Where-Object {
+            $_.Name -notmatch '\.\d{4}_\d{2}_\d{2}_'
+        } | Copy-Item -Destination $target
+
+        if ($specification.SeedPrefsFromExtended) {
+            $extendedPrefs = Join-Path (
+                Resolve-ProfileChild -Name 'Viva New Vegas Extended') 'falloutprefs.ini'
+            if (-not (Test-Path -LiteralPath $extendedPrefs -PathType Leaf) -or
+                (Get-Item -LiteralPath $extendedPrefs).Length -eq 0) {
+                throw 'The Extended profile has no display preferences to seed the base test profile.'
+            }
+            Copy-Item -LiteralPath $extendedPrefs -Destination (
+                Join-Path $target 'falloutprefs.ini') -Force
+        }
+
+        $modList = Join-Path $target 'modlist.txt'
+        Add-TestMods -Path $modList
+        if ($specification.DisablePipBoyTweaks) {
+            Disable-PipBoyTweaks -Path $modList
+        }
+        if ($specification.DisableCleanVanillaHud) {
+            Disable-CleanVanillaHud -Path $modList
+        }
+    }
+}
+
+foreach ($specification in $specifications) {
+    Test-Profile -Specification $specification
+}
+Write-Host 'Phase 1 MO2 test profiles passed verification.'

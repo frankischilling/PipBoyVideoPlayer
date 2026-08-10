@@ -1,0 +1,69 @@
+# Changelog
+
+## 0.1.0 - Unreleased
+
+- Added the Win32 xNVSE plugin scaffold and strict FalloutNV 1.4.0.525 runtime check.
+- Added xNVSE lifecycle logging and a guarded texture-upload boundary through `kMessage_OnFramePresent`.
+- Added a UIO prefab with a named video rectangle, private engine image, visible layer probes, and a game-thread bridge.
+- Added the unconditional UIO registration condition required to inject the prefab.
+- Added a deterministic 256x256 BGRA DDS generator for the private video surface.
+- Added guarded checks for the reviewed `TileImage`, `TileShaderProperty`, `NiSourceTexture`, and `NiDX9SourceTextureData` layouts.
+- Added diagnostics for the direct image texture, shader property, and shader source texture.
+- Assigned the injected surface and probe drawables explicit depths between normal MapMenu page content and the existing headline and tab controls.
+- Anchored the diagnostic video rectangle and its status strip to the lower-left inset of the Pip-Boy content area.
+- Set the lower-left diagnostic video rectangle to 384x216 after the smaller placement passed its visual check.
+- Added a locus to the video rectangle so the checkerboard and status elements follow its position.
+- Added a Direct3D 9 checkerboard upload that uses a temporary COM reference and leaves drawing to Gamebryo.
+- Added device-profile, surface-profile, texture-upload, thread-identity, and device-recreation diagnostics.
+- Added one orderly-shutdown renderer summary with fixed-size counters for callbacks, visible frames, devices, uploads, upload timing, and recreation results.
+- Added one-time diagnostics for game-thread UI polling, MapMenu lookup, frame presentation, and D3D device discovery.
+- Corrected the native height and width trait IDs and now source them from the official xNVSE `Tile` definitions.
+- Resolved the logical UI canvas from the bounded MapMenu ancestor chain instead of assuming the menu root has screen dimensions.
+- Added a reset-hook probe that rejects common x86 redirect stubs and unknown function entries before MinHook can patch them.
+- Added an isolated Win32 fixture that applies a real MinHook redirect, detects the occupied entry, and restores the test function.
+- Added exact renderer recreation result handling for failure, recovered parameters, requested parameters, and unknown values.
+- Added a private compile-time one-shot recreation test that uses Fallout's reviewed deferred request gate. Normal builds leave it disabled, and the package script refuses an armed build.
+- Removed the rejected frame-present and normal-frame overlay draws. The plugin no longer issues a screen-space primitive or patches the normal-frame UI call.
+- Added checked dependency downloads for xNVSE 6.4.5 and MinHook 1.3.4.
+- Added host tests, Win32 tests, DLL export checks, and PE architecture checks.
+- Added coordinate conversion coverage for 4:3, 16:9, 16:10, and ultrawide canvases.
+- Added a data-contract test for the UIO registration, named prefab tiles, private surface path, and package generator.
+- Added a repeatable Phase 1 log check for plugin load, hook verification, UI geometry, device validation, texture uploads, recreation failures, renderer summary, and clean shutdown.
+- Added RadioCaptions-style build, test, package, and MO2 development-install scripts.
+- Added guarded creation and verification of four save-free Phase 1 MO2 profiles for base VNV, Vanilla UI Plus, Extended, and Extended without Pip-Boy UI Tweaks.
+- Added a reversible Phase 1 case configurator for the documented resolutions, display modes, VSync states, and RTSS frame caps.
+- Added bounded visible-frame cadence samples and an independent log check for the expected game FPS.
+- Added path-neutral public symbol packaging with exact PDB identity, public-symbol, FPO, section-contribution, and archive-content checks.
+- Tightened the controlled recreation log check to require the armed-build banner and exactly one scheduled engine request.
+- Recorded that the first deferred-request run recovered the UI surface but did not enter the verified device-recreation hook. The request alone no longer counts as reset evidence.
+- Added bounded observation of the private recreation request, including precondition checks, consumption evidence, unexpected-value handling, and a five-second timeout.
+- Recorded the clean guarded run that kept the checkerboard visible but refused the recreation request because a helper precondition was unavailable.
+- Identified both transient recreation dimensions as readable zero values and specified a bounded, reversible request-staging test.
+- Required the controlled recreation log check to verify restoration of the transient requested-size values.
+- Retired and removed the private forced-recreation diagnostic after its same-size request froze the game inside the native renderer recreation call. The build flag, request code, observer, tests, and installer are gone.
+- Removed the `NiDX9Renderer::Recreate` detour and MinHook dependency after confirming that PBVP retains no reset-sensitive Direct3D resource.
+- Required the engine-owned video texture to use `D3DPOOL_MANAGED` and added portable tests for the accepted size, format, and pool contract.
+- Validated the hook-free managed-texture build in fullscreen 1920x1080 VNV Extended. The checkerboard survived Alt+Tab, the upload took 26.30 microseconds, no upload failed, and the process shut down normally.
+- Made the Phase 1 case configurator check every target file for write access before it creates backups or changes test settings.
+- Added an external foreground-process counter that measures completed Alt+Tab cycles without installing a Windows hook or changing the game process.
+- Added a display-only test-case mode that leaves RTSS unchanged and still restores every isolated-profile INI byte.
+- Completed 50 measured focus-loss and return cycles in native Direct3D 9 windowed mode at 1920x1080. The managed surface had no failed upload, the log check passed, and the game shut down normally.
+- Added a test-only Stewie Tweaks override that prevents autosaves and exit saves in isolated Phase 1 profiles without changing the shared VNV settings or release package.
+- Allowed empty MO2-created save directories in isolated profiles while continuing to reject any save data.
+- Raised the diagnostic video panel by 52 logical units after the Base UI test found that the previous position covered its Local Map and World Map buttons.
+- Refused isolated-profile and display-case mutations while the selected Mod Organizer instance is running.
+- Accepted the raised 384x216 panel position for the Base VNV UI after it cleared the Local Map and World Map buttons.
+- Verified in game that the repaired Phase 1 save guard leaves the isolated Base save directory empty after exit.
+- Made save-guard verification tolerate Stewie Tweaks whitespace normalization while rejecting any semantic change.
+- Accepted the raised 384x216 panel in the full Extended UI regression.
+- Recorded that the first save guard used the wrong section for two Save Manager settings and preserved the resulting isolated test save pair in quarantine.
+- Corrected the test-only guard, added section-aware validation, and limited automatic repair to the exact known legacy layout.
+- Verified that the corrected guard leaves the full Extended test profile empty after a normal test-world exit.
+- Accepted the raised panel with mouse and keyboard input in the isolated Vanilla UI Plus profile.
+- Accepted the raised panel with mouse and keyboard input in Extended without Pip-Boy UI Tweaks.
+- Accepted native windowed 1280x720 with VSync off and a measured 30 FPS RTSS cap.
+- Accepted native windowed 1280x960 with VSync on and a stable measured 60 FPS RTSS cap.
+- Accepted the visible panel at native windowed 2560x1440 with VSync off and a measured 90 FPS RTSS cap.
+- Accepted the visible panel at native windowed 3440x1440 with VSync on and a measured 120 FPS RTSS cap.
+- Set the Phase 1 support boundary to native Direct3D 9 windowed mode without claiming DXVK or repeated fullscreen focus changes.
+- Rebuilt the Win32 Release plugin and passed all eight Win32 tests plus all six host tests.

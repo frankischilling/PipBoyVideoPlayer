@@ -2,7 +2,7 @@
 
 ## Runtime boundary
 
-The project is one x86 xNVSE plugin plus data files installed under `Data`. It does not use a `d3d9.dll` proxy and does not require an ESP. The plugin locates the game renderer after xNVSE load, attaches only the hooks selected by the rendering spike, and removes or disables its work during shutdown.
+The project is one x86 xNVSE plugin plus data files installed under `Data`. It does not use a `d3d9.dll` proxy and does not require an ESP. The plugin locates the game renderer after xNVSE load. UIO provides an engine-owned `TileImage` for the video surface so Gamebryo controls its clipping and layer order. The plugin updates that image's reviewed Direct3D texture chain from the render thread and does not issue a separate screen-space draw.
 
 The implementation must target FalloutNV 1.4.0.525 and reject unknown executables. It should use verified relocations or signatures rather than naked absolute addresses. Steam, GOG, and patched Epic executables need separate verification records if their code layouts differ.
 
@@ -56,17 +56,19 @@ The player owns its XAudio2 engine and voices unless an implementation spike fin
 
 ### Renderer
 
-The renderer receives BGRA frames and uploads them on the game render thread. The preferred resource is a dynamic `D3DPOOL_DEFAULT` texture created with a lockable format. The implementation must copy rows using the returned Direct3D pitch rather than assuming tightly packed storage.
+The renderer receives BGRA frames and uploads them on the game render thread. UIO declares a private, uncompressed DDS for `PBVP_VideoSurface`. The native bridge first checks the direct `TileImage::texture` member. When that member is null, as observed in the active VNV stack, it verifies `TileImage::shaderProp` and reads `TileShaderProperty::srcTexture`. Both paths require exact object vtables before the bridge continues through `NiTexture`, `NiDX9TextureData`, and `IDirect3DTexture9`. It also verifies dimensions, format, pool, device identity, and the shared game and render thread identity.
 
-Before drawing, the renderer captures every Direct3D state it changes. It restores textures, samplers, shaders, vertex declarations, transforms, blend state, scissor state, and render targets before returning to the game. A state block may help, but the spike must measure its cost and confirm that it restores everything used by the selected hook point.
+The renderer locks the engine-owned texture, copies rows using the returned Direct3D pitch, and releases its temporary COM reference before returning. It does not bind the texture or issue a primitive draw, so Gamebryo retains its normal UI render state and draws the surface in XML order. An upload at the final frame callback becomes visible on the next rendered frame. Frame selection must include that one-frame presentation offset.
 
-The renderer releases all default-pool resources before `Reset` and recreates them only after a successful reset. The upload queue remains in system memory during a lost-device interval. Playback may pause if the interval is long enough to exhaust bounded queues.
+The plugin does not retain ownership of the UI texture across callbacks. The engine owns its lifetime and reset behavior. PBVP accepts only `D3DPOOL_MANAGED` for this surface and rejects default-pool or unknown-pool textures. It stores non-owning device and surface identities so a later callback can detect a replacement, validate it, and upload again.
+
+The renderer keeps fixed-size session counters for frame callbacks, visible frames, validated devices, upload attempts, successful uploads, and failures. It records the minimum, average, and maximum successful checkerboard upload time. An orderly shutdown writes one summary line. The counters do not allocate memory and the render callback does not write a line for each frame.
 
 ### Pip-Boy presentation bridge
 
-UIO injects a prefab into the selected Pip-Boy menu. The prefab owns the video rectangle, focus region, labels, control prompts, and state traits. It does not attempt to display the decoded Direct3D texture itself.
+UIO injects a prefab into the selected Pip-Boy menu. The prefab owns the video rectangle, engine image, focus region, labels, control prompts, and state traits. `PBVP_VideoRect` establishes a locus, so its surface and status elements use local coordinates and move with the viewport. In the reviewed Vanilla UI Plus MapMenu, each PBVP drawable has an explicit depth from 10 through 12. Normal map and list content reaches depth 8, while headline cards use depth 15 and the tab line uses depth 22. The parent root also uses depth 10, but the implementation does not rely on that value propagating to drawable children. This places the video above page content and below the existing navigation without a frame-wide overlay.
 
-The native renderer reads the resolved rectangle from the injected tile and draws the video into the same screen-space region at a verified point in the menu render order. This keeps layout decisions in XML while the native plugin owns the texture.
+The native bridge resolves the named image and follows the reviewed engine texture layout to its Direct3D resource. It does not write the image's reference-counted fields or change its filename at runtime. Gamebryo owns the texture and draws it. The plugin only updates its pixels while the image is live.
 
 The bridge must prove three things before decoder work begins:
 
@@ -97,14 +99,14 @@ The plugin log records component, state, error code, media basename, and timesta
 
 ## Hook policy
 
-The project will not choose a hook address in planning documents. Phase one must compare existing open-source xNVSE graphics plugins, inspect the current executable, and produce a minimal experiment. The selected hook needs:
+xNVSE 6.4.5's `kMessage_OnFramePresent` notification is the upload boundary for the engine-owned texture. It does not issue a primitive draw. The callback ignores loading screens and refuses the upload if its operating-system thread does not match the game thread that resolved the tile. The plugin does not patch `Present`, `EndScene`, the normal-frame UI call, or a Direct3D device vtable.
 
-- a stable discovery method;
-- a known render-thread guarantee;
-- a documented position relative to menu drawing;
-- chaining behavior when another plugin has already patched the target;
-- Reset or lost-device coverage;
-- conflict detection and a safe refusal path;
-- a test result for native D3D9 and DXVK.
+The Phase 1 diagnostic also uses QueryPerformanceCounter at this boundary to measure visible-frame cadence. It emits no more than eight three-second samples per process and resets a partial sample when the Pip-Boy hides or the device is unavailable. This metric verifies the configured game cap. It is not a playback clock and will not replace the audio-led media clock in later phases.
+
+PBVP installs no executable detour and does not modify a Direct3D device vtable. MinHook is not a dependency. The xNVSE frame-present notification is the only render callback boundary, so another plugin cannot occupy a PBVP hook target. Unknown runtime versions are still rejected by `NVSEPlugin_Query`, and every engine object and texture profile is validated before use.
+
+The active VNV Extended test has validated the live texture chain, matching callback thread IDs, managed texture pool, and intended layer order. Portable tests reject unsupported texture sizes, formats, and memory pools. The selected boundary still needs a natural display-transition test, the remaining native Direct3D matrix, and a separate DXVK result before any DXVK support claim.
+
+PBVP does not request or force renderer recreation. The retired private request path froze after entering the native recreation call, so its build flag, request writer, observer, and installer were removed. Any remaining lifecycle test must begin with a display transition initiated by the game. Direct calls to the engine helper, the renderer owner, or `IDirect3DDevice9::Reset` are outside the supported design.
 
 A proxy DLL is excluded because VNV users may already have root-level graphics wrappers. The normal package must remain installable through MO2.
