@@ -3,6 +3,9 @@
 #include "pbvp/d3d_renderer.hpp"
 #include "pbvp/ffmpeg_runtime.hpp"
 #include "pbvp/log.hpp"
+#if defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
+#include "pbvp/audio_smoke_test.hpp"
+#endif
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
 #include "pbvp/media_decoder.hpp"
 #endif
@@ -29,6 +32,9 @@ NVSEMessagingInterface* g_messaging = nullptr;
 std::atomic<bool> g_shutdown{false};
 std::atomic<bool> g_presentation_ready{false};
 pbvp::FfmpegRuntime g_ffmpeg_runtime;
+#if defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
+std::wstring g_audio_smoke_root;
+#endif
 
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
 constexpr wchar_t kMediaSmokeFile[] = L"PBVP-Phase2-Smoke.mp4";
@@ -92,7 +98,7 @@ std::wstring PrivateFfmpegDirectory(const char* runtime_directory) noexcept {
     }
 }
 
-#if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
+#if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST) || defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
 std::wstring PrivateMediaDirectory(const char* runtime_directory) noexcept {
     try {
         std::wstring path = WidenRuntimeDirectory(runtime_directory);
@@ -108,7 +114,9 @@ std::wstring PrivateMediaDirectory(const char* runtime_directory) noexcept {
         return {};
     }
 }
+#endif
 
+#if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
 void StopMediaSmoke() noexcept {
     if (g_media_smoke_decoder != nullptr) {
         g_media_smoke_decoder->Stop();
@@ -359,12 +367,18 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
             StartMediaSmoke();
 #endif
+#if defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
+            pbvp::AudioSmokeTest::Instance().Start(g_ffmpeg_runtime, g_audio_smoke_root);
+#endif
             break;
         case NVSEMessagingInterface::kMessage_MainGameLoop:
             if (!g_shutdown.load(std::memory_order_acquire)) {
                 pbvp::UiBridge::Instance().UpdateOnGameThread();
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
                 UpdateMediaSmoke();
+#endif
+#if defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
+                pbvp::AudioSmokeTest::Instance().Update();
 #endif
             }
             break;
@@ -394,6 +408,9 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
             pbvp::D3dRenderer::Instance().RequestShutdown();
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
             StopMediaSmoke();
+#endif
+#if defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
+            pbvp::AudioSmokeTest::Instance().Stop();
 #endif
             g_ffmpeg_runtime.Unload();
             PBVP_LOG_INFO("Process shutdown requested");
@@ -446,6 +463,9 @@ extern "C" bool NVSEPlugin_Load(NVSEInterface* nvse) {
     const std::wstring ffmpeg_directory = PrivateFfmpegDirectory(nvse->GetRuntimeDirectory());
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
     g_media_smoke_root = PrivateMediaDirectory(nvse->GetRuntimeDirectory());
+#endif
+#if defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
+    g_audio_smoke_root = PrivateMediaDirectory(nvse->GetRuntimeDirectory());
 #endif
     if (ffmpeg_directory.empty()) {
         ffmpeg_failure.status = pbvp::FfmpegLoadStatus::path_not_absolute;

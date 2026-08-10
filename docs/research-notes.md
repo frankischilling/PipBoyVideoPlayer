@@ -271,7 +271,21 @@ Microsoft's [`XAUDIO2_VOICE_STATE` documentation](https://learn.microsoft.com/en
 
 [QueryPerformanceCounter](https://learn.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter) provides a high-resolution interval clock for silent media.
 
-Inference to test: `SamplesPlayed`, adjusted for seek and pre-roll, can provide stable audio-led synchronization inside the paused Pip-Boy menu.
+The local Windows SDK 10.0.26100.0 includes the x86 `xaudio2.lib` import library and desktop `xaudio2.h`. The 32-bit Windows system directory contains `XAudio2_9.dll` version 10.0.19041.4355. The SDK entry point loads that name with `LOAD_LIBRARY_SEARCH_SYSTEM32`, calls the versioned export when available, and falls back to the ordinary export. PBVP therefore does not need a private or legacy XAudio2 DLL for its existing Windows 10 and Windows 11 scope.
+
+Microsoft's [XAudio2 version reference](https://learn.microsoft.com/en-us/windows/win32/xaudio2/xaudio2-versions) identifies XAudio2 2.9 as the Windows 10 system version. [`SubmitSourceBuffer`](https://learn.microsoft.com/en-us/windows/win32/api/xaudio2/nf-xaudio2-ixaudio2sourcevoice-submitsourcebuffer) requires PCM memory to remain valid until `OnBufferEnd` or voice destruction. [`Stop`](https://learn.microsoft.com/en-us/windows/win32/api/xaudio2/nf-xaudio2-ixaudio2sourcevoice-stop) is asynchronous and preserves the current cursor and queued buffers. [`FlushSourceBuffers`](https://learn.microsoft.com/en-us/windows/win32/api/xaudio2/nf-xaudio2-ixaudio2sourcevoice-flushsourcebuffers) removes pending buffers but not the buffer currently playing, and flushed completion callbacks can arrive out of order. [`DestroyVoice`](https://learn.microsoft.com/en-us/windows/win32/api/xaudio2/nf-xaudio2-ixaudio2voice-destroyvoice) can take several milliseconds but returns only after audio processing is idle, after which XAudio2 will not read submitted memory or invoke that voice's callback.
+
+The callback guidance requires very short operations on XAudio2's audio processing thread. PBVP will use only atomic state and counter changes. It will not allocate, log, acquire a PBVP mutex, signal game objects, or perform blocking work in a callback. The owner will stop and flush outside PBVP locks, observe all retired slots, and destroy the source voice before releasing the callback target or pool.
+
+Inference to test: `SamplesPlayed`, adjusted for a new origin after each flushed seek, can provide stable audio-led synchronization inside the paused Pip-Boy menu. The QPC fallback must freeze across pause and resume without accumulating paused time.
+
+The first native x86 backend run created an XAudio2 engine but failed eight default mastering-voice attempts. Both Windows audio services were running, and the system reported working audio devices. Microsoft's [XAudio2 initialization guide](https://learn.microsoft.com/en-us/windows/win32/xaudio2/how-to--initialize-xaudio2) requires COM initialization before engine and mastering-voice setup. The backend now calls `CoInitializeEx` on its owner thread, records whether it owns the returned reference, and balances only its own successful call after XAudio2 shutdown. An existing apartment with a different model is left unchanged. The same test then passed every initialization case and a complete device-recovery cycle.
+
+The completed native stream test uses a fixed buffer pool and silent PCM so automated runs do not produce audible output. The 100, 200, and 300 ms prebuffer cases completed with zero underruns. Pause and resume preserved the sample clock, mute did not stop it, stop and flush created a new source voice and sample origin, and end-of-stream playback reported the exact submitted end time. The same test covered 44.1 and 48 kHz mono and stereo voices, healthy default-device reconstruction, a full-pool refusal, foreign-thread refusal, and 25 complete create, play, callback, and destroy cycles. The QPC wrapper froze while paused and resumed from the same media time.
+
+A second x86 test connects the real Phase 2 decoder to the bounded XAudio2 stream. It played three generated fixtures while muted. The 44.1 kHz stereo source produced 96,967 stereo 48 kHz samples and ended at 2,020,125 microseconds. The 48 kHz mono and 5.1 sources each produced 48,128 stereo samples and ended at 1,002,651 microseconds. All three runs reached the XAudio2 end callback with zero underruns. This verifies the resampled and downmixed PCM path, not only synthetic audio.
+
+The live Phase 3 diagnostic used the same generated 44.1 kHz stereo MP4 through the isolated MO2 profile. The user heard its two-second tone at 10 percent source-voice volume. XAudio2 consumed all 96,967 output samples, reported the expected 2,020,125 microsecond end time, completed 88 buffers, and raised one stream-end callback without an underrun. The pool stayed at its fixed 262,144 byte capacity. Shutdown stopped and flushed audio, joined the decoder, released the voices and callback targets, and then unloaded FFmpeg. The strict checker accepted the lifecycle and privacy-safe log.
 
 ## Mod Organizer 2
 
@@ -282,7 +296,6 @@ The live Phase 2 test confirmed that custom Win32 I/O sees a file supplied only 
 ## Research still needed
 
 - DXVK behavior at the selected frame boundary if support is later claimed;
-- XAudio2 version behavior on the minimum Windows target;
 - a reproducible minimal FFmpeg x86 build;
 - codec patent review for binary distribution;
 - permission and naming checks before a public mod page is created.

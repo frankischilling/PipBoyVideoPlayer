@@ -3,15 +3,19 @@
 #include <cstdio>
 
 void RunFrameCadenceTests();
+void RunAudioCallbackStateTests();
 void RunCheckedMathTests();
 void RunMediaLimitTests();
+void RunPlaybackClockTests();
 void RunBoundedQueueTests();
 void RunRectMathTests();
 void RunTextureContractTests();
 
 int main() {
+    RunAudioCallbackStateTests();
     RunCheckedMathTests();
     RunMediaLimitTests();
+    RunPlaybackClockTests();
     RunBoundedQueueTests();
     RunFrameCadenceTests();
     RunRectMathTests();

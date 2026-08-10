@@ -7,6 +7,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 option(PBVP_BUILD_PLUGIN "Build the Win32 xNVSE plugin" ON)
 option(PBVP_BUILD_TESTS "Build automated tests" ON)
 option(PBVP_ENABLE_MEDIA_SMOKE_TEST "Arm the private live MO2 media decoder diagnostic" OFF)
+option(PBVP_ENABLE_AUDIO_SMOKE_TEST "Arm the private live MO2 decoded-audio diagnostic" OFF)
 set(PBVP_XNVSE_ROOT "${CMAKE_SOURCE_DIR}/external/NVSE-6.4.5" CACHE PATH "xNVSE 6.4.5 release source root")
 set(PBVP_FFMPEG_ROOT "${CMAKE_SOURCE_DIR}/external/ffmpeg-8.1.2-i686" CACHE PATH "Verified FFmpeg 8.1.2 x86 install root")
 
@@ -16,6 +17,7 @@ add_library(pbvp_core STATIC
     src/core/checked_math.cpp
     src/core/frame_cadence.cpp
     src/core/media_limits.cpp
+    src/core/playback_clock.cpp
     src/core/rect_math.cpp
     src/core/texture_contract.cpp)
 target_include_directories(pbvp_core PUBLIC include)
@@ -42,6 +44,16 @@ if(PBVP_BUILD_PLUGIN)
         message(FATAL_ERROR "PBVP_FFMPEG_ROOT must point to the verified FFmpeg 8.1.2 x86 build. Run scripts/build-ffmpeg.ps1.")
     endif()
 
+    add_library(pbvp_audio STATIC
+        src/audio/win32_playback_clock.cpp
+        src/audio/xaudio_stream.cpp)
+    target_link_libraries(pbvp_audio PUBLIC pbvp_core xaudio2)
+    target_include_directories(pbvp_audio PUBLIC include)
+    target_compile_features(pbvp_audio PUBLIC cxx_std_20)
+    target_compile_definitions(pbvp_audio PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_compile_options(pbvp_audio PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
+    set_target_properties(pbvp_audio PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
     add_library(pbvp_media STATIC
         src/media/ffmpeg_runtime.cpp
         src/media/media_decoder.cpp
@@ -60,7 +72,7 @@ if(PBVP_BUILD_PLUGIN)
         src/diagnostics/logger.cpp
         src/plugin/version.rc
         src/plugin/exports.def)
-    target_link_libraries(PipBoyVideoPlayer PRIVATE pbvp_core pbvp_media d3d9 psapi)
+    target_link_libraries(PipBoyVideoPlayer PRIVATE pbvp_audio pbvp_core pbvp_media d3d9 psapi)
     target_include_directories(PipBoyVideoPlayer PRIVATE
         include
         "${PBVP_XNVSE_ROOT}"
@@ -72,6 +84,10 @@ if(PBVP_BUILD_PLUGIN)
         PBVP_VERSION_STRING="${PROJECT_VERSION}")
     if(PBVP_ENABLE_MEDIA_SMOKE_TEST)
         target_compile_definitions(PipBoyVideoPlayer PRIVATE PBVP_ENABLE_MEDIA_SMOKE_TEST=1)
+    endif()
+    if(PBVP_ENABLE_AUDIO_SMOKE_TEST)
+        target_sources(PipBoyVideoPlayer PRIVATE src/diagnostics/audio_smoke_test.cpp)
+        target_compile_definitions(PipBoyVideoPlayer PRIVATE PBVP_ENABLE_AUDIO_SMOKE_TEST=1)
     endif()
     target_compile_options(PipBoyVideoPlayer PRIVATE
         /W4 /permissive- /utf-8 /Zc:__cplusplus /guard:cf
@@ -117,6 +133,24 @@ if(PBVP_BUILD_PLUGIN)
         add_test(
             NAME pbvp_media_decoder_test
             COMMAND pbvp_media_decoder_test
+                "${PBVP_FFMPEG_ROOT}/bin"
+                "${CMAKE_SOURCE_DIR}/tests/fixtures")
+
+        add_executable(pbvp_xaudio_stream_test tests/xaudio_stream_tests.cpp)
+        target_link_libraries(pbvp_xaudio_stream_test PRIVATE pbvp_audio)
+        target_compile_features(pbvp_xaudio_stream_test PRIVATE cxx_std_20)
+        target_compile_options(pbvp_xaudio_stream_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
+        set_target_properties(pbvp_xaudio_stream_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        add_test(NAME pbvp_xaudio_stream_test COMMAND pbvp_xaudio_stream_test)
+
+        add_executable(pbvp_media_audio_pipeline_test tests/media_audio_pipeline_tests.cpp)
+        target_link_libraries(pbvp_media_audio_pipeline_test PRIVATE pbvp_audio pbvp_media)
+        target_compile_features(pbvp_media_audio_pipeline_test PRIVATE cxx_std_20)
+        target_compile_options(pbvp_media_audio_pipeline_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus /Zm200)
+        set_target_properties(pbvp_media_audio_pipeline_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        add_test(
+            NAME pbvp_media_audio_pipeline_test
+            COMMAND pbvp_media_audio_pipeline_test
                 "${PBVP_FFMPEG_ROOT}/bin"
                 "${CMAKE_SOURCE_DIR}/tests/fixtures")
 
@@ -209,16 +243,35 @@ if(PBVP_BUILD_TESTS)
             -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase2-media-smoke-log.ps1)
 
     add_test(
+        NAME pbvp_phase3_audio_profile_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase3-audio-profile.ps1
+            -ProfileScript ${CMAKE_SOURCE_DIR}/scripts/create-phase3-audio-profile.ps1
+            -FixturePath ${CMAKE_SOURCE_DIR}/tests/fixtures/h264-aac-44100-stereo.mp4)
+
+    add_test(
+        NAME pbvp_phase3_audio_smoke_log_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase3-audio-smoke-log.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase3-audio-smoke-log.ps1)
+
+    add_test(
         NAME pbvp_data_contract_test
         COMMAND ${CMAKE_COMMAND}
             -DPBVP_SOURCE_DIR=${CMAKE_SOURCE_DIR}
             -P ${CMAKE_SOURCE_DIR}/tests/verify_data_contract.cmake)
 
     add_executable(pbvp_tests
+        tests/audio_callback_state_tests.cpp
         tests/bounded_queue_tests.cpp
         tests/checked_math_tests.cpp
         tests/frame_cadence_tests.cpp
         tests/media_limits_tests.cpp
+        tests/playback_clock_tests.cpp
         tests/rect_math_tests.cpp
         tests/texture_contract_tests.cpp
         tests/test_main.cpp)
