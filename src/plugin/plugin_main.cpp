@@ -1,6 +1,7 @@
 #include "nvse/PluginAPI.h"
 
 #include "pbvp/d3d_renderer.hpp"
+#include "pbvp/configuration.hpp"
 #include "pbvp/ffmpeg_runtime.hpp"
 #include "pbvp/log.hpp"
 #include "pbvp/playback_controller.hpp"
@@ -37,6 +38,9 @@ std::atomic<bool> g_shutdown{false};
 std::atomic<bool> g_presentation_ready{false};
 pbvp::FfmpegRuntime g_ffmpeg_runtime;
 std::unique_ptr<pbvp::PlaybackController> g_playback_controller;
+pbvp::PlayerSettings g_settings{};
+std::wstring g_configuration_path;
+std::wstring g_media_root;
 pbvp::PlaybackState g_last_playback_state{pbvp::PlaybackState::idle};
 #if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST) || defined(PBVP_ENABLE_PLAYBACK_LONG_TEST)
 #define PBVP_ENABLE_PLAYBACK_DIAGNOSTIC 1
@@ -125,8 +129,6 @@ std::wstring PrivateFfmpegDirectory(const char* runtime_directory) noexcept {
     }
 }
 
-#if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST) || defined(PBVP_ENABLE_AUDIO_SMOKE_TEST) || \
-    defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
 std::wstring PrivateMediaDirectory(const char* runtime_directory) noexcept {
     try {
         std::wstring path = WidenRuntimeDirectory(runtime_directory);
@@ -142,7 +144,114 @@ std::wstring PrivateMediaDirectory(const char* runtime_directory) noexcept {
         return {};
     }
 }
+
+std::wstring PrivateConfigurationPath(const char* runtime_directory) noexcept {
+    try {
+        std::wstring path = WidenRuntimeDirectory(runtime_directory);
+        if (path.empty()) {
+            return {};
+        }
+        if (path.back() != L'\\' && path.back() != L'/') {
+            path.push_back(L'\\');
+        }
+        path.append(L"Data\\Config\\PipBoyVideoPlayer.ini");
+        return path;
+    } catch (...) {
+        return {};
+    }
+}
+
+pbvp::PlaybackControllerConfig PlaybackConfiguration(
+    const pbvp::PlayerSettings& settings) noexcept {
+    pbvp::PlaybackControllerConfig config{};
+    config.volume = settings.volume;
+    config.muted = settings.muted;
+    config.decoder.payload_limits.maximum_width =
+        settings.resources.maximum_source_width;
+    config.decoder.payload_limits.maximum_height =
+        settings.resources.maximum_source_height;
+    config.decoder.io_limits.maximum_file_bytes =
+        settings.resources.maximum_media_file_bytes;
+    config.decoder.output_video_edge_limit =
+        settings.resources.maximum_queued_video_edge;
+#if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
+    config.volume = kPlaybackSmokeVolume;
 #endif
+    return config;
+}
+
+bool CreatePlaybackController(const pbvp::PlayerSettings& settings) noexcept {
+    try {
+        auto replacement = std::make_unique<pbvp::PlaybackController>(
+            g_ffmpeg_runtime, PlaybackConfiguration(settings));
+        if (replacement->Snapshot().playback.state == pbvp::PlaybackState::unavailable) {
+            return false;
+        }
+        if (g_playback_controller != nullptr) {
+            g_playback_controller->Shutdown();
+        }
+        g_playback_controller = std::move(replacement);
+        g_last_playback_state = pbvp::PlaybackState::idle;
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+void LogConfigurationResult(const pbvp::ConfigurationResult& result) noexcept {
+    if (result.status != pbvp::ConfigurationStatus::ok) {
+        PBVP_LOG_WARN(
+            "Configuration unavailable; compiled defaults retained: status=%s win32=%lu",
+            pbvp::ConfigurationStatusName(result.status),
+            static_cast<unsigned long>(result.windows_error));
+        return;
+    }
+    if (result.unknown_settings != 0u || result.invalid_settings != 0u ||
+        result.malformed_lines != 0u) {
+        PBVP_LOG_WARN(
+            "Configuration loaded with ignored values: unknown=%u invalid=%u malformed=%u",
+            result.unknown_settings, result.invalid_settings, result.malformed_lines);
+    }
+    PBVP_LOG_INFO(
+        "Configuration accepted: enabled=%u aspect=%s tint=%s volume=%.2f muted=%u seek_seconds=%u catalog=%zu display_chars=%zu source=%ux%u queued_edge=%u file_limit=%llu logging=%s",
+        result.settings.enabled ? 1u : 0u,
+        pbvp::AspectModeName(result.settings.aspect_mode),
+        pbvp::TintModeName(result.settings.tint_mode),
+        static_cast<double>(result.settings.volume),
+        result.settings.muted ? 1u : 0u,
+        result.settings.seek_seconds,
+        result.settings.catalog.maximum_entries,
+        result.settings.catalog.maximum_display_characters,
+        result.settings.resources.maximum_source_width,
+        result.settings.resources.maximum_source_height,
+        result.settings.resources.maximum_queued_video_edge,
+        static_cast<unsigned long long>(
+            result.settings.resources.maximum_media_file_bytes),
+        pbvp::LoggingDetailName(result.settings.logging_detail));
+}
+
+void ReloadConfiguration() noexcept {
+    if (g_playback_controller == nullptr ||
+        g_playback_controller->Snapshot().playback.state != pbvp::PlaybackState::idle) {
+        PBVP_LOG_WARN("Configuration reload rejected because playback is not idle");
+        return;
+    }
+    const pbvp::ConfigurationResult loaded =
+        pbvp::LoadConfiguration(g_configuration_path);
+    if (loaded.status != pbvp::ConfigurationStatus::ok) {
+        LogConfigurationResult(loaded);
+        PBVP_LOG_WARN("Configuration reload kept the previous settings");
+        return;
+    }
+    if (!CreatePlaybackController(loaded.settings)) {
+        PBVP_LOG_ERROR("Configuration reload rejected an invalid playback configuration");
+        return;
+    }
+    g_settings = loaded.settings;
+    LogConfigurationResult(loaded);
+    pbvp::D3dRenderer::Instance().ClearVideoFrame();
+    PBVP_LOG_INFO("Configuration reloaded while playback was idle");
+}
 
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST) || defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
 std::uint64_t ProcessPrivateBytes() noexcept {
@@ -699,7 +808,14 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
         case NVSEMessagingInterface::kMessage_MainGameLoop:
             if (!g_shutdown.load(std::memory_order_acquire)) {
                 pbvp::UiBridge::Instance().UpdateOnGameThread();
-                UpdatePlayback(pbvp::UiBridge::Instance().ReadForRenderThread());
+                static_cast<void>(
+                    pbvp::UiBridge::Instance().SetLayerEnabled(g_settings.enabled));
+                pbvp::UiRectSnapshot ui_snapshot =
+                    pbvp::UiBridge::Instance().ReadForRenderThread();
+                if (!g_settings.enabled) {
+                    ui_snapshot.visible = false;
+                }
+                UpdatePlayback(ui_snapshot);
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
                 UpdateMediaSmoke();
 #endif
@@ -748,9 +864,11 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
             PBVP_LOG_INFO("Process shutdown requested");
             break;
         case NVSEMessagingInterface::kMessage_ReloadConfig:
-            if (message->data != nullptr && message->dataLen > 0u &&
-                std::strcmp(static_cast<const char*>(message->data), "PipBoyVideoPlayer") == 0) {
-                PBVP_LOG_INFO("Configuration reload requested; Phase 1 has no runtime settings");
+            if (message->data != nullptr && message->dataLen ==
+                    sizeof("PipBoyVideoPlayer") &&
+                std::memcmp(message->data, "PipBoyVideoPlayer",
+                            sizeof("PipBoyVideoPlayer")) == 0) {
+                ReloadConfiguration();
             }
             break;
         default:
@@ -793,14 +911,22 @@ extern "C" bool NVSEPlugin_Load(NVSEInterface* nvse) {
         PBVP_VERSION_STRING, nvse->runtimeVersion, nvse->nvseVersion);
     pbvp::FfmpegLoadFailure ffmpeg_failure{};
     const std::wstring ffmpeg_directory = PrivateFfmpegDirectory(nvse->GetRuntimeDirectory());
+    g_configuration_path = PrivateConfigurationPath(nvse->GetRuntimeDirectory());
+    g_media_root = PrivateMediaDirectory(nvse->GetRuntimeDirectory());
+    const pbvp::ConfigurationResult configuration =
+        pbvp::LoadConfiguration(g_configuration_path);
+    if (configuration.status == pbvp::ConfigurationStatus::ok) {
+        g_settings = configuration.settings;
+    }
+    LogConfigurationResult(configuration);
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
-    g_media_smoke_root = PrivateMediaDirectory(nvse->GetRuntimeDirectory());
+    g_media_smoke_root = g_media_root;
 #endif
 #if defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
-    g_audio_smoke_root = PrivateMediaDirectory(nvse->GetRuntimeDirectory());
+    g_audio_smoke_root = g_media_root;
 #endif
 #if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
-    g_playback_smoke_root = PrivateMediaDirectory(nvse->GetRuntimeDirectory());
+    g_playback_smoke_root = g_media_root;
 #endif
     if (ffmpeg_directory.empty()) {
         ffmpeg_failure.status = pbvp::FfmpegLoadStatus::path_not_absolute;
@@ -820,22 +946,8 @@ extern "C" bool NVSEPlugin_Load(NVSEInterface* nvse) {
         "Private FFmpeg runtime accepted: avcodec=0x%06X avformat=0x%06X avutil=0x%06X swresample=0x%06X swscale=0x%06X",
         ffmpeg_versions.avcodec, ffmpeg_versions.avformat, ffmpeg_versions.avutil,
         ffmpeg_versions.swresample, ffmpeg_versions.swscale);
-    try {
-        pbvp::PlaybackControllerConfig playback_config{};
-#if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
-        playback_config.volume = kPlaybackSmokeVolume;
-#endif
-        g_playback_controller = std::make_unique<pbvp::PlaybackController>(
-            g_ffmpeg_runtime, playback_config);
-    } catch (...) {
+    if (!CreatePlaybackController(g_settings)) {
         PBVP_LOG_ERROR("Playback controller allocation failed");
-        g_ffmpeg_runtime.Unload();
-        return false;
-    }
-    if (g_playback_controller->Snapshot().playback.state ==
-        pbvp::PlaybackState::unavailable) {
-        PBVP_LOG_ERROR("Playback controller rejected its bounded configuration");
-        g_playback_controller.reset();
         g_ffmpeg_runtime.Unload();
         return false;
     }

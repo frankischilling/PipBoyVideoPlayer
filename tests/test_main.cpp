@@ -5,6 +5,7 @@
 void RunFrameCadenceTests();
 void RunAudioCallbackStateTests();
 void RunCheckedMathTests();
+void RunConfigurationTests();
 void RunMediaLimitTests();
 void RunMediaCatalogTests();
 void RunPlaybackClockTests();
@@ -18,6 +19,7 @@ void RunVideoSchedulerTests();
 int main() {
     RunAudioCallbackStateTests();
     RunCheckedMathTests();
+    RunConfigurationTests();
     RunMediaLimitTests();
     RunMediaCatalogTests();
     RunPlaybackClockTests();

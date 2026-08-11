@@ -21,6 +21,7 @@ constexpr std::uintptr_t kTileShaderPropertyVtable = 0x010B9D28u;
 constexpr std::uintptr_t kNiSourceTextureVtable = 0x0109B9ECu;
 constexpr std::uintptr_t kNiDx9SourceTextureDataVtable = 0x010ED37Cu;
 constexpr std::uintptr_t kTileSetStringValueAddress = 0x00A01350u;
+constexpr std::uintptr_t kTileSetFloatValueAddress = 0x00A012D0u;
 constexpr std::uint32_t kMenuTypeMin = 0x3E9u;
 constexpr std::uint32_t kMapMenuType = 0x3FFu;
 constexpr std::uint32_t kValueX = ::Tile::kTileValue_x;
@@ -394,6 +395,45 @@ void UiBridge::UpdateOnGameThread() noexcept {
     Publish(snapshot);
 }
 
+bool UiBridge::SetLayerEnabled(const bool enabled) noexcept {
+    const std::uint32_t expected_thread = game_thread_id_.load(std::memory_order_acquire);
+    if (expected_thread == 0u || GetCurrentThreadId() != expected_thread) {
+        return false;
+    }
+    __try {
+        auto*** menu_array_pointer = reinterpret_cast<Tile***>(kTileMenuArrayPointer);
+        if (menu_array_pointer == nullptr || *menu_array_pointer == nullptr) {
+            return false;
+        }
+        Tile* menu_root = (*menu_array_pointer)[kMapMenuType - kMenuTypeMin];
+        if (menu_root == nullptr) {
+            return false;
+        }
+        Tile* pbvp_root = FindDescendant(menu_root, "PBVP_Root");
+        if (pbvp_root == nullptr) {
+            return false;
+        }
+        TileValue* visible = FindValue(pbvp_root, kValueVisible);
+        if (visible == nullptr || visible->parent != pbvp_root) {
+            return false;
+        }
+        const std::uintptr_t root_address = reinterpret_cast<std::uintptr_t>(pbvp_root);
+        if (last_root_tile_ == root_address && last_layer_enabled_ == enabled &&
+            (visible->number > 0.0f) == enabled) {
+            return true;
+        }
+        using SetFloatValue = void(__thiscall*)(void*, std::uint32_t, float, bool);
+        const auto set_float = reinterpret_cast<SetFloatValue>(kTileSetFloatValueAddress);
+        set_float(pbvp_root, kValueVisible, enabled ? 1.0f : 0.0f, true);
+        last_root_tile_ = root_address;
+        last_layer_enabled_ = enabled;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        last_root_tile_ = 0u;
+        return false;
+    }
+}
+
 bool UiBridge::SetPlaybackStatus(
     const PlaybackStateSnapshot& playback) noexcept {
     const std::uint32_t expected_thread = game_thread_id_.load(std::memory_order_acquire);
@@ -570,6 +610,8 @@ void UiBridge::Clear() noexcept {
     map_visible_logged_ = false;
     last_failure_ = 0u;
     last_status_tile_ = 0u;
+    last_root_tile_ = 0u;
+    last_layer_enabled_ = true;
     last_status_state_ = PlaybackState::unavailable;
     last_status_error_ = PlaybackError::none;
 }

@@ -4,6 +4,7 @@ endif()
 
 set(registration "${PBVP_SOURCE_DIR}/data/uio/public/PipBoyVideoPlayer.txt")
 set(prefab "${PBVP_SOURCE_DIR}/data/menus/prefabs/PipBoyVideoPlayer/Player.xml")
+set(configuration "${PBVP_SOURCE_DIR}/data/Config/PipBoyVideoPlayer.ini")
 
 file(READ "${registration}" registration_text)
 string(REPLACE "\r\n" "\n" registration_text "${registration_text}")
@@ -25,6 +26,27 @@ foreach(required_name IN ITEMS
     string(FIND "${prefab_text}" "name=\"${required_name}\"" match_offset)
     if(match_offset EQUAL -1)
         message(FATAL_ERROR "UI prefab is missing ${required_name}")
+    endif()
+endforeach()
+
+file(READ "${configuration}" configuration_text)
+foreach(required_setting IN ITEMS
+        "Enabled=1"
+        "Volume=1.0"
+        "Muted=0"
+        "SeekSeconds=10"
+        "AspectMode=Fit"
+        "TintMode=PipBoy"
+        "MaximumEntries=500"
+        "MaximumDisplayCharacters=128"
+        "MaximumSourceWidth=1920"
+        "MaximumSourceHeight=1080"
+        "MaximumQueuedVideoEdge=512"
+        "MaximumMediaFileMiB=32768"
+        "Detail=Normal")
+    string(FIND "${configuration_text}" "${required_setting}" setting_offset)
+    if(setting_offset EQUAL -1)
+        message(FATAL_ERROR "Default configuration is missing ${required_setting}")
     endif()
 endforeach()
 
@@ -112,6 +134,15 @@ if(NOT removed_hook_dependency STREQUAL "")
 endif()
 
 file(READ "${PBVP_SOURCE_DIR}/src/plugin/plugin_main.cpp" plugin_text)
+foreach(required_configuration_path IN ITEMS
+        "LoadConfiguration"
+        "ReloadConfiguration"
+        "SetLayerEnabled")
+    string(FIND "${plugin_text}" "${required_configuration_path}" configuration_path_offset)
+    if(configuration_path_offset EQUAL -1)
+        message(FATAL_ERROR "Plugin lifecycle is missing ${required_configuration_path}")
+    endif()
+endforeach()
 string(FIND "${plugin_text}"
     "xNVSE frame-present presentation path enabled without executable hooks"
     hook_free_log_offset)

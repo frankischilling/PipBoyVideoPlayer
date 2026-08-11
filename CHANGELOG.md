@@ -2,6 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
+- Added bounded UTF-8 INI loading for playback, rendering, catalog, resource, and logging settings. Invalid values keep safe defaults, and runtime reload is limited to the idle state.
 - Added bounded direct-child MP4 catalog discovery with MO2-compatible Win32 enumeration, Unicode paths, invariant natural sorting, stable session identifiers, display clipping, reparse-point rejection, and tests for 0, 1, 10, 100, and 500 entries.
 - Connected the decoder, XAudio2 sample clock, video scheduler, renderer mailbox, Pip-Boy status text, and game lifecycle into a bounded playback controller.
 - Added audio-led frame selection, late-frame dropping, startup buffering, pause, resume, forward and backward seeks, stop during buffering, silent-video QPC timing, and structured playback errors.

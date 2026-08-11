@@ -20,6 +20,7 @@ include(CTest)
 
 add_library(pbvp_core STATIC
     src/core/checked_math.cpp
+    src/core/configuration.cpp
     src/core/frame_cadence.cpp
     src/core/media_catalog.cpp
     src/core/media_limits.cpp
@@ -338,6 +339,7 @@ if(PBVP_BUILD_TESTS)
         tests/audio_callback_state_tests.cpp
         tests/bounded_queue_tests.cpp
         tests/checked_math_tests.cpp
+        tests/configuration_tests.cpp
         tests/frame_cadence_tests.cpp
         tests/media_catalog_tests.cpp
         tests/media_limits_tests.cpp
