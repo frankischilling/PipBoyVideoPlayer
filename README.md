@@ -4,6 +4,20 @@ Pip-Boy Video Player plays local MP4 files inside the Fallout: New Vegas Pip-Boy
 
 The current private release candidate is `0.1.0-rc.3`.
 
+## Screenshots
+
+### Video catalog
+
+![The Videos catalog on the Pip-Boy Data page](img/list.png)
+
+### Pip-Boy tint mode
+
+![A video playing with the Pip-Boy tint](img/pipboycolor.png)
+
+### Full-color mode
+
+![A video playing in full-color mode](img/fullcolor.png)
+
 ## What it supports
 
 - FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer
