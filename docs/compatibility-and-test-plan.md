@@ -604,6 +604,8 @@ Portable prompt tests compare the exact keyboard and controller text for the cat
 
 The portable catalog tests assert exact relative paths and extension-free display names for Japanese text and a combining acute accent. This supplements the generated MO2 catalog profile without claiming that the game font can draw every Unicode character.
 
+Portable privacy tests cover normal basenames, diagnostic relative names, absolute drive and UNC inputs, parent traversal, UTF-8 filenames, control characters, invalid UTF-16, and short buffers. The runtime uses this formatter when it logs a catalog playback start or rejection. It does not pass metadata titles to the formatter.
+
 ## Phase 5 aspect scaling audit
 
 Code inspection found that Fit and Fill used only the square 256 by 256 engine texture, even though Gamebryo displays that texture in the 384 by 216 video rectangle. Portable tests now model both dimensions. They verify that a 16:9 source fills the backing texture for a 16:9 presentation, a 4:3 Fit source receives side bars, a 4:3 Fill source crops vertically, and invalid presentation geometry is rejected. A live Fit and Fill comparison remains required.

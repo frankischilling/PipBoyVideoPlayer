@@ -9,6 +9,7 @@ void RunConfigurationTests();
 void RunControllerInputTests();
 void RunInputEdgeTests();
 void RunInputPromptTests();
+void RunLogPrivacyTests();
 void RunMediaLimitTests();
 void RunMediaCatalogTests();
 void RunMenuVtableValidationTests();
@@ -28,6 +29,7 @@ int main() {
     RunControllerInputTests();
     RunInputEdgeTests();
     RunInputPromptTests();
+    RunLogPrivacyTests();
     RunMediaLimitTests();
     RunMediaCatalogTests();
     RunMenuKeyboardTests();

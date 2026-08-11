@@ -135,4 +135,4 @@ Unknown settings are ignored with one warning. Invalid limits fall back to safe 
 
 The runtime log belongs beside other xNVSE plugin logs. Normal logging includes the plugin version, supported runtime, dependency versions, selected media basename, stream summary, timing warnings, and errors.
 
-Absolute media paths, file contents, and metadata comments are omitted by default. Diagnostic mode may include more detail after warning the user that shared logs can reveal filenames.
+Normal mode records only the selected media basename. Diagnostic mode may record a validated relative catalog name. If a value is absolute or contains traversal, PBVP strips it to the basename. File contents and embedded metadata are not used for log names. Shared logs can reveal filenames in either mode.

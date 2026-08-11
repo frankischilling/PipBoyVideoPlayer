@@ -111,7 +111,7 @@ No callback may wait on the game thread. A completed XAudio2 buffer is not reuse
 
 All external file and FFmpeg failures become structured playback errors. Windows structured exception handling may guard the outer render callback, but it is not a substitute for normal validation. If the renderer fails, it disables video drawing for the session and leaves the Pip-Boy usable.
 
-The plugin log records component, state, error code, media basename, and timestamp. Full local paths are disabled by default. Repeated frame errors are rate limited so a bad file cannot generate an unbounded log.
+The plugin log records component, state, error code, media basename, and timestamp. Normal mode passes only the selected basename to the logger. Diagnostic mode may pass a validated relative catalog name. Absolute paths and traversal reduce to the basename in both modes, and embedded metadata is not used for log names. Repeated frame errors are rate limited so a bad file cannot generate an unbounded log.
 
 ## Hook policy
 

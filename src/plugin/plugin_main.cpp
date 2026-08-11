@@ -4,6 +4,7 @@
 #include "pbvp/configuration.hpp"
 #include "pbvp/ffmpeg_runtime.hpp"
 #include "pbvp/log.hpp"
+#include "pbvp/log_privacy.hpp"
 #include "pbvp/media_catalog.hpp"
 #include "pbvp/playback_controller.hpp"
 #if defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
@@ -446,17 +447,22 @@ void OpenSelectedCatalogEntry() noexcept {
     g_current_title_metadata_checked = false;
     g_last_display_second = -1ll;
     g_last_display_duration_second = -1ll;
+    std::array<char, pbvp::kMaximumMediaLogNameBytes> media_name{};
+    const bool media_name_available = pbvp::FormatPrivacySafeMediaName(
+        entry.relative_name, g_settings.logging_detail, media_name);
     if (g_playback_controller->Open(g_media_root, entry.relative_name)) {
         g_videos_page_state = VideosPageState::playback;
         PBVP_LOG_INFO(
-            "Playback opened catalog item: session=%llu bytes=%llu",
+            "Playback opened catalog item: session=%llu bytes=%llu media=%s",
             static_cast<unsigned long long>(entry.session_id),
-            static_cast<unsigned long long>(entry.file_bytes));
+            static_cast<unsigned long long>(entry.file_bytes),
+            media_name_available ? media_name.data() : "unavailable");
     } else {
         g_videos_page_state = VideosPageState::playback;
         PBVP_LOG_WARN(
-            "Playback rejected catalog item: session=%llu",
-            static_cast<unsigned long long>(entry.session_id));
+            "Playback rejected catalog item: session=%llu media=%s",
+            static_cast<unsigned long long>(entry.session_id),
+            media_name_available ? media_name.data() : "unavailable");
     }
 }
 
