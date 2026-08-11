@@ -186,7 +186,7 @@ if(PBVP_BUILD_PLUGIN)
                 "${CMAKE_SOURCE_DIR}/tests/fixtures")
 
         add_executable(pbvp_playback_controller_test tests/playback_controller_tests.cpp)
-        target_link_libraries(pbvp_playback_controller_test PRIVATE pbvp_playback)
+        target_link_libraries(pbvp_playback_controller_test PRIVATE pbvp_playback Psapi.lib)
         target_compile_features(pbvp_playback_controller_test PRIVATE cxx_std_20)
         target_compile_options(pbvp_playback_controller_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus /Zm200)
         set_target_properties(pbvp_playback_controller_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

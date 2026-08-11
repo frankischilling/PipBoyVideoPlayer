@@ -692,6 +692,10 @@ Remove or rename a selected media file before open. Deny read access. Simulate a
 
 Automate or manually script the acceptance loops from the project scope. Capture process memory, handle count, thread count, frame time, audio underruns, video drops, and clock error.
 
+The native Win32 playback test now performs five warm-up cycles, records process private bytes, handles, and threads, then completes 100 additional open and stop cycles with the same controller instance. The accepted run retained 765,952 private bytes, kept handles at 184, and kept threads at 6. Every stop returned to idle with empty staged video, audio lookahead, and presentation slots.
+
+The same test opens a fresh session and completes 20 forward and 20 backward seeks. It returns to playing after every seek, reaches generation 41 with an exact seek count of 40, and reports zero XAudio2 underruns. This automates the worker, queue, generation, and audio flush boundaries. It does not replace the required in-game repetition or mixed soak.
+
 ## Performance measurements
 
 Record at least:

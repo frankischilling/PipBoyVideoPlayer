@@ -58,6 +58,8 @@ ctest --test-dir build-host --output-on-failure
 
 Release packaging performs a second audit after both ZIP files are written. It requires the exact runtime and symbols inventories, consistent entry timestamps, safe entry names, bounded expansion, the approved DLL set, and no personal media, saves, logs, dumps, build objects, executables, PDB files in the runtime archive, or absolute local paths.
 
+The native Phase 6 lifecycle test completes 100 open and stop cycles, followed by 20 forward and 20 backward seeks in one playback session. The accepted run retained 765,952 private bytes, kept process handles at 184 and threads at 6, and reported zero audio underruns after the seek loop. These checks exercise the decoder, XAudio2, and playback state machine outside the game. The separate in-game repetition and soak gates remain required.
+
 ## Intended user experience
 
 The user installs the mod through Mod Organizer 2, creates a separate personal media mod, and places MP4 files in its `Data\NVSE\Plugins\PipBoyVideoPlayer\Videos` directory. A Videos page in the Pip-Boy lists those files. Selecting a file starts native decoding without converting the video into DDS frames first.

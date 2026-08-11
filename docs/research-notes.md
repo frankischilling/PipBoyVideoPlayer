@@ -506,3 +506,9 @@ The live Phase 2 test confirmed that custom Win32 I/O sees a file supplied only 
 The first hardening change audits the written ZIP files instead of relying only on the staging tree. The runtime archive must contain the exact 28-file inventory derived from the repository documentation and pinned FFmpeg manifest. The symbols archive must contain only the matching cleaned PDB and README. The checker also requires safe unique entry names, consistent timestamps, bounded expansion, and no private absolute path.
 
 The negative fixtures reject an extra DLL, an MP4 file, a local user path, a missing README, and a traversal entry. Host Release passes 21 of 21 tests, Win32 Release passes 30 of 30 tests, and the integrated package command accepted both real archives.
+
+## Phase 6 native lifecycle repetition
+
+The Win32 playback test warms the decoder and audio path, records process counters, and then runs 100 additional open and stop cycles. The accepted run retained 765,952 private bytes. Handles remained at 184 and threads remained at 6. Every stopped snapshot was idle with no staged video frame, staged byte, audio lookahead chunk, or ready presentation frame.
+
+A fresh session then completed 20 forward and 20 backward seeks. The controller returned to playing after each request, reached generation 41, recorded exactly 40 seeks, and reported zero audio underruns. The native result covers repeated worker joins, audio flushes, generation changes, and bounded queue cleanup. It does not establish the in-game UI, render, or menu-lifecycle repetition result.
