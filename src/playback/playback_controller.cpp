@@ -129,6 +129,11 @@ bool PlaybackController::Update(const bool presentation_visible) noexcept {
     }
 
     const PlaybackState before_feed = state_.Snapshot().state;
+    const bool selected_before_feed = before_feed == PlaybackState::playing ||
+        before_feed == PlaybackState::paused;
+    if (selected_before_feed && !SelectVideoForCurrentClock()) {
+        return false;
+    }
     const bool discard_video = before_feed == PlaybackState::buffering;
     if (!DrainVideo(discard_video)) {
         return false;
@@ -153,7 +158,8 @@ bool PlaybackController::Update(const bool presentation_visible) noexcept {
     }
 
     const PlaybackState after_buffering = state_.Snapshot().state;
-    if ((after_buffering == PlaybackState::playing ||
+    if (!selected_before_feed &&
+        (after_buffering == PlaybackState::playing ||
          after_buffering == PlaybackState::paused) &&
         !SelectVideoForCurrentClock()) {
         return false;

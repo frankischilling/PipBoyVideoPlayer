@@ -702,6 +702,22 @@ Consequence: add an integrated recovery regression that verifies the source voic
 
 Implementation evidence: the native controller regression forces rebuffering after the XAudio2 voice has started. It verifies the voice pauses in `buffering`, resumes when automatic recovery returns to `playing`, and stays paused when the user requests pause during recovery. All 15 host tests, all 24 normal x86 tests, and all 24 armed x86 tests pass with the existing prebuffer and queue limits.
 
+### Free due video before the audio feed
+
+Date: August 10, 2026
+
+Decision: for `playing` and `paused`, perform audio-led video selection before draining new video and feeding audio. Initial buffering and underrun recovery still build the fixed audio prebuffer before their first selection. Keep the consumed-sample clock, queue limits, and thread ownership unchanged.
+
+Reason: the playing update currently feeds audio before it removes clock-eligible video. At 10 FPS, a full video queue can hold the interleaved decoder until selection runs. Audio produced after that point cannot be submitted until the next game-loop update.
+
+Evidence: the paused recovery build returned to `playing` in one 100 millisecond update, but it continued to underrun every 400 to 501 milliseconds and failed on the fourth event. The failure record contains 24 controller updates, a 1,749,333 microsecond audio clock, 54 decoded frames, 89,088 submitted samples, 83,968 played samples, five queued XAudio2 buffers, and two items in each decoder queue. Visible cadence stayed between 10.00 and 10.07 FPS. The preserved log has SHA-256 `A6095AFDA5BB6D1DEF7FFC7C80F4D8579A42467F66DA529FF8642E3E9DADADD9`.
+
+Rejected alternatives: do not increase the audio prebuffer, grow a queue, raise the underrun limit, or change callback ownership before testing the existing service-order dependency.
+
+Consequence: preserve paused recovery, reorder the playing and paused update path, rerun the native suites, and stop the next live run at the first underrun.
+
+Implementation evidence: `PlaybackController::Update` now runs audio-led selection before `DrainVideo` and `FeedAudio` when the state is `playing` or `paused`. Selection still runs after `StartBufferedPlayback` when the controller enters playback from initial buffering or underrun recovery. All 15 host tests, all 24 normal x86 tests, and all 24 armed x86 tests pass. The live 10 FPS check remains open.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.

@@ -351,6 +351,12 @@ The diagnostic build recorded 32 controller updates before the fourth underrun. 
 
 The native regression forces the controller through both recovery outcomes. Automatic recovery pauses and resumes XAudio2 around the existing prebuffer. A pause requested while recovery is active leaves the voice paused when buffering completes, and an explicit resume restarts it. The full host, normal x86, and armed x86 suites pass without changing queue limits.
 
+The paused recovery candidate still failed the live 10 FPS gate. Each rebuffer completed in one 100 millisecond update, but playback returned to buffering every 400 to 501 milliseconds and stopped at the fourth underrun. At failure, 24 updates had decoded 54 frames, submitted 89,088 samples, played 83,968 samples, and left five XAudio2 buffers plus two items in each decoder queue. The preserved log has SHA-256 `A6095AFDA5BB6D1DEF7FFC7C80F4D8579A42467F66DA529FF8642E3E9DADADD9`.
+
+The controller's playing path runs `FeedAudio` before `SelectVideoForCurrentClock`. The video selection eventually frees the decoder's bounded video queue, but the audio feed for that update has already finished. Moving audio-led selection before the feed removes that one-update dependency without using game frames as the media clock or changing a queue limit.
+
+The implemented controller order now selects against the audio clock before `DrainVideo` and `FeedAudio` in `playing` and `paused`. Initial buffering and recovery still select after `StartBufferedPlayback`. The host suite passes 15 of 15 tests, and both the normal and armed x86 suites pass 24 of 24 tests. The live 10 FPS check remains open.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

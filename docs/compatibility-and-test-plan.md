@@ -532,6 +532,12 @@ Code inspection found the missing state transition. `BeginRebuffer` changes the 
 
 The native controller regression forces rebuffering after the XAudio2 voice has started. It verifies the `playing` to `buffering` transition pauses the voice, automatic buffer completion returns to `playing` and resumes the voice, and a user pause during recovery completes in `paused` until an explicit resume. The test uses the existing 200 millisecond prebuffer and queue limits. All 15 host tests, all 24 normal x86 tests, and all 24 armed x86 tests pass. The live five-minute row is the remaining gate for this correction.
 
+The paused recovery build returned from `buffering` to `playing` in one 100 millisecond update, but it continued to underrun every 400 to 501 milliseconds and reached `audio_stream_failed` on the fourth event. The failure record contains 24 controller updates, a 1,749,333 microsecond audio clock, 54 decoded frames, 89,088 submitted samples, 83,968 played samples, five queued XAudio2 buffers, and two items in each decoder queue. Visible cadence stayed between 10.00 and 10.07 FPS. The preserved log has SHA-256 `A6095AFDA5BB6D1DEF7FFC7C80F4D8579A42467F66DA529FF8642E3E9DADADD9`.
+
+The playing update feeds audio before audio-led video selection. At 10 FPS, the bounded video queue can hold the interleaved decoder until selection frees it, which leaves newly produced audio for the next game-loop update. The next candidate selects due video before the audio feed while preserving the existing prebuffer, queues, clock, and ownership.
+
+`PlaybackController::Update` now runs audio-led selection before `DrainVideo` and `FeedAudio` when the state is `playing` or `paused`. Selection still runs after `StartBufferedPlayback` when the controller enters playback from initial buffering or underrun recovery. All 15 host tests, all 24 normal x86 tests, and all 24 armed x86 tests pass. The live 10 FPS check remains open.
+
 ## UI matrix
 
 Test these layouts independently:
