@@ -269,6 +269,43 @@ void TestOptionalLongStart(
     controller.Stop();
 }
 
+void TestOptionalLowFpsStart(
+    const pbvp::FfmpegRuntime& runtime,
+    const std::wstring& fixture_root,
+    const std::wstring& fixture_name) {
+    pbvp::PlaybackController controller(runtime, TestConfig());
+    PBVP_CHECK(controller.Open(fixture_root, fixture_name));
+    std::uint64_t delivered_frames = 0u;
+    const auto deadline = std::chrono::steady_clock::now() + 30s;
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (!controller.Update(true)) {
+            break;
+        }
+        if (controller.TakeVideoFrame().has_value()) {
+            ++delivered_frames;
+        }
+        Sleep(100u);
+    }
+    const auto snapshot = controller.Snapshot();
+    std::printf(
+        "low-fps startup: state=%s error=%s frames=%llu delivered=%llu dropped=%llu samples=%llu clock_us=%lld queued=%u underruns=%llu updates=%llu\n",
+        pbvp::PlaybackStateName(snapshot.playback.state),
+        pbvp::PlaybackErrorName(snapshot.playback.error),
+        static_cast<unsigned long long>(snapshot.metrics.decoded_video_frames),
+        static_cast<unsigned long long>(delivered_frames),
+        static_cast<unsigned long long>(snapshot.metrics.dropped_video_frames),
+        static_cast<unsigned long long>(snapshot.metrics.submitted_audio_samples),
+        static_cast<long long>(snapshot.metrics.last_media_time_us),
+        snapshot.audio.queued_buffers,
+        static_cast<unsigned long long>(snapshot.audio.underruns),
+        static_cast<unsigned long long>(snapshot.metrics.update_calls));
+    PBVP_CHECK(snapshot.playback.state != pbvp::PlaybackState::error);
+    PBVP_CHECK(snapshot.audio.underruns == 0u);
+    PBVP_CHECK(delivered_frames >= 250u);
+    PBVP_CHECK(snapshot.metrics.update_calls >= 270u);
+    controller.Stop();
+}
+
 } // namespace
 
 int wmain(int argc, wchar_t** argv) {
@@ -294,6 +331,7 @@ int wmain(int argc, wchar_t** argv) {
     TestSilentCompletion(runtime, argv[2]);
     if (argc == 5) {
         TestOptionalLongStart(runtime, argv[3], argv[4]);
+        TestOptionalLowFpsStart(runtime, argv[3], argv[4]);
     }
     runtime.Unload();
 

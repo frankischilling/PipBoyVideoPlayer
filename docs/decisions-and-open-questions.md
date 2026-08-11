@@ -718,6 +718,38 @@ Consequence: preserve paused recovery, reorder the playing and paused update pat
 
 Implementation evidence: `PlaybackController::Update` now runs audio-led selection before `DrainVideo` and `FeedAudio` when the state is `playing` or `paused`. Selection still runs after `StartBufferedPlayback` when the controller enters playback from initial buffering or underrun recovery. All 15 host tests, all 24 normal x86 tests, and all 24 armed x86 tests pass. The live 10 FPS check remains open.
 
+Live result: the candidate still failed at a steady 10 FPS without Alt+Tab. The first underrun occurred after 2.6 seconds, and the fourth produced `audio_stream_failed` after 4.1 seconds. The failure record contains 44 updates, 113 decoded frames, 183,296 submitted samples, 178,176 played samples, five queued XAudio2 buffers, and two items in each recorded decoder queue. The preserved log has SHA-256 `4546A674D91B3CFD7F1E2F12F64D2CA861A90BD59DCC5F4FBDA5F949A919F813`. This rejects service order as a complete correction.
+
+### Reclaim completed audio slots before readiness
+
+Date: August 10, 2026
+
+Decision: `XAudioStream::ReadSnapshot` must reclaim completed slots before it calculates `ready_to_start`. Add a native ordering regression, then run the real long fixture at a 100 millisecond controller cadence before changing the initial prebuffer.
+
+Reason: the current snapshot calls `ReadyToStart` before `ReclaimCompleted`. Finished samples can therefore satisfy the 200 millisecond threshold even though the same snapshot reports only the live buffers that remain after reclamation.
+
+Rejected alternatives: do not raise the prebuffer or queue limits until readiness uses the current live slot count and the controlled 100 millisecond test measures the first underrun separately.
+
+Consequence: recovery must never resume from stale sample accounting. The cause of the first live underrun remains open.
+
+Implementation evidence: the readiness regression drains a 200 millisecond non-final stream, pauses after every submitted buffer completes, and requires zero live buffers, zero queued bytes, and `ready_to_start` false. The corrected order passes.
+
+### Allow six bounded video items for packet bursts
+
+Date: August 10, 2026
+
+Decision: raise the default decoder video item limit from three to six. Keep the 32 MiB video byte cap, 200 millisecond audio prebuffer, 16-slot XAudio2 pool, consumed-sample clock, and current thread ownership.
+
+Reason: the native 100 millisecond cadence test reproduced one underrun with three video items. A 300 millisecond audio prebuffer did not correct the supply rate. Six video items passed with both audio thresholds and then completed 30 seconds with zero underruns. The extra item capacity absorbs short MP4 packet bursts so the interleaved FFmpeg worker can reach audio packets between controller updates.
+
+Evidence: the 30-second run decoded 897 frames, delivered 273, dropped 623 late frames, submitted 1,440,768 samples, reached a 29,830,000 microsecond audio clock, retained four XAudio2 buffers, and recorded zero underruns over 276 updates.
+
+Rejected alternatives: do not increase audio latency, grow the XAudio2 pool, remove the video byte cap, or move audio ownership to another thread while the bounded item change satisfies the controlled cadence test.
+
+Consequence: update the decoder memory regression for six scaled frames, run all native suites, and repeat the live five-minute 10 FPS gate. The controlled result is not a live pass.
+
+Implementation evidence: the production configuration and memory regression use six video items under the unchanged 32 MiB cap. The XAudio2 readiness regression, all 15 host tests, all 24 normal x86 tests, and all 24 armed x86 tests pass. The final 30-second real-fixture cadence run stayed in `playing` with zero underruns, reached a 29,800,000 microsecond audio clock, and retained five XAudio2 buffers over 275 updates. The live gate remains open.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.

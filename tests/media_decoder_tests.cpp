@@ -364,7 +364,7 @@ void TestFullHdMemory(
     pbvp::MediaDecoder decoder(runtime);
     pbvp::MediaDecodeFailure failure{};
     PBVP_CHECK(decoder.Start(fixture_root, L"h264-aac-1080p.mp4", failure));
-    PBVP_CHECK(WaitForVideoFrames(decoder, 3u));
+    PBVP_CHECK(WaitForVideoFrames(decoder, 6u));
     const pbvp::DecoderSnapshot snapshot = decoder.Snapshot();
     const pbvp::DecoderBufferUsage buffers = decoder.BufferUsage();
     const ProcessUsage filled = MeasureProcessUsage();
@@ -372,8 +372,8 @@ void TestFullHdMemory(
     PBVP_CHECK(snapshot.state == pbvp::DecoderState::decoding);
     PBVP_CHECK(snapshot.info.source_width == 1920u);
     PBVP_CHECK(snapshot.info.source_height == 1080u);
-    PBVP_CHECK(buffers.video_items == 3u);
-    PBVP_CHECK(buffers.video_bytes == 3u * 512u * 288u * 4u);
+    PBVP_CHECK(buffers.video_items == 6u);
+    PBVP_CHECK(buffers.video_bytes == 6u * 512u * 288u * 4u);
     PBVP_CHECK(buffers.video_bytes <= 32u * mebibyte);
     PBVP_CHECK(buffers.audio_bytes <= 4u * mebibyte);
 

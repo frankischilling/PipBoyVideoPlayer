@@ -170,6 +170,33 @@ void TestPrebufferDepth(const std::uint32_t prebuffer_ms) {
         static_cast<long long>(media_time.value_or(-1)));
 }
 
+void TestReadinessExcludesCompletedBuffers() {
+    pbvp::XAudioStream stream;
+    pbvp::XAudioStreamConfig config{};
+    config.prebuffer_ms = 200u;
+    config.slot_count = 16u;
+    config.slot_bytes = 4u * 1024u;
+    if (!CHECK_STATUS(stream.Initialize(config), pbvp::XAudioStreamStatus::ok)) {
+        return;
+    }
+
+    const auto pcm = SilentPcm(config.sample_rate, config.channels, 200u);
+    CHECK_STATUS(
+        stream.SubmitPcm(pcm, 0, 1u, false),
+        pbvp::XAudioStreamStatus::ok);
+    CHECK(stream.Snapshot().ready_to_start);
+    CHECK_STATUS(stream.Start(), pbvp::XAudioStreamStatus::ok);
+    CHECK(WaitForMediaTime(stream, 190'000, 1'000u));
+    Sleep(75u);
+    CHECK_STATUS(stream.Pause(), pbvp::XAudioStreamStatus::ok);
+
+    const auto snapshot = stream.Snapshot();
+    CHECK(snapshot.queued_buffers == 0u);
+    CHECK(snapshot.queued_bytes == 0u);
+    CHECK(!snapshot.ready_to_start);
+    CHECK_STATUS(stream.StopAndFlush(), pbvp::XAudioStreamStatus::ok);
+}
+
 void TestPauseResumeVolumeAndSeek() {
     pbvp::XAudioStream stream;
     pbvp::XAudioStreamConfig config{};
@@ -332,6 +359,7 @@ int main() {
     TestPrebufferDepth(100u);
     TestPrebufferDepth(200u);
     TestPrebufferDepth(300u);
+    TestReadinessExcludesCompletedBuffers();
     TestPauseResumeVolumeAndSeek();
     TestPcmFormats();
     TestSilentClock();

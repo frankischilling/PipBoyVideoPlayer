@@ -42,7 +42,7 @@ Planned FFmpeg libraries:
 
 ### Video queue
 
-The video queue contains presentation timestamps, dimensions, stride, and owned pixel storage. It is bounded by frame count and bytes. A starting target is three ready frames with room for one frame under conversion. The exact limit is a profiling decision.
+The video queue contains presentation timestamps, dimensions, stride, and owned pixel storage. It is bounded to six ready frames and 32 MiB. The six-item limit absorbs short MP4 packet bursts so the interleaved decoder can reach audio packets at a 100 millisecond controller cadence. The byte cap remains authoritative for large frames.
 
 When the decoder is ahead, it waits. When rendering is late, the presentation side discards frames whose timestamps are behind the audio clock and keeps the newest eligible frame. It never lets the queue grow to absorb a slow game.
 

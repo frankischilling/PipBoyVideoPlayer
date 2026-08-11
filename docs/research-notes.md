@@ -357,6 +357,16 @@ The controller's playing path runs `FeedAudio` before `SelectVideoForCurrentCloc
 
 The implemented controller order now selects against the audio clock before `DrainVideo` and `FeedAudio` in `playing` and `paused`. Initial buffering and recovery still select after `StartBufferedPlayback`. The host suite passes 15 of 15 tests, and both the normal and armed x86 suites pass 24 of 24 tests. The live 10 FPS check remains open.
 
+The service-order candidate failed a no-Alt+Tab run. The first underrun occurred after 2.6 seconds, and the fourth ended playback after 4.1 seconds. Visible cadence stayed between 9.91 and 10.08 FPS. The failure snapshot contains 44 updates, 113 decoded frames, 183,296 submitted samples, 178,176 played samples, five queued XAudio2 buffers, and two items in each last-recorded decoder queue. The preserved log has SHA-256 `4546A674D91B3CFD7F1E2F12F64D2CA861A90BD59DCC5F4FBDA5F949A919F813`.
+
+`XAudioStream::ReadSnapshot` calculates `ready_to_start` before it calls `ReclaimCompleted`. A rebuffer snapshot can therefore count completed slots toward the 200 millisecond threshold, reclaim them, report only five live buffers, and still allow the controller to resume. Reclamation must precede readiness. A native 100 millisecond cadence test will then isolate the initial underrun from this recovery bug.
+
+The native cadence test reproduced the first underrun with three video items and the 200 millisecond audio prebuffer. After 55 updates, the audio clock was 5,248,000 microseconds, the controller had submitted 257,024 samples, and the XAudio2 queue was empty. Increasing only the audio prebuffer to 300 milliseconds still produced one underrun.
+
+Changing the video item limit to six passed six-second runs with both audio thresholds. With the original 200 millisecond audio prebuffer, the 30-second run remained in `playing`, recorded zero underruns, and retained four XAudio2 buffers. It decoded 897 frames, delivered 273, dropped 623, submitted 1,440,768 samples, and reached a 29,830,000 microsecond clock over 276 updates. This selects six video items under the unchanged 32 MiB byte cap for the next live candidate.
+
+The production build uses that six-item limit, and the memory regression fills all six scaled 1080p frames. All host, normal x86, and armed x86 suites pass. The final 30-second cadence run decoded 896 frames, delivered 273, dropped 622, submitted 1,440,768 samples, reached a 29,800,000 microsecond audio clock, retained five XAudio2 buffers, and recorded zero underruns over 275 updates.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

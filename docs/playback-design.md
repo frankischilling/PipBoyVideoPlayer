@@ -108,7 +108,7 @@ Every limit belongs in one configuration structure and is logged at startup:
 | Maximum source width | 1920 |
 | Maximum source height | 1080 |
 | Maximum queued video edge | 512 |
-| Maximum video queue | 3 frames |
+| Maximum video queue | 6 frames and 32 MiB |
 | Maximum converted video bytes | 32 MiB |
 | Target queued audio | 200 ms |
 | Maximum queued audio | 500 ms |
