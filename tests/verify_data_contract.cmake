@@ -189,6 +189,11 @@ foreach(required_configuration_path IN ITEMS
         message(FATAL_ERROR "Plugin lifecycle is missing ${required_configuration_path}")
     endif()
 endforeach()
+
+string(FIND "${plugin_text}" "Playback stream summary:" stream_summary_offset)
+if(stream_summary_offset EQUAL -1)
+    message(FATAL_ERROR "plugin_main.cpp does not log the bounded media stream summary")
+endif()
 string(FIND "${plugin_text}"
     "xNVSE frame-present presentation path enabled without executable hooks"
     hook_free_log_offset)

@@ -58,6 +58,7 @@ pbvp::MediaCatalogSelection g_catalog_selection{pbvp::kUiCatalogVisibleRows};
 pbvp::UiInputMethod g_last_input_method{pbvp::UiInputMethod::keyboard_mouse};
 std::wstring g_current_display_title;
 bool g_current_title_metadata_checked{};
+bool g_current_stream_summary_logged{};
 std::int64_t g_last_display_second{-1ll};
 std::int64_t g_last_display_duration_second{-1ll};
 #if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST) || defined(PBVP_ENABLE_PLAYBACK_LONG_TEST)
@@ -445,6 +446,7 @@ void OpenSelectedCatalogEntry() noexcept {
         g_media_catalog.entries[g_catalog_selection.SelectedIndex()];
     g_current_display_title = entry.display_name;
     g_current_title_metadata_checked = false;
+    g_current_stream_summary_logged = false;
     g_last_display_second = -1ll;
     g_last_display_duration_second = -1ll;
     std::array<char, pbvp::kMaximumMediaLogNameBytes> media_name{};
@@ -668,6 +670,19 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
     }
 
     const pbvp::PlaybackControllerSnapshot after = g_playback_controller->Snapshot();
+    if (!g_current_stream_summary_logged && after.decoder.info.source_width != 0u) {
+        const pbvp::MediaInfo& info = after.decoder.info;
+        PBVP_LOG_INFO(
+            "Playback stream summary: source=%ux%u display=%ux%u rotation=%u duration_us=%lld audio=%u source_audio=%uch@%u output_audio=%uch@%u",
+            info.source_width, info.source_height,
+            info.display_width, info.display_height,
+            info.clockwise_rotation_degrees,
+            static_cast<long long>(info.duration_us),
+            info.has_audio ? 1u : 0u,
+            info.source_audio_channels, info.source_audio_rate,
+            info.output_audio_channels, info.output_audio_rate);
+        g_current_stream_summary_logged = true;
+    }
 #if !defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
     if (!g_current_title_metadata_checked && after.decoder.info.source_width != 0u) {
         g_current_title_metadata_checked = true;

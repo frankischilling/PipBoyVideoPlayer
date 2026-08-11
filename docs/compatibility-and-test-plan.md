@@ -606,6 +606,8 @@ The portable catalog tests assert exact relative paths and extension-free displa
 
 Portable privacy tests cover normal basenames, diagnostic relative names, absolute drive and UNC inputs, parent traversal, UTF-8 filenames, control characters, invalid UTF-16, and short buffers. The runtime uses this formatter when it logs a catalog playback start or rejection. It does not pass metadata titles to the formatter.
 
+The data-contract test requires the runtime stream-summary record. The record contains numeric source, display, rotation, duration, and audio fields. A live normal-log check must still confirm that it appears once for each selected file and contains no path or metadata text.
+
 ## Phase 5 aspect scaling audit
 
 Code inspection found that Fit and Fill used only the square 256 by 256 engine texture, even though Gamebryo displays that texture in the 384 by 216 video rectangle. Portable tests now model both dimensions. They verify that a 16:9 source fills the backing texture for a 16:9 presentation, a 4:3 Fit source receives side bars, a 4:3 Fill source crops vertically, and invalid presentation geometry is rejected. A live Fit and Fill comparison remains required.
