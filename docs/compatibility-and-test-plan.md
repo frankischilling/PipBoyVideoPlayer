@@ -580,6 +580,12 @@ The strict low-FPS checker does not accept this as a complete phase gate. The pr
 
 The accounting correction passed the 15-test host matrix and both 24-test x86 matrices. The short regression services its fixture every 250 milliseconds, requires a frame drop, and requires presented frames to equal frames delivered through `TakeVideoFrame`. It also bounds the residual between decoded frames and mutually exclusive presentation outcomes to one frame. The corrected diagnostic DLL still needs a fresh five-minute Fallout log that passes the strict checker.
 
+The corrected live run then reached five minutes with a 299,970,000 microsecond audio clock, zero underruns, 9,001 decoded frames, 2,998 presented frames, 6,002 dropped frames, 35,254,272 bytes of additional private memory, and a 125 millisecond maximum update gap. The presented and dropped counts are mutually exclusive in this record. The preserved log has SHA-256 `95008D38037440049B44EC7EA009C4F363F4695EE779CFBA4314BA79DD56B9FA`.
+
+The strict checker reached the renderer summary and found 3,470 submitted frames, 3,469 uploaded frames, no mailbox replacement, and no upload failure. `RequestShutdown` cleared the one remaining mailbox frame before it wrote the summary, but the renderer did not count that shutdown outcome. The next candidate adds a cleared-mailbox metric and requires uploaded, replaced, and cleared frames to account for every submission. It does not force a Direct3D upload during game exit.
+
+The cleared-mailbox change passed the 15-test host matrix and both 24-test x86 matrices. Checker regressions accept complete upload with no clear and shutdown with one cleared pending frame. They reject upload loss, mailbox replacement, two cleared frames, and a submission without a terminal renderer outcome. An untouched live log from the new build must still pass the strict checker.
+
 ## UI matrix
 
 Test these layouts independently:

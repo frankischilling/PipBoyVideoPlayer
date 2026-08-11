@@ -800,6 +800,22 @@ Consequence: require presented plus dropped frames to remain at or below decoded
 
 Implementation evidence: the accounting correction passed the 15-test host matrix and both 24-test x86 matrices. The new 250 millisecond cadence regression requires at least one dropped frame, exact agreement between presented and delivered frames, and no more than one decoded frame outside the two presentation outcomes. The corrected live gate remains open.
 
+Live evidence: the corrected run reported 9,001 decoded frames, 2,998 presented frames, and 6,002 dropped frames at five minutes. The strict checker accepted that accounting and reached the renderer summary. The preserved log has SHA-256 `95008D38037440049B44EC7EA009C4F363F4695EE779CFBA4314BA79DD56B9FA`.
+
+### Count frames cleared from the renderer mailbox
+
+Date: August 10, 2026
+
+Decision: add `cleared_mailbox_frames` to the renderer snapshot and session summary. Increment it when `ClearVideoFrame` owns and releases a pending frame. Require uploaded, replaced, and cleared outcomes to equal submitted frames in the low-FPS checker.
+
+Reason: the corrected live shutdown reported 3,470 submitted frames, 3,469 uploaded frames, no replacement, and no upload failure. `RequestShutdown` clears one pending payload before the summary, so the current counters leave that safely released frame unclassified.
+
+Rejected alternatives: do not relax the checker to ignore missing ownership. Do not force a Direct3D upload while FalloutNV is exiting.
+
+Consequence: allow no mailbox replacements and at most one cleared frame in the five-minute shutdown test. Reject upload failure, more than one clear, or any submission without exactly one terminal renderer outcome.
+
+Implementation evidence: the cleared-mailbox change passed the 15-test host matrix and both 24-test x86 matrices. Checker regressions cover complete upload, one shutdown clear, upload loss, mailbox replacement, excess clears, and an unaccounted submission. The new build still needs an untouched live log.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.

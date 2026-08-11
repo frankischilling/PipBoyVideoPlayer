@@ -21,6 +21,7 @@ struct D3dRendererSnapshot final {
     std::uint64_t visible_frames{};
     std::uint64_t submitted_video_frames{};
     std::uint64_t replaced_mailbox_frames{};
+    std::uint64_t cleared_mailbox_frames{};
     std::uint64_t uploaded_video_frames{};
     std::uint64_t upload_attempts{};
     std::uint64_t upload_successes{};
@@ -74,6 +75,7 @@ private:
     std::uint64_t visible_frame_count_{};
     std::uint64_t submitted_video_frame_count_{};
     std::uint64_t mailbox_replacement_count_{};
+    std::uint64_t mailbox_clear_count_{};
     std::uint64_t uploaded_video_frame_count_{};
     std::uint64_t last_video_generation_{};
     std::int64_t last_video_pts_us_{};

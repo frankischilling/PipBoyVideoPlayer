@@ -88,6 +88,9 @@ bool D3dRenderer::SubmitVideoFrame(DecodedVideoFrame frame) noexcept {
 void D3dRenderer::ClearVideoFrame() noexcept {
     try {
         std::scoped_lock lock(mailbox_mutex_);
+        if (pending_frame_.has_value()) {
+            ++mailbox_clear_count_;
+        }
         pending_frame_.reset();
     } catch (...) {
     }
@@ -258,6 +261,7 @@ D3dRendererSnapshot D3dRenderer::Snapshot() const noexcept {
     result.visible_frames = visible_frame_count_;
     result.submitted_video_frames = submitted_video_frame_count_;
     result.replaced_mailbox_frames = mailbox_replacement_count_;
+    result.cleared_mailbox_frames = mailbox_clear_count_;
     result.uploaded_video_frames = uploaded_video_frame_count_;
     result.upload_attempts = upload_attempt_count_;
     result.upload_successes = upload_success_count_;
@@ -494,12 +498,13 @@ void D3dRenderer::LogSessionSummary() noexcept {
         ? upload_total_microseconds_ / static_cast<double>(upload_timing_count_)
         : 0.0;
     PBVP_LOG_INFO(
-        "Renderer summary: callbacks=%llu visible=%llu devices=%u video-submitted=%llu video-uploaded=%llu mailbox-replaced=%llu upload-successes=%llu upload-attempts=%llu upload-failures=%llu upload-us=%.2f/%.2f/%.2f",
+        "Renderer summary: callbacks=%llu visible=%llu devices=%u video-submitted=%llu video-uploaded=%llu mailbox-replaced=%llu mailbox-cleared=%llu upload-successes=%llu upload-attempts=%llu upload-failures=%llu upload-us=%.2f/%.2f/%.2f",
         static_cast<unsigned long long>(frame_callback_count_),
         static_cast<unsigned long long>(visible_frame_count_), device_validation_count_,
         static_cast<unsigned long long>(submitted_video_frame_count_),
         static_cast<unsigned long long>(uploaded_video_frame_count_),
         static_cast<unsigned long long>(mailbox_replacement_count_),
+        static_cast<unsigned long long>(mailbox_clear_count_),
         static_cast<unsigned long long>(upload_success_count_),
         static_cast<unsigned long long>(upload_attempt_count_),
         static_cast<unsigned long long>(upload_failure_count_),

@@ -391,6 +391,12 @@ The 110 millisecond live gap is below the current 341,333 microseconds of XAudio
 
 The accounting correction passed the 15-test host matrix and both 24-test x86 matrices. A short regression now runs the controller every 250 milliseconds, requires dropped frames, and requires the presented count to equal frames returned by `TakeVideoFrame`. Presented plus dropped frames cannot exceed decoded frames, and at most one decoded frame may remain in another bounded owner. The corrected diagnostic DLL still needs a new live log that passes the strict checker.
 
+The corrected live run reached a 299,970,000 microsecond audio clock with zero underruns. It recorded 9,001 decoded frames, 2,998 presented frames, 6,002 dropped frames, 35,254,272 bytes of additional private memory, and a 125 millisecond maximum update gap. The corrected frame outcomes are mutually exclusive. The preserved log has SHA-256 `95008D38037440049B44EC7EA009C4F363F4695EE779CFBA4314BA79DD56B9FA`.
+
+The strict checker then reached the shutdown renderer summary. It found 3,470 submitted frames, 3,469 uploaded frames, no mailbox replacement, and no upload failure. Upload time was 20.60 microseconds minimum, 37.82 microseconds average, and 206.80 microseconds maximum. `RequestShutdown` calls `ClearVideoFrame` before the summary, which safely releases the one pending payload without recording a terminal outcome. A cleared-mailbox counter will close that accounting gap. The checker will require uploaded, replaced, and cleared frames to equal submissions, while allowing no replacement and at most one shutdown clear.
+
+The cleared-mailbox change passed the 15-test host matrix and both 24-test x86 matrices. The checker accepts both complete upload and one pending frame cleared during shutdown. It rejects upload loss, mailbox replacement, two cleared frames, and a submission without a terminal renderer outcome. Untouched live evidence from the new log format remains open.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

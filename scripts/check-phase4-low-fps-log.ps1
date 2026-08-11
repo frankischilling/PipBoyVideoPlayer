@@ -54,19 +54,21 @@ if ($clock -lt 299000000 -or $clock -gt 301000000 -or
 
 $renderer = [Text.RegularExpressions.Regex]::Match(
     $log,
-    'Renderer summary:.*video-submitted=(?<submitted>\d+) video-uploaded=(?<uploaded>\d+) mailbox-replaced=(?<replaced>\d+).*upload-failures=(?<failures>\d+) upload-us=(?<minimum>[\d.]+)/(?<average>[\d.]+)/(?<maximum>[\d.]+)')
+    'Renderer summary:.*video-submitted=(?<submitted>\d+) video-uploaded=(?<uploaded>\d+) mailbox-replaced=(?<replaced>\d+) mailbox-cleared=(?<cleared>\d+).*upload-failures=(?<failures>\d+) upload-us=(?<minimum>[\d.]+)/(?<average>[\d.]+)/(?<maximum>[\d.]+)')
 if (-not $renderer.Success) {
     throw 'The low-FPS renderer summary could not be parsed.'
 }
 $submitted = [uint64]$renderer.Groups['submitted'].Value
 $uploaded = [uint64]$renderer.Groups['uploaded'].Value
 $replaced = [uint64]$renderer.Groups['replaced'].Value
+$cleared = [uint64]$renderer.Groups['cleared'].Value
 $failures = [uint64]$renderer.Groups['failures'].Value
 $minimum = [double]$renderer.Groups['minimum'].Value
 $average = [double]$renderer.Groups['average'].Value
 $maximum = [double]$renderer.Groups['maximum'].Value
 if ($submitted -lt 2500 -or $submitted -gt 3500 -or
-    $uploaded -ne $submitted -or $replaced -ne 0 -or $failures -ne 0 -or
+    $uploaded -gt $submitted -or $replaced -ne 0 -or $cleared -gt 1 -or
+    $uploaded + $replaced + $cleared -ne $submitted -or $failures -ne 0 -or
     $minimum -le 0.0 -or $average -lt $minimum -or
     $maximum -lt $average -or $maximum -ge 10000.0) {
     throw 'The low-FPS renderer summary is outside the acceptance limits.'
@@ -95,4 +97,4 @@ for ($index = 1; $index -lt $orderedKeys.Count; $index++) {
     }
 }
 
-Write-Host "Phase 4 low-FPS playback log passed: clock_us=$clock decoded=$decoded presented=$presented dropped=$dropped underruns=$underruns private_delta=$private upload_max_us=$maximum cadence_fps=$cadenceAverage"
+Write-Host "Phase 4 low-FPS playback log passed: clock_us=$clock decoded=$decoded presented=$presented dropped=$dropped underruns=$underruns private_delta=$private mailbox_cleared=$cleared upload_max_us=$maximum cadence_fps=$cadenceAverage"

@@ -13,7 +13,7 @@ try {
         '10:00:01.100 [INFO] Decoded BGRA video reached PBVP_VideoSurface',
         '10:05:01.000 [INFO] Integrated playback long test progress: clock_us=299930000 decoded=9000 presented=2995 dropped=6004 underruns=0 private_delta=42000000',
         '10:05:03.000 [INFO] Playback audio stopped and decoder worker joined',
-        '10:05:03.001 [INFO] Renderer summary: callbacks=3050 visible=3000 devices=1 video-submitted=2995 video-uploaded=2995 mailbox-replaced=0 upload-successes=2996 upload-attempts=2996 upload-failures=0 upload-us=18.00/25.00/150.00',
+        '10:05:03.001 [INFO] Renderer summary: callbacks=3050 visible=3000 devices=1 video-submitted=2995 video-uploaded=2994 mailbox-replaced=0 mailbox-cleared=1 upload-successes=2995 upload-attempts=2995 upload-failures=0 upload-us=18.00/25.00/150.00',
         '10:05:03.002 [INFO] Visible cadence summary: samples=8 fps=9.80/10.00/10.20',
         '10:05:03.003 [INFO] Process shutdown requested'
     )
@@ -21,6 +21,13 @@ try {
     $goodPath = Join-Path $temporaryRoot 'good.log'
     [IO.File]::WriteAllText($goodPath, $good, [Text.UTF8Encoding]::new($false))
     & $CheckerPath -LogPath $goodPath
+
+    $noClear = $good.Replace(
+        'video-uploaded=2994 mailbox-replaced=0 mailbox-cleared=1',
+        'video-uploaded=2995 mailbox-replaced=0 mailbox-cleared=0')
+    $noClearPath = Join-Path $temporaryRoot 'good-no-clear.log'
+    [IO.File]::WriteAllText($noClearPath, $noClear, [Text.UTF8Encoding]::new($false))
+    & $CheckerPath -LogPath $noClearPath
 
     $badCases = [ordered]@{
         Error = $good.Replace(
@@ -32,7 +39,10 @@ try {
         Drops = $good.Replace('dropped=6004', 'dropped=4999')
         Underrun = $good.Replace('underruns=0', 'underruns=1')
         Memory = $good.Replace('private_delta=42000000', 'private_delta=134217728')
-        Upload = $good.Replace('video-uploaded=2995', 'video-uploaded=0')
+        Upload = $good.Replace('video-uploaded=2994', 'video-uploaded=0')
+        Replacement = $good.Replace('mailbox-replaced=0', 'mailbox-replaced=1')
+        Cleared = $good.Replace('mailbox-cleared=1', 'mailbox-cleared=2')
+        Unaccounted = $good.Replace('video-uploaded=2994', 'video-uploaded=2993')
         Cadence = $good.Replace('fps=9.80/10.00/10.20', 'fps=59.80/60.00/60.20')
     }
     foreach ($case in $badCases.GetEnumerator()) {
