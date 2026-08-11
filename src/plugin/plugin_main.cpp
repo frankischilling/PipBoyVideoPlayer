@@ -1,8 +1,11 @@
 #include "nvse/PluginAPI.h"
 
 #include "pbvp/d3d_renderer.hpp"
+#include "pbvp/configuration.hpp"
 #include "pbvp/ffmpeg_runtime.hpp"
 #include "pbvp/log.hpp"
+#include "pbvp/log_privacy.hpp"
+#include "pbvp/media_catalog.hpp"
 #include "pbvp/playback_controller.hpp"
 #if defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
 #include "pbvp/audio_smoke_test.hpp"
@@ -16,6 +19,7 @@
 #include <Psapi.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <cstring>
@@ -37,7 +41,25 @@ std::atomic<bool> g_shutdown{false};
 std::atomic<bool> g_presentation_ready{false};
 pbvp::FfmpegRuntime g_ffmpeg_runtime;
 std::unique_ptr<pbvp::PlaybackController> g_playback_controller;
+pbvp::PlayerSettings g_settings{};
+std::wstring g_configuration_path;
+std::wstring g_media_root;
 pbvp::PlaybackState g_last_playback_state{pbvp::PlaybackState::idle};
+
+enum class VideosPageState : std::uint32_t {
+    data_page,
+    catalog,
+    playback,
+};
+
+VideosPageState g_videos_page_state{VideosPageState::data_page};
+pbvp::MediaCatalogResult g_media_catalog{};
+pbvp::MediaCatalogSelection g_catalog_selection{pbvp::kUiCatalogVisibleRows};
+std::wstring g_current_display_title;
+bool g_current_title_metadata_checked{};
+bool g_current_stream_summary_logged{};
+std::int64_t g_last_display_second{-1ll};
+std::int64_t g_last_display_duration_second{-1ll};
 #if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST) || defined(PBVP_ENABLE_PLAYBACK_LONG_TEST)
 #define PBVP_ENABLE_PLAYBACK_DIAGNOSTIC 1
 #endif
@@ -125,8 +147,6 @@ std::wstring PrivateFfmpegDirectory(const char* runtime_directory) noexcept {
     }
 }
 
-#if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST) || defined(PBVP_ENABLE_AUDIO_SMOKE_TEST) || \
-    defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
 std::wstring PrivateMediaDirectory(const char* runtime_directory) noexcept {
     try {
         std::wstring path = WidenRuntimeDirectory(runtime_directory);
@@ -142,7 +162,124 @@ std::wstring PrivateMediaDirectory(const char* runtime_directory) noexcept {
         return {};
     }
 }
+
+std::wstring PrivateConfigurationPath(const char* runtime_directory) noexcept {
+    try {
+        std::wstring path = WidenRuntimeDirectory(runtime_directory);
+        if (path.empty()) {
+            return {};
+        }
+        if (path.back() != L'\\' && path.back() != L'/') {
+            path.push_back(L'\\');
+        }
+        path.append(L"Data\\Config\\PipBoyVideoPlayer.ini");
+        return path;
+    } catch (...) {
+        return {};
+    }
+}
+
+pbvp::PlaybackControllerConfig PlaybackConfiguration(
+    const pbvp::PlayerSettings& settings) noexcept {
+    pbvp::PlaybackControllerConfig config{};
+    config.volume = settings.volume;
+    config.muted = settings.muted;
+    config.decoder.payload_limits.maximum_width =
+        settings.resources.maximum_source_width;
+    config.decoder.payload_limits.maximum_height =
+        settings.resources.maximum_source_height;
+    config.decoder.io_limits.maximum_file_bytes =
+        settings.resources.maximum_media_file_bytes;
+    config.decoder.output_video_edge_limit =
+        settings.resources.maximum_queued_video_edge;
+#if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
+    config.volume = kPlaybackSmokeVolume;
 #endif
+    return config;
+}
+
+bool CreatePlaybackController(const pbvp::PlayerSettings& settings) noexcept {
+    try {
+        auto replacement = std::make_unique<pbvp::PlaybackController>(
+            g_ffmpeg_runtime, PlaybackConfiguration(settings));
+        if (replacement->Snapshot().playback.state == pbvp::PlaybackState::unavailable) {
+            return false;
+        }
+        if (g_playback_controller != nullptr) {
+            g_playback_controller->Shutdown();
+        }
+        g_playback_controller = std::move(replacement);
+        g_last_playback_state = pbvp::PlaybackState::idle;
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+void LogConfigurationResult(const pbvp::ConfigurationResult& result) noexcept {
+    if (result.status != pbvp::ConfigurationStatus::ok) {
+        PBVP_LOG_WARN(
+            "Configuration unavailable; compiled defaults retained: status=%s win32=%lu",
+            pbvp::ConfigurationStatusName(result.status),
+            static_cast<unsigned long>(result.windows_error));
+        return;
+    }
+    if (result.unknown_settings != 0u || result.invalid_settings != 0u ||
+        result.malformed_lines != 0u) {
+        PBVP_LOG_WARN(
+            "Configuration loaded with ignored values: unknown=%u invalid=%u malformed=%u",
+            result.unknown_settings, result.invalid_settings, result.malformed_lines);
+    }
+    PBVP_LOG_INFO(
+        "Configuration accepted: enabled=%u aspect=%s tint=%s volume=%.2f muted=%u seek_seconds=%u catalog=%zu display_chars=%zu source=%ux%u queued_edge=%u file_limit=%llu logging=%s",
+        result.settings.enabled ? 1u : 0u,
+        pbvp::AspectModeName(result.settings.aspect_mode),
+        pbvp::TintModeName(result.settings.tint_mode),
+        static_cast<double>(result.settings.volume),
+        result.settings.muted ? 1u : 0u,
+        result.settings.seek_seconds,
+        result.settings.catalog.maximum_entries,
+        result.settings.catalog.maximum_display_characters,
+        result.settings.resources.maximum_source_width,
+        result.settings.resources.maximum_source_height,
+        result.settings.resources.maximum_queued_video_edge,
+        static_cast<unsigned long long>(
+            result.settings.resources.maximum_media_file_bytes),
+        pbvp::LoggingDetailName(result.settings.logging_detail));
+}
+
+void ReloadConfiguration() noexcept {
+    if (g_playback_controller == nullptr || !pbvp::ConfigurationReloadAllowed(
+            g_playback_controller->Snapshot().playback.state)) {
+        PBVP_LOG_WARN("Configuration reload rejected because playback is not idle");
+        return;
+    }
+    const pbvp::ConfigurationResult loaded =
+        pbvp::LoadConfiguration(g_configuration_path);
+    if (loaded.status != pbvp::ConfigurationStatus::ok) {
+        LogConfigurationResult(loaded);
+        PBVP_LOG_WARN("Configuration reload kept the previous settings");
+        return;
+    }
+    if (!CreatePlaybackController(loaded.settings)) {
+        PBVP_LOG_ERROR("Configuration reload rejected an invalid playback configuration");
+        return;
+    }
+    g_settings = loaded.settings;
+    pbvp::D3dRenderer::Instance().ConfigurePresentation(
+        g_settings.aspect_mode, g_settings.tint_mode);
+    if (!pbvp::UiBridge::Instance().SetInputBindings(g_settings.input)) {
+        PBVP_LOG_ERROR("Configuration reload rejected invalid input bindings");
+        return;
+    }
+    LogConfigurationResult(loaded);
+    pbvp::D3dRenderer::Instance().ClearVideoFrame();
+    g_videos_page_state = VideosPageState::data_page;
+    g_media_catalog = {};
+    g_catalog_selection.Reset(0u);
+    g_current_display_title.clear();
+    PBVP_LOG_INFO("Configuration reloaded while playback was idle");
+}
 
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST) || defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
 std::uint64_t ProcessPrivateBytes() noexcept {
@@ -228,6 +365,199 @@ void StopPlayback(const pbvp::PlaybackTerminalReason reason) noexcept {
         g_playback_controller->Stop(reason);
     }
     pbvp::D3dRenderer::Instance().ClearVideoFrame();
+}
+
+bool HasUiAction(
+    const pbvp::UiInputSnapshot& input,
+    const pbvp::UiInputAction action) noexcept {
+    return (input.actions & static_cast<std::uint32_t>(action)) != 0u;
+}
+
+pbvp::UiVideosMode CurrentUiVideosMode() noexcept {
+#if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
+    return pbvp::UiVideosMode::playback;
+#else
+    switch (g_videos_page_state) {
+        case VideosPageState::data_page: return pbvp::UiVideosMode::data_page;
+        case VideosPageState::catalog: return pbvp::UiVideosMode::catalog;
+        case VideosPageState::playback: return pbvp::UiVideosMode::playback;
+    }
+    return pbvp::UiVideosMode::data_page;
+#endif
+}
+
+void PublishCatalogRows() noexcept {
+    std::array<std::wstring, pbvp::kUiCatalogVisibleRows> rows{};
+    std::size_t row_count = 0u;
+    std::size_t selected_row = 0u;
+    try {
+        if (g_media_catalog.status != pbvp::MediaCatalogStatus::ok) {
+            rows[0] = L"VIDEO FOLDER UNAVAILABLE";
+            row_count = 1u;
+        } else if (g_media_catalog.entries.empty()) {
+            rows[0] = L"NO MP4 FILES FOUND";
+            row_count = 1u;
+        } else {
+            row_count = g_catalog_selection.VisibleCount();
+            selected_row = g_catalog_selection.SelectedVisibleRow();
+            for (std::size_t row = 0u; row < row_count; ++row) {
+                rows[row] = g_media_catalog.entries[
+                    g_catalog_selection.FirstVisibleIndex() + row].display_name;
+            }
+        }
+        static_cast<void>(pbvp::UiBridge::Instance().SetCatalogRows(
+            rows, row_count, selected_row));
+    } catch (...) {
+        PBVP_LOG_WARN("Catalog rows could not be prepared for the Pip-Boy UI");
+    }
+}
+
+void OpenVideosCatalog() noexcept {
+    g_media_catalog = pbvp::ScanMediaCatalog(g_media_root, g_settings.catalog);
+    g_catalog_selection.Reset(g_media_catalog.entries.size());
+    g_videos_page_state = VideosPageState::catalog;
+    PBVP_LOG_INFO(
+        "Video catalog scan finished: status=%s entries=%zu truncated=%u win32=%lu",
+        pbvp::MediaCatalogStatusName(g_media_catalog.status),
+        g_media_catalog.entries.size(), g_media_catalog.truncated ? 1u : 0u,
+        static_cast<unsigned long>(g_media_catalog.windows_error));
+}
+
+void CloseVideosPage() noexcept {
+    StopPlayback(pbvp::PlaybackTerminalReason::stopped);
+    g_videos_page_state = VideosPageState::data_page;
+    g_current_display_title.clear();
+}
+
+void ReturnToCatalog() noexcept {
+    StopPlayback(pbvp::PlaybackTerminalReason::stopped);
+    g_videos_page_state = VideosPageState::catalog;
+    g_current_display_title.clear();
+}
+
+void OpenSelectedCatalogEntry() noexcept {
+    if (g_playback_controller == nullptr ||
+        g_media_catalog.status != pbvp::MediaCatalogStatus::ok ||
+        g_catalog_selection.SelectedIndex() >= g_media_catalog.entries.size()) {
+        return;
+    }
+    const pbvp::MediaCatalogEntry& entry =
+        g_media_catalog.entries[g_catalog_selection.SelectedIndex()];
+    g_current_display_title = entry.display_name;
+    g_current_title_metadata_checked = false;
+    g_current_stream_summary_logged = false;
+    g_last_display_second = -1ll;
+    g_last_display_duration_second = -1ll;
+    std::array<char, pbvp::kMaximumMediaLogNameBytes> media_name{};
+    const bool media_name_available = pbvp::FormatPrivacySafeMediaName(
+        entry.relative_name, g_settings.logging_detail, media_name);
+    if (g_playback_controller->Open(g_media_root, entry.relative_name)) {
+        g_videos_page_state = VideosPageState::playback;
+        PBVP_LOG_INFO(
+            "Playback opened catalog item: session=%llu bytes=%llu media=%s",
+            static_cast<unsigned long long>(entry.session_id),
+            static_cast<unsigned long long>(entry.file_bytes),
+            media_name_available ? media_name.data() : "unavailable");
+    } else {
+        g_videos_page_state = VideosPageState::playback;
+        PBVP_LOG_WARN(
+            "Playback rejected catalog item: session=%llu media=%s",
+            static_cast<unsigned long long>(entry.session_id),
+            media_name_available ? media_name.data() : "unavailable");
+    }
+}
+
+void SeekRelative(const std::int64_t direction) noexcept {
+    if (g_playback_controller == nullptr || direction == 0) {
+        return;
+    }
+    const pbvp::PlaybackControllerSnapshot snapshot =
+        g_playback_controller->Snapshot();
+    if (!PlaybackActive(snapshot.playback.state)) {
+        return;
+    }
+    const std::int64_t step =
+        static_cast<std::int64_t>(g_settings.seek_seconds) * 1'000'000ll;
+    std::int64_t target = snapshot.metrics.last_media_time_us;
+    if (direction < 0) {
+        target = target > step ? target - step : 0ll;
+    } else if (target <= (std::numeric_limits<std::int64_t>::max)() - step) {
+        target += step;
+    }
+    static_cast<void>(g_playback_controller->Seek(target));
+}
+
+void ProcessVideosInput(const pbvp::UiInputSnapshot& input) noexcept {
+    if (g_videos_page_state == VideosPageState::data_page) {
+        if (HasUiAction(input, pbvp::UiInputAction::open_page)) {
+            OpenVideosCatalog();
+        }
+        return;
+    }
+
+    if (HasUiAction(input, pbvp::UiInputAction::close_page)) {
+        if (g_videos_page_state == VideosPageState::playback) {
+            ReturnToCatalog();
+        } else {
+            CloseVideosPage();
+        }
+        return;
+    }
+
+    if (g_videos_page_state == VideosPageState::catalog) {
+        if (!g_media_catalog.entries.empty()) {
+            const std::uint32_t clicked_row =
+                (input.actions & pbvp::kUiCatalogRowMask) >>
+                pbvp::kUiCatalogRowShift;
+            if ((input.actions & pbvp::kUiCatalogRowMask) != 0u &&
+                clicked_row > 0u) {
+                static_cast<void>(
+                    g_catalog_selection.SelectVisibleRow(clicked_row - 1u));
+            }
+            if (HasUiAction(input, pbvp::UiInputAction::previous_item)) {
+                static_cast<void>(g_catalog_selection.Previous());
+            }
+            if (HasUiAction(input, pbvp::UiInputAction::next_item)) {
+                static_cast<void>(g_catalog_selection.Next());
+            }
+            if (HasUiAction(input, pbvp::UiInputAction::activate)) {
+                OpenSelectedCatalogEntry();
+            }
+        }
+        return;
+    }
+
+    const pbvp::PlaybackControllerSnapshot playback =
+        g_playback_controller != nullptr
+            ? g_playback_controller->Snapshot()
+            : pbvp::PlaybackControllerSnapshot{};
+    if (HasUiAction(input, pbvp::UiInputAction::pause_resume)) {
+        if (playback.playback.state == pbvp::PlaybackState::paused) {
+            static_cast<void>(g_playback_controller->Resume());
+        } else if (PlaybackActive(playback.playback.state)) {
+            static_cast<void>(g_playback_controller->Pause());
+        }
+    }
+    if (HasUiAction(input, pbvp::UiInputAction::stop)) {
+        ReturnToCatalog();
+        return;
+    }
+    if (HasUiAction(input, pbvp::UiInputAction::seek_backward)) {
+        SeekRelative(-1ll);
+    }
+    if (HasUiAction(input, pbvp::UiInputAction::seek_forward)) {
+        SeekRelative(1ll);
+    }
+    if (HasUiAction(input, pbvp::UiInputAction::toggle_presentation)) {
+        g_settings.tint_mode = g_settings.tint_mode == pbvp::TintMode::pipboy
+            ? pbvp::TintMode::full_color
+            : pbvp::TintMode::pipboy;
+        pbvp::D3dRenderer::Instance().ConfigurePresentation(
+            g_settings.aspect_mode, g_settings.tint_mode);
+        PBVP_LOG_INFO(
+            "Playback tint changed to %s",
+            pbvp::TintModeName(g_settings.tint_mode));
+    }
 }
 
 void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
@@ -338,6 +668,37 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
     }
 
     const pbvp::PlaybackControllerSnapshot after = g_playback_controller->Snapshot();
+    if (!g_current_stream_summary_logged && after.decoder.info.source_width != 0u) {
+        const pbvp::MediaInfo& info = after.decoder.info;
+        PBVP_LOG_INFO(
+            "Playback stream summary: source=%ux%u display=%ux%u rotation=%u duration_us=%lld audio=%u source_audio=%uch@%u output_audio=%uch@%u",
+            info.source_width, info.source_height,
+            info.display_width, info.display_height,
+            info.clockwise_rotation_degrees,
+            static_cast<long long>(info.duration_us),
+            info.has_audio ? 1u : 0u,
+            info.source_audio_channels, info.source_audio_rate,
+            info.output_audio_channels, info.output_audio_rate);
+        g_current_stream_summary_logged = true;
+    }
+#if !defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
+    if (!g_current_title_metadata_checked && after.decoder.info.source_width != 0u) {
+        g_current_title_metadata_checked = true;
+        const std::size_t title_bytes = after.decoder.info.title_utf8_bytes;
+        if (title_bytes <= pbvp::kMaximumMediaTitleUtf8Bytes &&
+            g_catalog_selection.SelectedIndex() < g_media_catalog.entries.size() &&
+            pbvp::ApplyCatalogMetadataTitle(
+                g_media_catalog.entries[g_catalog_selection.SelectedIndex()],
+                std::string_view(
+                    after.decoder.info.title_utf8.data(), title_bytes),
+                g_settings.catalog)) {
+            g_current_display_title = g_media_catalog.entries[
+                g_catalog_selection.SelectedIndex()].display_name;
+            g_last_display_second = -1ll;
+            g_last_display_duration_second = -1ll;
+        }
+    }
+#endif
 #if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
     if (g_playback_smoke_attempted && !g_playback_smoke_reported) {
         const std::uint64_t private_bytes = ProcessPrivateBytes();
@@ -364,9 +725,26 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
 #endif
 #endif
     if (ui_snapshot.visible &&
-        !pbvp::UiBridge::Instance().SetPlaybackStatus(after.playback) &&
+        !pbvp::UiBridge::Instance().SetPlaybackStatus(
+            after.playback) &&
         after.playback.state == pbvp::PlaybackState::error) {
         PBVP_LOG_WARN("The Pip-Boy status text could not display the playback error");
+    }
+    if (ui_snapshot.visible) {
+        const std::int64_t current_second =
+            (std::max)(after.metrics.last_media_time_us, 0ll) / 1'000'000ll;
+        const std::int64_t duration_second =
+            (std::max)(after.decoder.info.duration_us, 0ll) / 1'000'000ll;
+        if (current_second != g_last_display_second ||
+            duration_second != g_last_display_duration_second) {
+            if (pbvp::UiBridge::Instance().SetPlaybackDetails(
+                    g_current_display_title,
+                    (std::max)(after.metrics.last_media_time_us, 0ll),
+                    (std::max)(after.decoder.info.duration_us, 0ll))) {
+                g_last_display_second = current_second;
+                g_last_display_duration_second = duration_second;
+            }
+        }
     }
     if (after.playback.state != g_last_playback_state) {
         PBVP_LOG_INFO(
@@ -699,7 +1077,58 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
         case NVSEMessagingInterface::kMessage_MainGameLoop:
             if (!g_shutdown.load(std::memory_order_acquire)) {
                 pbvp::UiBridge::Instance().UpdateOnGameThread();
-                UpdatePlayback(pbvp::UiBridge::Instance().ReadForRenderThread());
+                static_cast<void>(
+                    pbvp::UiBridge::Instance().SetLayerEnabled(g_settings.enabled));
+#if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
+                static_cast<void>(pbvp::UiBridge::Instance().SetVideosMode(
+                    pbvp::UiVideosMode::playback));
+                pbvp::UiBridge::Instance().UpdateOnGameThread();
+#else
+                static_cast<void>(pbvp::UiBridge::Instance().SetVideosMode(
+                    CurrentUiVideosMode()));
+                pbvp::UiBridge::Instance().UpdateInputOnGameThread(
+                    g_settings.enabled &&
+                    g_videos_page_state != VideosPageState::data_page);
+                const pbvp::UiInputSnapshot input =
+                    pbvp::UiBridge::Instance().TakeInputSnapshot();
+                if (input.map_menu_visible && !input.menu_hook_available) {
+                    static_cast<void>(
+                        pbvp::UiBridge::Instance().SetLayerEnabled(false));
+                }
+                if (!input.map_menu_visible &&
+                    g_videos_page_state != VideosPageState::data_page) {
+                    StopPlayback(pbvp::PlaybackTerminalReason::presentation_hidden);
+                    g_videos_page_state = VideosPageState::data_page;
+                } else if (g_settings.enabled && input.menu_hook_available) {
+                    ProcessVideosInput(input);
+                }
+                static_cast<void>(pbvp::UiBridge::Instance().SetVideosMode(
+                    CurrentUiVideosMode()));
+                pbvp::UiBridge::Instance().UpdateOnGameThread();
+                if (g_videos_page_state == VideosPageState::catalog) {
+                    PublishCatalogRows();
+                }
+#endif
+                static_cast<void>(pbvp::UiBridge::Instance().SetPipBoyTintEnabled(
+                    g_settings.tint_mode == pbvp::TintMode::pipboy));
+                pbvp::UiRectSnapshot ui_snapshot =
+                    pbvp::UiBridge::Instance().ReadForRenderThread();
+                if (!g_settings.enabled) {
+                    ui_snapshot.visible = false;
+                }
+                UpdatePlayback(ui_snapshot);
+#if !defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
+                if (g_videos_page_state == VideosPageState::playback &&
+                    g_playback_controller != nullptr &&
+                    g_playback_controller->Snapshot().terminal_reason ==
+                        pbvp::PlaybackTerminalReason::completed) {
+                    g_videos_page_state = VideosPageState::catalog;
+                    g_current_display_title.clear();
+                    static_cast<void>(pbvp::UiBridge::Instance().SetVideosMode(
+                        pbvp::UiVideosMode::catalog));
+                    PublishCatalogRows();
+                }
+#endif
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
                 UpdateMediaSmoke();
 #endif
@@ -724,6 +1153,8 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
         case NVSEMessagingInterface::kMessage_ExitToMainMenu:
         case NVSEMessagingInterface::kMessage_NewGame:
             StopPlayback(pbvp::PlaybackTerminalReason::lifecycle_transition);
+            g_videos_page_state = VideosPageState::data_page;
+            pbvp::UiBridge::Instance().SetGameInputState(0u);
             pbvp::UiBridge::Instance().Clear();
             PBVP_LOG_INFO("Game transition cleared the Pip-Boy presentation snapshot");
             break;
@@ -748,9 +1179,11 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
             PBVP_LOG_INFO("Process shutdown requested");
             break;
         case NVSEMessagingInterface::kMessage_ReloadConfig:
-            if (message->data != nullptr && message->dataLen > 0u &&
-                std::strcmp(static_cast<const char*>(message->data), "PipBoyVideoPlayer") == 0) {
-                PBVP_LOG_INFO("Configuration reload requested; Phase 1 has no runtime settings");
+            if (message->data != nullptr && message->dataLen ==
+                    sizeof(kPluginName) &&
+                std::memcmp(message->data, kPluginName,
+                            sizeof(kPluginName)) == 0) {
+                ReloadConfiguration();
             }
             break;
         default:
@@ -793,14 +1226,29 @@ extern "C" bool NVSEPlugin_Load(NVSEInterface* nvse) {
         PBVP_VERSION_STRING, nvse->runtimeVersion, nvse->nvseVersion);
     pbvp::FfmpegLoadFailure ffmpeg_failure{};
     const std::wstring ffmpeg_directory = PrivateFfmpegDirectory(nvse->GetRuntimeDirectory());
+    g_configuration_path = PrivateConfigurationPath(nvse->GetRuntimeDirectory());
+    g_media_root = PrivateMediaDirectory(nvse->GetRuntimeDirectory());
+    const pbvp::ConfigurationResult configuration =
+        pbvp::LoadConfiguration(g_configuration_path);
+    if (configuration.status == pbvp::ConfigurationStatus::ok) {
+        g_settings = configuration.settings;
+    }
+    pbvp::D3dRenderer::Instance().ConfigurePresentation(
+        g_settings.aspect_mode, g_settings.tint_mode);
+    if (!pbvp::UiBridge::Instance().SetInputBindings(g_settings.input)) {
+        PBVP_LOG_ERROR("Configured input bindings failed validation");
+        g_ffmpeg_runtime.Unload();
+        return false;
+    }
+    LogConfigurationResult(configuration);
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
-    g_media_smoke_root = PrivateMediaDirectory(nvse->GetRuntimeDirectory());
+    g_media_smoke_root = g_media_root;
 #endif
 #if defined(PBVP_ENABLE_AUDIO_SMOKE_TEST)
-    g_audio_smoke_root = PrivateMediaDirectory(nvse->GetRuntimeDirectory());
+    g_audio_smoke_root = g_media_root;
 #endif
 #if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
-    g_playback_smoke_root = PrivateMediaDirectory(nvse->GetRuntimeDirectory());
+    g_playback_smoke_root = g_media_root;
 #endif
     if (ffmpeg_directory.empty()) {
         ffmpeg_failure.status = pbvp::FfmpegLoadStatus::path_not_absolute;
@@ -820,30 +1268,35 @@ extern "C" bool NVSEPlugin_Load(NVSEInterface* nvse) {
         "Private FFmpeg runtime accepted: avcodec=0x%06X avformat=0x%06X avutil=0x%06X swresample=0x%06X swscale=0x%06X",
         ffmpeg_versions.avcodec, ffmpeg_versions.avformat, ffmpeg_versions.avutil,
         ffmpeg_versions.swresample, ffmpeg_versions.swscale);
-    try {
-        pbvp::PlaybackControllerConfig playback_config{};
-#if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
-        playback_config.volume = kPlaybackSmokeVolume;
-#endif
-        g_playback_controller = std::make_unique<pbvp::PlaybackController>(
-            g_ffmpeg_runtime, playback_config);
-    } catch (...) {
+    if (!CreatePlaybackController(g_settings)) {
         PBVP_LOG_ERROR("Playback controller allocation failed");
         g_ffmpeg_runtime.Unload();
         return false;
     }
-    if (g_playback_controller->Snapshot().playback.state ==
-        pbvp::PlaybackState::unavailable) {
-        PBVP_LOG_ERROR("Playback controller rejected its bounded configuration");
+    auto* data = static_cast<NVSEDataInterface*>(
+        nvse->QueryInterface(kInterface_Data));
+    void* game_input_state = nullptr;
+    if (data != nullptr && data->version >= NVSEDataInterface::kVersion &&
+        data->GetSingleton != nullptr) {
+        game_input_state = data->GetSingleton(
+            NVSEDataInterface::kNVSEData_DIHookControl);
+    }
+    if (game_input_state == nullptr) {
+        PBVP_LOG_ERROR("Required xNVSE game input state is unavailable");
+        g_playback_controller->Shutdown();
         g_playback_controller.reset();
         g_ffmpeg_runtime.Unload();
         return false;
     }
+    pbvp::UiBridge::Instance().SetGameInputState(
+        reinterpret_cast<std::uintptr_t>(game_input_state));
+    PBVP_LOG_INFO("xNVSE filtered game input state accepted for scoped Videos controls");
     g_messaging = static_cast<NVSEMessagingInterface*>(nvse->QueryInterface(kInterface_Messaging));
     if (g_messaging == nullptr || g_messaging->version < NVSEMessagingInterface::kVersion ||
         g_messaging->RegisterListener == nullptr ||
         !g_messaging->RegisterListener(g_plugin_handle, "NVSE", &HandleMessage)) {
         PBVP_LOG_ERROR("Required xNVSE messaging interface is unavailable");
+        pbvp::UiBridge::Instance().SetGameInputState(0u);
         g_playback_controller.reset();
         g_ffmpeg_runtime.Unload();
         return false;

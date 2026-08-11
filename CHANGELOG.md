@@ -2,6 +2,33 @@
 
 ## 0.1.0 - Unreleased
 
+- Added a clickable `VIDEOS` entry, an eight-row scrolling catalog, mouse and keyboard controls, and prompts that show the configured keyboard bindings. Closing the Pip-Boy stops playback, and the same file can be selected again after reopening it. The scoped MapMenu bridge accepts compatible per-instance table copies, preserves unrelated entries, recognizes the audited Stewie Tweaks 9.80 Menu Search keyboard chain, and refuses unknown input handlers. Controller input is not supported.
+- Added aspect fit and fill rendering. Fit centers the full frame with black bars. Fill uses a centered crop. Pip-Boy tint converts the frame to luminance and lets the UI apply the player's active Pip-Boy color. Full-color mode keeps the converted BGRA colors.
+- Added bounded UTF-8 INI loading for playback, rendering, catalog, input, resource, and logging settings. Keyboard bindings use unique DirectInput scan codes, and the UI shows the active bindings. Invalid values keep safe defaults. Runtime reload is limited to the idle state and a rejected reload leaves playback unchanged.
+- Added bounded direct-child MP4 catalog discovery with MO2-compatible Win32 enumeration, Unicode paths, invariant natural sorting, stable session identifiers, display clipping, reparse-point rejection, and tests for 0, 1, 10, 100, and 500 entries.
+- Scoped the Win32 catalog search handle so allocation and filename conversion failures close it before returning.
+- Added bounded lazy MP4 title metadata. Catalog rows start with filenames, and a valid title replaces the selected row for the current session without opening every file during enumeration.
+- Added a save-free Phase 5 MO2 profile with ten generated catalog entries for scrolling, natural sorting, Unicode filenames, long names, metadata titles, and replay checks.
+- Added a strict Phase 5 live-log checker for two catalog scans, two playback starts, scoped input attachment, decoded video, clean shutdown, path privacy, and metadata privacy.
+- Resolved clicks from exact PBVP button IDs, a bounded chain of named PBVP ancestors, or exact visible PBVP bounds under the engine UI cursor. The open entry also reads one filtered xNVSE left-button edge when Vanilla UI Plus produces no MapMenu callback. Catalog and playback mouse input remains scoped to Videos focus.
+- Corrected the xNVSE input singleton layout so the x86 virtual-table pointer precedes the filtered key records.
+- Routed keyboard actions through the scoped MapMenu callback after the target VNV stack produced no xNVSE keyboard state at the game-thread polling point. The hook preserves Fallout's full 32-bit special-key values, configured DirectInput bindings are translated into those values, and Backspace also closes the Videos page.
+- Corrected Fit and Fill scaling to use the named Pip-Boy presentation rectangle instead of the square engine texture's aspect ratio.
+- Added portable coverage for the idle-only configuration reload gate across every playback state.
+- Moved bounded catalog and playback prompt formatting into the portable core and added exact keyboard text tests.
+- Added path and display-name round-trip checks for Japanese and combining-character catalog filenames.
+- Added bounded playback log names. Normal logging records the selected basename. Diagnostic logging can record a validated relative catalog name, while absolute paths and traversal still reduce to the basename. Metadata titles are not used for log names.
+- Added one numeric stream summary after a media file opens. It records dimensions, rotation, duration, and audio layout without logging an absolute path or embedded metadata text.
+- Added a strict live checker for one Fit open, an idle reload to Fill, a second open of the 160x120 fixture, matching stream summaries, privacy, ordering, and clean shutdown.
+- Fixed runtime configuration reload to match the registered xNVSE plugin name. The corrected live run displayed Fit side bars, reloaded Fill while idle, displayed the centered crop, and passed the strict log checker.
+- Centered the playback prompt inside its status strip from the strip height and the text tile's measured height. The Base profile passed the visual retest after fixed offsets left the prompt too high.
+- Stopped normal MapMenu closure from producing an engine-texture warning during the one-frame snapshot transition. Other UI surface failures retain their warning records.
+- Passed the Base, Vanilla UI Plus, Clean Vanilla HUD, and full Extended UI matrix with separate clean logs and empty save folders. Corrected the matrix checker's startup order to match the runtime's configuration-then-FFmpeg records.
+- Passed the final mouse and keyboard smoke run after controller support was removed. The clean log recorded three playback starts and stops, keyboard callback activity, decoded uploads, joined workers, zero upload failures, and normal process shutdown.
+- Added guarded setup for four Phase 5 UI test profiles. The script copies only the existing save-isolated profiles, refuses targets with save data, and changes the selected profile only while MO2 and Fallout are closed.
+- Added one checker for the four live Phase 5 UI profiles. Every profile needs a separate clean log with catalog playback, a decoded upload, worker shutdown, and valid renderer accounting.
+- Corrected the menu cursor source to use `InterfaceManager::cursorX` and `cursorY` instead of the cursor tile's visual traits.
+- Corrected PBVP button hit testing to use the game's locus-adjusted tile position routines instead of adding parent coordinates.
 - Connected the decoder, XAudio2 sample clock, video scheduler, renderer mailbox, Pip-Boy status text, and game lifecycle into a bounded playback controller.
 - Added audio-led frame selection, late-frame dropping, startup buffering, pause, resume, forward and backward seeks, stop during buffering, silent-video QPC timing, and structured playback errors.
 - Added a one-frame renderer mailbox and checked BGRA scaling into the fixed 256x256 engine-owned texture without retaining a Direct3D reference across callbacks.

@@ -199,6 +199,7 @@ bool FfmpegRuntime::Load(
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_rescale_q", api_.av_rescale_q, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_rescale_rnd", api_.av_rescale_rnd, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_display_rotation_get", api_.av_display_rotation_get, failure) ||
+            !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_dict_get", api_.av_dict_get, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_channel_layout_default", api_.av_channel_layout_default, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_channel_layout_copy", api_.av_channel_layout_copy, failure) ||
             !ResolveSymbol(modules_[avutil], kModuleNames[avutil], "av_channel_layout_uninit", api_.av_channel_layout_uninit, failure) ||

@@ -30,4 +30,16 @@ bool ConvertUiRectToPixels(
     return output.right > output.left && output.bottom > output.top;
 }
 
+bool UiRectContainsPoint(
+    const FloatRect& ui_rect,
+    const float x,
+    const float y) noexcept {
+    const bool finite = std::isfinite(ui_rect.left) && std::isfinite(ui_rect.top) &&
+                        std::isfinite(ui_rect.right) && std::isfinite(ui_rect.bottom) &&
+                        std::isfinite(x) && std::isfinite(y);
+    return finite && ui_rect.right > ui_rect.left && ui_rect.bottom > ui_rect.top &&
+           x >= ui_rect.left && x < ui_rect.right &&
+           y >= ui_rect.top && y < ui_rect.bottom;
+}
+
 } // namespace pbvp

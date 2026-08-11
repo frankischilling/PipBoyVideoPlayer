@@ -5,6 +5,8 @@
 
 namespace pbvp {
 
+constexpr std::size_t kMaximumMediaTitleUtf8Bytes = 2048u;
+
 struct DecodeLimits {
     std::uint32_t maximum_width{1920u};
     std::uint32_t maximum_height{1080u};

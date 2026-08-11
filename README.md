@@ -6,15 +6,15 @@ The repository contains the implementation, automated tests, UIO files, build sc
 
 ## Project status
 
-Status: Phase 4 integrated playback accepted
+Status: Phase 5 catalog and controls in live validation
 
-The current diagnostic build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, and installs a UIO prefab. Once the Pip-Boy is open, it validates the live UIO image, engine texture objects, managed Direct3D texture, device, and callback thread before uploading a generated checkerboard. Any unknown object type, texture profile, or thread arrangement disables the update instead of guessing. The plugin does not patch game functions or a Direct3D device vtable.
+The current build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, and installs a UIO prefab. Once the Pip-Boy is open, it validates the live UIO image, engine texture objects, managed Direct3D texture, device, and callback thread before uploading decoded frames. Any unknown object type, texture profile, or thread arrangement disables the update instead of guessing. The plugin does not patch game functions or a Direct3D device vtable.
 
-All 15 host tests pass. The normal and armed Win32 Release matrices each pass all 24 tests. Two overlay draw points were rejected because they rendered above the Pip-Boy UI. The accepted path updates an engine-owned managed texture and leaves drawing to the game. It uses no executable hook or Direct3D device vtable patch. The raised 384 by 216 panel passed all four isolated UI profiles at 1920 by 1080. Keyboard and mouse input, ten Pip-Boy reopen cycles, and 50 measured focus-loss and return cycles passed in the tested native windowed configuration.
+The Host Release suite passes 20 of 20 tests. The Win32 Release suite passes 29 of 29 tests. Two overlay draw points were rejected because they rendered above the Pip-Boy UI. The accepted path updates an engine-owned managed texture and leaves drawing to the game. It uses no executable hook or Direct3D device vtable patch. The raised 384 by 216 panel passed all four isolated UI profiles at 1920 by 1080 during Phase 1. Keyboard and mouse input, ten Pip-Boy reopen cycles, and 50 measured focus-loss and return cycles passed in the tested native windowed configuration.
 
 A synthetic recreation test froze inside the game's native reset sequence, so the test, reset hook, and MinHook dependency were removed. A PBVP-disabled control later reproduced the native fullscreen NVIDIA driver crash, so repeated fullscreen Alt+Tab is not supported. The isolated test-profile save guard passes Base and full Extended exit checks without changing normal profiles. Native windowed rows passed at 1280x720 and 30 FPS, 1280x960 and 60 FPS, 2560x1440 and 90 FPS, and 3440x1440 and 120 FPS. The two larger windows were clipped by the 1920x1080 monitor, so those results cover the visible panel and logged backbuffer rather than the full window.
 
-Phase 1 supports native Direct3D 9 windowed mode. PBVP owns no default-pool resource and retains no Direct3D reference between callbacks. A changed device or engine surface is validated before use, but the tested windowed focus path did not produce an observable device recreation. DXVK and a safe root-management tool are not installed in the target VNV instance, so this phase makes no DXVK claim and does not add a root proxy. Controller and input-method switching remain Phase 5 work.
+Phase 1 supports native Direct3D 9 windowed mode. PBVP owns no default-pool resource and retains no Direct3D reference between callbacks. A changed device or engine surface is validated before use, but the tested windowed focus path did not produce an observable device recreation. DXVK and a safe root-management tool are not installed in the target VNV instance, so the project makes no DXVK claim and does not add a root proxy.
 
 Phase 2 has pinned FFmpeg 8.1.2 and a minimal Win32 runtime. The reproducible build enables only the MOV demuxer, H.264 and AAC decoders and parsers, software scaling, and audio resampling. Two clean builds produced the same five DLL hashes. The runtime audit rejects non-i386 images, changed hashes, unexpected imports, extra DLLs, and private build paths. The plugin loads that set from its private directory with restricted absolute paths and rejects wrong versions or configurations. Custom Windows AVIO supports bounded local reads, seeks, Unicode names, and cancellation. Checked media layouts and generation-aware queues enforce dimension, item-count, and byte limits before decoded data reaches the game.
 
@@ -28,9 +28,11 @@ Phase 4 connects decoding, XAudio2, audio-led frame selection, the Pip-Boy textu
 
 The accepted live 30-minute run decoded 54,000 frames, uploaded 53,993, and recorded zero underruns. It finished with 28.125 milliseconds of audio-to-video error and 41,811,968 bytes of additional private memory. Upload time was 18.30 microseconds minimum, 24.64 microseconds average, and 150.40 microseconds maximum.
 
-The accepted live five-minute 10 FPS run used the same 30 FPS fixture. It decoded 9,001 frames, presented 2,998, dropped 6,002, and reached a 299,980,000 microsecond audio clock with zero underruns. Its maximum controller update gap was 110 milliseconds. Renderer shutdown accounted for all 3,343 submissions as 3,342 uploads and one cleared pending frame, with no replacement or upload failure.
+The accepted live five-minute 10 FPS run used the same 30 FPS fixture. It decoded 9,001 frames, presented 2,998, dropped 6,002, and reached a 299,980,000 microsecond audio clock with zero underruns. Its maximum playback update gap was 110 milliseconds. Renderer shutdown accounted for all 3,343 submissions as 3,342 uploads and one cleared pending frame, with no replacement or upload failure.
 
-These results satisfy the Phase 4 synchronization, frame-rate independence, seek and buffering-stop automation, and memory exit criteria. Phase 5 still needs the media catalog, user controls, controller navigation, display settings, and configuration reload. DXVK, the complete UI matrix, repetition tests, and the two-hour soak remain Phase 6 work.
+Phase 5 adds a bounded direct-child MP4 catalog with Unicode filenames, natural sorting, eight visible rows, lazy title metadata, and scoped mouse and keyboard controls. It implements aspect fit, aspect fill, Pip-Boy tint, full color, volume and resource settings, idle-only configuration reload, and privacy-safe normal logs. The accepted live catalog run displayed ten separate entries and played selected files. Mouse activation and every shipped keyboard action worked, including both seek directions, pause, stop, and return to the Data page. Controller input is not supported.
+
+These results satisfy the Phase 4 synchronization, frame-rate independence, seek and buffering-stop automation, and memory exit criteria. Phase 5 portable checks, the live Fit and Fill comparison, idle configuration reload, the four-profile UI matrix, and the final mouse and keyboard smoke run passed. Controller support is outside the release scope. DXVK, repetition tests, and the two-hour soak remain Phase 6 work.
 
 ## Build
 
@@ -58,11 +60,11 @@ ctest --test-dir build-host --output-on-failure
 
 The user installs the mod through Mod Organizer 2, creates a separate personal media mod, and places MP4 files in its `Data\NVSE\Plugins\PipBoyVideoPlayer\Videos` directory. A Videos page in the Pip-Boy lists those files. Selecting a file starts native decoding without converting the video into DDS frames first.
 
-The planned player supports:
+The player currently implements:
 
 - local MP4 files with H.264 video and AAC audio for the first release;
-- play, pause, stop, restart, and short forward or backward seeks;
-- mouse, keyboard, and controller input;
+- play, pause, stop, and short forward or backward seeks;
+- mouse and keyboard input;
 - aspect-fit and aspect-fill presentation;
 - full-color and Pip-Boy-tinted display modes;
 - variable frame rate media;
@@ -90,6 +92,7 @@ The plugin remains ESP-less. xNVSE and UIO are required. JIP LN, JohnnyGuitar, a
 - [UI, input, and files](docs/ui-input-and-files.md)
 - [Build, packaging, and licensing](docs/build-packaging-and-licensing.md)
 - [Compatibility and test plan](docs/compatibility-and-test-plan.md)
+- [Phase 5 live test guide](docs/phase5-live-test-guide.md)
 - [Risk register](docs/risk-register.md)
 - [Roadmap](docs/roadmap.md)
 - [Decisions and open questions](docs/decisions-and-open-questions.md)
@@ -102,7 +105,7 @@ Fallout: New Vegas is a 32-bit process. Video queues must stay bounded, source d
 
 VNV compatibility is a release gate, not a best-effort claim. Each release candidate must pass against the documented VNV profiles and UI variants before publication.
 
-The remaining integration, catalog, compatibility, and stability work can still expose a release blocker. The [risk register](docs/risk-register.md) lists the conditions that would block or redirect the design.
+The remaining compatibility and stability work can still expose a release blocker. The [risk register](docs/risk-register.md) lists the conditions that would block or redirect the design.
 
 ## Naming
 

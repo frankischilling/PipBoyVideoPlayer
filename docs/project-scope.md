@@ -21,7 +21,7 @@ The first release is deliberately narrow:
 - play, pause, restart, stop, seek backward 10 seconds, and seek forward 10 seconds;
 - full-color or Pip-Boy-tinted output;
 - aspect fit by default, with aspect fill as an option;
-- keyboard, mouse, Xbox-style controller, and remappable bindings;
+- keyboard and mouse controls with remappable keyboard bindings;
 - user-facing errors for unsupported or damaged files;
 - an ESP-less package installed as a normal MO2 mod.
 
@@ -42,7 +42,8 @@ Other codecs may work through FFmpeg, but they are not supported until they have
 - a bundled library of films, trailers, or television clips;
 - support for ENB, New Vegas Reloaded, or unknown graphics injectors at launch;
 - save-file persistence for playback position;
-- loading videos from arbitrary absolute paths.
+- loading videos from arbitrary absolute paths;
+- controller and gamepad input.
 
 ## User story
 

@@ -10,6 +10,7 @@ extern "C" {
 #include <libavformat/avformat.h>
 #include <libavutil/channel_layout.h>
 #include <libavutil/display.h>
+#include <libavutil/dict.h>
 #include <libavutil/frame.h>
 #include <libavutil/log.h>
 #include <libavutil/mathematics.h>
@@ -67,6 +68,7 @@ struct FfmpegApi {
     decltype(&::av_rescale_q) av_rescale_q{};
     decltype(&::av_rescale_rnd) av_rescale_rnd{};
     decltype(&::av_display_rotation_get) av_display_rotation_get{};
+    decltype(&::av_dict_get) av_dict_get{};
     decltype(&::av_channel_layout_default) av_channel_layout_default{};
     decltype(&::av_channel_layout_copy) av_channel_layout_copy{};
     decltype(&::av_channel_layout_uninit) av_channel_layout_uninit{};

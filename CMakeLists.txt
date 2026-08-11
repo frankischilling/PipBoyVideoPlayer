@@ -20,8 +20,15 @@ include(CTest)
 
 add_library(pbvp_core STATIC
     src/core/checked_math.cpp
+    src/core/configuration.cpp
     src/core/frame_cadence.cpp
+    src/core/input_edge.cpp
+    src/core/input_prompts.cpp
+    src/core/log_privacy.cpp
+    src/core/media_catalog.cpp
     src/core/media_limits.cpp
+    src/core/menu_keyboard.cpp
+    src/core/menu_vtable_validation.cpp
     src/core/playback_clock.cpp
     src/core/playback_state.cpp
     src/core/rect_math.cpp
@@ -328,6 +335,47 @@ if(PBVP_BUILD_TESTS)
             -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase4-low-fps-log.ps1)
 
     add_test(
+        NAME pbvp_phase5_catalog_profile_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase5-catalog-profile.ps1
+            -ProfileScript ${CMAKE_SOURCE_DIR}/scripts/create-phase5-catalog-profile.ps1
+            -FixturePath ${CMAKE_SOURCE_DIR}/tests/fixtures/h264-title-metadata.mp4)
+
+    add_test(
+        NAME pbvp_phase5_catalog_log_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase5-catalog-log.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase5-catalog-log.ps1)
+
+    add_test(
+        NAME pbvp_phase5_aspect_reload_log_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase5-aspect-reload-log.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase5-aspect-reload-log.ps1)
+
+    add_test(
+        NAME pbvp_phase5_ui_profile_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase5-ui-profiles.ps1
+            -ProfileScript ${CMAKE_SOURCE_DIR}/scripts/prepare-phase5-ui-profiles.ps1)
+
+    add_test(
+        NAME pbvp_phase5_ui_matrix_log_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase5-ui-matrix-logs.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase5-ui-matrix-logs.ps1)
+
+    add_test(
         NAME pbvp_data_contract_test
         COMMAND ${CMAKE_COMMAND}
             -DPBVP_SOURCE_DIR=${CMAKE_SOURCE_DIR}
@@ -337,8 +385,15 @@ if(PBVP_BUILD_TESTS)
         tests/audio_callback_state_tests.cpp
         tests/bounded_queue_tests.cpp
         tests/checked_math_tests.cpp
+        tests/configuration_tests.cpp
         tests/frame_cadence_tests.cpp
+        tests/input_edge_tests.cpp
+        tests/input_prompts_tests.cpp
+        tests/log_privacy_tests.cpp
+        tests/media_catalog_tests.cpp
         tests/media_limits_tests.cpp
+        tests/menu_keyboard_tests.cpp
+        tests/menu_vtable_validation_tests.cpp
         tests/playback_clock_tests.cpp
         tests/playback_state_tests.cpp
         tests/rect_math_tests.cpp

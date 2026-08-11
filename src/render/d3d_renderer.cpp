@@ -85,6 +85,15 @@ bool D3dRenderer::SubmitVideoFrame(DecodedVideoFrame frame) noexcept {
     }
 }
 
+void D3dRenderer::ConfigurePresentation(
+    const AspectMode aspect_mode,
+    const TintMode tint_mode) noexcept {
+    aspect_mode_.store(
+        static_cast<std::uint32_t>(aspect_mode), std::memory_order_release);
+    tint_mode_.store(
+        static_cast<std::uint32_t>(tint_mode), std::memory_order_release);
+}
+
 void D3dRenderer::ClearVideoFrame() noexcept {
     try {
         std::scoped_lock lock(mailbox_mutex_);
@@ -139,9 +148,14 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
     bool new_video_pixels = false;
     std::optional<DecodedVideoFrame> pending = TakePendingFrame();
     if (pending.has_value()) {
-        new_video_pixels = PrepareVideoPixels(*pending);
+        const PixelExtent presentation_extent{
+            ui_rect.rect.right - ui_rect.rect.left,
+            ui_rect.rect.bottom - ui_rect.rect.top,
+        };
+        new_video_pixels = PrepareVideoPixels(*pending, presentation_extent);
         if (!new_video_pixels && error_count_++ < 8u) {
-            PBVP_LOG_WARN("Decoded video frame failed the bounded 256x256 scaling contract");
+            PBVP_LOG_WARN(
+                "Decoded video frame failed the bounded presentation scaling contract");
         }
     }
 
@@ -149,7 +163,8 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
         UiBridge::Instance().ResolveSurfaceOnSharedThread(ui_rect.game_thread_id);
     if (surface.status != UiSurfaceStatus::available) {
         const auto status = static_cast<std::uint32_t>(surface.status) + 1u;
-        if (last_surface_status_ != status && error_count_++ < 8u) {
+        if (surface.status != UiSurfaceStatus::map_hidden &&
+            last_surface_status_ != status && error_count_++ < 8u) {
             PBVP_LOG_WARN("Pip-Boy engine texture unavailable: %s", UiSurfaceStatusName(surface.status));
             if (surface.direct_texture != 0u || surface.shader_property != 0u ||
                 surface.shader_source_texture != 0u) {
@@ -329,10 +344,23 @@ std::optional<DecodedVideoFrame> D3dRenderer::TakePendingFrame() noexcept {
     }
 }
 
-bool D3dRenderer::PrepareVideoPixels(const DecodedVideoFrame& frame) noexcept {
-    const VideoScaleResult scaled = ScaleBgraToFit(
+bool D3dRenderer::PrepareVideoPixels(
+    const DecodedVideoFrame& frame,
+    const PixelExtent presentation_extent) noexcept {
+    const VideoScaleMode scale_mode =
+        aspect_mode_.load(std::memory_order_acquire) ==
+                static_cast<std::uint32_t>(AspectMode::fill)
+            ? VideoScaleMode::fill
+            : VideoScaleMode::fit;
+    const VideoColorMode color_mode =
+        tint_mode_.load(std::memory_order_acquire) ==
+                static_cast<std::uint32_t>(TintMode::full_color)
+            ? VideoColorMode::full_color
+            : VideoColorMode::pipboy_luminance;
+    const VideoScaleResult scaled = ScaleBgraForPresentation(
         frame.bgra, frame.width, frame.height, frame.stride,
-        presentation_pixels_, kTextureWidth, kTextureHeight, kTextureWidth * 4u);
+        presentation_pixels_, kTextureWidth, kTextureHeight, kTextureWidth * 4u,
+        presentation_extent, scale_mode, color_mode);
     if (scaled.status != VideoScaleStatus::ok) {
         return false;
     }

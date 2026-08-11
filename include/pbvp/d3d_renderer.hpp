@@ -1,7 +1,9 @@
 #pragma once
 
+#include "pbvp/configuration.hpp"
 #include "pbvp/frame_cadence.hpp"
 #include "pbvp/media_decoder.hpp"
+#include "pbvp/rect_math.hpp"
 
 #include <array>
 #include <atomic>
@@ -40,6 +42,7 @@ public:
     static D3dRenderer& Instance() noexcept;
 
     [[nodiscard]] bool SubmitVideoFrame(DecodedVideoFrame frame) noexcept;
+    void ConfigurePresentation(AspectMode aspect_mode, TintMode tint_mode) noexcept;
     void ClearVideoFrame() noexcept;
     void OnFrame(const UiRectSnapshot& ui_rect) noexcept;
     void RequestShutdown() noexcept;
@@ -56,7 +59,9 @@ private:
     IDirect3DDevice9* FindDevice() noexcept;
     bool ValidateDevice(IDirect3DDevice9* device) noexcept;
     std::optional<DecodedVideoFrame> TakePendingFrame() noexcept;
-    bool PrepareVideoPixels(const DecodedVideoFrame& frame) noexcept;
+    bool PrepareVideoPixels(
+        const DecodedVideoFrame& frame,
+        PixelExtent presentation_extent) noexcept;
     void PrepareCheckerboard() noexcept;
     bool UploadPixels(IDirect3DDevice9* device, std::uintptr_t surface) noexcept;
     void RecordVisibleCadence() noexcept;
@@ -69,6 +74,10 @@ private:
     std::optional<DecodedVideoFrame> pending_frame_{};
     std::array<std::uint8_t, kPresentationBytes> presentation_pixels_{};
     std::atomic<bool> clear_requested_{false};
+    std::atomic<std::uint32_t> aspect_mode_{
+        static_cast<std::uint32_t>(AspectMode::fit)};
+    std::atomic<std::uint32_t> tint_mode_{
+        static_cast<std::uint32_t>(TintMode::pipboy)};
     IDirect3DDevice9* device_{};
     std::uintptr_t last_surface_{};
     std::uint64_t frame_callback_count_{};

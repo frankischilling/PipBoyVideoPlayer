@@ -125,7 +125,7 @@ This accepts explicit drawable depths 10 through 12 for the active fullscreen 19
 
 Sixth run: input and repeat-cycle checks
 
-The user confirmed that keyboard and mouse input still worked while the engine-owned checkerboard was visible. Five Alt+Tab cycles with Data open and ten Pip-Boy close and reopen cycles looked correct. A controller was not connected, so controller navigation and input-method switching were not tested.
+The user confirmed that keyboard and mouse input still worked while the engine-owned checkerboard was visible. Five Alt+Tab cycles with Data open and ten Pip-Boy close and reopen cycles looked correct. Controller input was outside this Phase 1 check and was later removed from the release scope.
 
 The session logged 19 successful surface uploads and no plugin errors. No `NiDX9Renderer::Recreate` callback appeared, so the Alt+Tab result verifies visual persistence but not the forced device-recreation path. The user also requested that the temporary status strip move to the lower-left of the playback area so it does not sit over the top of radio station entries.
 
@@ -181,7 +181,7 @@ Profile: Viva New Vegas Extended, native Direct3D 9, fullscreen 1920x1080
 
 The first run after removing the recreation hook displayed the checkerboard in the accepted position. The user reported that the game did not freeze, the panel looked correct, and it remained correct after Alt+Tab. The plugin logged the hook-free presentation path, a 256x256 `A8R8G8B8` texture in `D3DPOOL_MANAGED`, and one successful upload at 26.30 microseconds. It recorded zero upload failures and wrote both renderer and cadence summaries before normal process shutdown.
 
-The strict Phase 1 log check passed with one validated device, one successful upload, a 1920x1080 fullscreen backbuffer, and a clean exit. This accepts the hook-free managed-texture path for the tested VNV Extended configuration. It does not prove a Direct3D device recreation occurred during Alt+Tab, and it does not extend the result to other profiles, resolutions, display modes, controllers, or DXVK.
+The strict Phase 1 log check passed with one validated device, one successful upload, a 1920x1080 fullscreen backbuffer, and a clean exit. This accepts the hook-free managed-texture path for the tested VNV Extended configuration. It does not prove a Direct3D device recreation occurred during Alt+Tab, and it does not extend the result to other profiles, resolutions, display modes, or DXVK.
 
 ### Repeatable diagnostic log check
 
@@ -337,7 +337,7 @@ Date: August 10, 2026
 
 The supported Phase 1 graphics path is native Direct3D 9 in windowed mode. The required native resolutions, aspect ratios, VSync states, frame caps, UI profiles, keyboard and mouse checks, exact 50-cycle focus test, upload measurements, and clean shutdown checks passed. Native fullscreen remains usable for ordinary presentation, but repeated focus changes are excluded because the same NVIDIA driver crash occurred with PBVP disabled.
 
-DXVK and a safe root-management tool are absent from the target VNV instance. PBVP does not install a root `d3d9.dll` proxy, so Phase 1 makes no DXVK claim. Controller navigation and input-method switching belong to Phase 5, where the controls are implemented.
+DXVK and a safe root-management tool are absent from the target VNV instance. PBVP does not install a root `d3d9.dll` proxy, so Phase 1 makes no DXVK claim. Controller input was later removed from the first-release scope.
 
 The native windowed focus path did not expose a device recreation. PBVP creates no Direct3D resource, accepts only the engine's managed texture, and releases every temporary COM reference before returning from the callback. A changed device or surface identity triggers validation before use. This satisfies the Phase 1 resource-ownership gate without claiming that a natural Direct3D Reset passed.
 
@@ -496,7 +496,7 @@ All 15 portable host tests and all 24 Win32 Release tests pass. The integrated x
 
 The live `PBVP Phase 4 Playback` profile used the generated two-second H.264 and AAC fixture from its separate MO2 media mod. At 1920x1080 native D3D9 fullscreen, the user saw the video and state text, heard synchronized audio, and reported correct behavior after Alt+Tab. The plugin decoded 20 frames, presented 18, dropped two at startup, and uploaded every submitted frame. Upload time was 20.10 microseconds minimum, 27.52 microseconds average, and 59.40 microseconds maximum. The mailbox replaced no frame, XAudio2 reported no underrun, and the process shut down after the decoder joined.
 
-This accepts the short integrated path for the tested profile. It does not close the live 30-minute synchronization test, low-FPS in-game playback, pause and seek input scenarios, controller coverage, DXVK, other UI profiles, or the two-hour stability soak.
+This accepts the short integrated path for the tested profile. It does not close the live 30-minute synchronization test, low-FPS in-game playback, pause and seek input scenarios, DXVK, other UI profiles, or the two-hour stability soak.
 
 The live 30-minute test now has a reproducible private fixture and strict checker. The pinned generator produced an exact 1,800-second, 54,000-frame, 1280x720 H.264 stream with stereo 48 kHz AAC. The 15,720,894 byte file reproduced SHA-256 `431220B5D0F941E85E44671CDC46F04E43C3D6FA5AFA04988B35073E5C2FA239`. The armed build records progress every five minutes and measures final synchronization error, private-memory growth, queue peaks, upload cost, underruns, and shutdown order. Packaging rejects that build. This describes prepared test infrastructure, not a passed live result.
 
@@ -592,6 +592,40 @@ Shutdown accounted for all 3,343 renderer submissions: 3,342 uploaded frames, no
 
 This closes the five-minute 10 FPS frame-dropping gate. The earlier intermittent audio failure remains a risk for active-playback focus testing, repeated low-FPS runs, and the Phase 6 soak.
 
+## Phase 5 keyboard and metadata check
+
+The accepted 32-bit MapMenu build passed the shipped keyboard controls in the active VNV profile. The user confirmed correct Up and Down catalog movement, Enter activation, Left and Right seeking, Space pause and resume, and Backspace and Escape closure. The metadata fixture changed to its embedded `PBVP Metadata Title` after open, as required by the lazy metadata design.
+
+The run opened several catalog entries and uploaded 77 decoded frames without an upload failure. Maximum measured upload time was 142.70 microseconds. Playback stopped between selections, audio and the decoder worker joined, and process shutdown completed normally. The preserved log has SHA-256 `A46CC2BCA61D26EA9B1034C8B94FBEB2E5C11E2A923482AD0722229335854A89`. This run covers the supported keyboard and mouse input scope.
+
+On August 11, 2026, the project owner removed controller support from the first release. The XInput loader, polling path, action table, controller prompt variants, transition records, and controller log checker were removed. The data-contract test rejects those runtime fragments if they return. All 20 Host Release tests and all 29 Win32 Release tests pass after the cleanup.
+
+Portable prompt tests compare the exact configured keyboard text for the catalog, Back control, buffering, playback, pause, and every fixed error state. They also reject missing labels and undersized output buffers.
+
+The cleaned DLL passed its final in-game mouse and keyboard smoke run. The user confirmed that the catalog, playback, pause, resume, seeking, stop, and Data return controls looked and worked correctly. The log recorded three playback opens and three normal stops, keyboard callback activity, decoded uploads, joined workers, zero upload failures, and normal process shutdown. It contained no warning, error, absolute path, or metadata field. The preserved log has SHA-256 `637ED37FD174BED99A237B02B9680EED112420C058E94D8023A78C7B21C2F6FB`.
+
+The portable catalog tests assert exact relative paths and extension-free display names for Japanese text and a combining acute accent. This supplements the generated MO2 catalog profile without claiming that the game font can draw every Unicode character.
+
+Portable privacy tests cover normal basenames, diagnostic relative names, absolute drive and UNC inputs, parent traversal, UTF-8 filenames, control characters, invalid UTF-16, and short buffers. The runtime uses this formatter when it logs a catalog playback start or rejection. It does not pass metadata titles to the formatter.
+
+The data-contract test requires the runtime stream-summary record. The record contains numeric source, display, rotation, duration, and audio fields. A live normal-log check must still confirm that it appears once for each selected file and contains no path or metadata text.
+
+## Phase 5 aspect scaling audit
+
+Code inspection found that Fit and Fill used only the square 256 by 256 engine texture, even though Gamebryo displays that texture in the 384 by 216 video rectangle. Portable tests now model both dimensions. They verify that a 16:9 source fills the backing texture for a 16:9 presentation, a 4:3 Fit source receives side bars, a 4:3 Fill source crops vertically, and invalid presentation geometry is rejected. The live Fit and Fill comparison passed with the corrected scaling.
+
+The live checker requires one Fit open and one Fill open of the 160x120 fixture, with a successful idle reload between them. It also requires two matching stream summaries and clean shutdown. Warning, error, out-of-order, absolute-path, and metadata records are rejected. The log cannot prove the visual crop or bars, so both views still need user confirmation.
+
+The local live-only fixture is a synthetic 160 by 120 H.264 High video with stereo 48 kHz AAC, 10 FPS, and a 30-second duration. Its SHA-256 is `5FF551A7C3B482CD042391AEE810EE5D08AAA77417EA6908572F5D291B67F4DF`. It was generated by an available FFmpeg executable rather than the pinned fixture generator, so it is installed only in the isolated test mod and is excluded from the repository and release archives.
+
+## Phase 5 configuration reload gate
+
+The portable reload policy accepts only the idle playback state. It rejects unavailable, opening, buffering, playing, paused, stopping, and error states. This protects the state gate but does not replace an in-game idle reload with changed presentation and resource settings.
+
+The first live comparison accepted the Fit view because the 4:3 fixture showed the expected side bars. The next open still used Fit, and the completed log contained no successful reload record. Inspection found an identifier mismatch: xNVSE registers the plugin as `Pip-Boy Video Player`, while the listener compared the dispatched name with `PipBoyVideoPlayer`. That run does not count as an idle reload or Fill result. The listener now compares against its registered name, and the corrected console command is `ReloadPluginConfig "Pip-Boy Video Player"`.
+
+The corrected run opened the fixture once with Fit, reloaded Fill while playback was idle, and opened the same fixture again. The user saw the expected side bars in Fit and a centered top and bottom crop in Fill. Neither view overlapped the Pip-Boy frame or map buttons. The strict checker passed with one Fit start, one Fill start, two matching stream summaries, no warning or error, and clean shutdown. The preserved log has SHA-256 `BF070C72AF7CB9C15BC6352069FE4DE53CDB1DAE97766F3973AA1159EC52DC20`.
+
 ## UI matrix
 
 Test these layouts independently:
@@ -601,11 +635,21 @@ Test these layouts independently:
 - Vanilla UI Plus with Clean Vanilla HUD;
 - the complete VNV Extended UI stack;
 - each claimed Pip-Boy replacer;
-- mouse and keyboard only;
-- controller only;
-- switching between mouse and controller while the page is open.
+- mouse and keyboard controls.
 
 Test catalog sizes of zero, one, ten, one hundred, and five hundred files. Long titles must clip or scroll without moving the video rectangle. Empty and error states must leave the ordinary Data page usable.
+
+`prepare-phase5-ui-profiles.ps1` creates separate Base, Vanilla UI Plus, Vanilla UI Plus with Clean Vanilla HUD, and full Extended profiles from the accepted Phase 1 isolation profiles. It enables the development plugin, generated catalog, and save guard while disabling the other PBVP fixture mods. It refuses profiles that contain saves and does not select a profile while MO2 or Fallout is running.
+
+The Base profile displayed separate catalog rows, played generated video and audio, kept the Pip-Boy frame and map controls usable, and accepted mouse and keyboard input. Its first playback prompt sat too high in the 38-unit status strip. Fixed insets of 1 and 6 logical units both failed the visual check. The final layout centers the prompt from the strip height and the text tile's measured height. The user accepted that placement. The clean log recorded a decoded upload, zero upload failures, worker shutdown, and process shutdown. The save folder remained empty. The preserved log has SHA-256 `BA42B5F5B70CF3039B5117C2836B81D40204324BFAF0ADBD8FD2DF61F7B7A2A8`.
+
+The first Vanilla UI Plus run passed the visual and input checks but logged `Pip-Boy engine texture unavailable: MapMenu hidden` twice when playback stopped during Pip-Boy closure. The previous UI snapshot remained visible for one frame after the current MapMenu became hidden. The renderer now treats only that status as an expected transition. The focused retest closed the Pip-Boy during playback, reopened Videos, paused another file, and exited normally. The user reported that layout and input still worked. The replacement log has no warning or error, records zero upload failures, and ends with worker and process shutdown. The save folder remained empty. Its SHA-256 is `87046EBA4CEC4F2081AA875B46257655B47382460CD10C4B76F14AB51C97E1B3`.
+
+The Clean Vanilla HUD and full Extended profiles also passed their visual, audio, mouse, and keyboard checks. The prompt stayed centered, catalog rows remained separate, and the video did not cover the frame or map buttons. Their logs contain no warning or error, record zero upload failures, and end with worker and process shutdown. The Clean Vanilla HUD log has SHA-256 `3731D2D8A8AE3BB1721BA0E2F927DCA5BCE91DAE74A40CDCA96282FEDA8FC1F1`. The Extended log has SHA-256 `1432C3318A43571CD7E364CC57D45A35CC4F49954B1BF7F12E128345128CFEA7`.
+
+The first real matrix check exposed a test-fixture error: the checker required the FFmpeg runtime record before configuration, while every plugin startup logs configuration first. The corrected checker keeps strict ordering and adds a negative fixture that reverses those records. It accepted all four distinct live logs with 11 catalog entries. Renderer accounting reported 20 upload successes for Base, 23 for Vanilla UI Plus, 95 for Clean Vanilla HUD, and 93 for Extended. All four isolated save folders remained empty.
+
+Preserve one normal log after testing catalog playback in each profile, then run `check-phase5-ui-matrix-logs.ps1`. The checker requires four distinct files. Each log must contain the private runtime, accepted configuration, scoped input bridge, a nonempty catalog, playback and stream records, a decoded upload, joined workers, renderer accounting with no upload failure, and clean process shutdown. The user confirmed layout, labels, mouse, and keyboard input in each profile. The final cleaned-build smoke run repeated the supported input path after controller removal.
 
 ## Media fixture set
 
@@ -674,4 +718,4 @@ The planned plugin is ESP-less and stores no playback state in saves or xNVSE co
 
 ## Bug report data
 
-A useful report contains the plugin log, crash log if any, VNV profile and versions, graphics path, display mode, input method, and a media probe summary that omits the file itself. Users should not upload copyrighted or private videos to demonstrate a bug.
+A useful report contains the plugin log, crash log if any, VNV profile and versions, graphics path, display mode, the mouse or keyboard action that failed, and a media probe summary that omits the file itself. Users should not upload copyrighted or private videos to demonstrate a bug.

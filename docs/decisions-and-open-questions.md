@@ -818,11 +818,145 @@ Implementation evidence: the cleared-mailbox change passed the 15-test host matr
 
 Live evidence: the untouched log from commit `ce91fa2` passed the strict checker. It recorded a 299,980,000 microsecond audio clock, zero underruns, 2,998 presented frames, 6,002 dropped frames, and a 110 millisecond maximum update gap. Shutdown classified all 3,343 submissions as 3,342 uploads and one clear. The preserved log has SHA-256 `FCFD2D7F2D9E75F029BC0934F62DCD0876EB5678B9169164B3DE481BDE8AEB1D`.
 
+### Scope input handling to the live MapMenu instance
+
+Date: August 10, 2026
+
+Decision: use a private copy of the live MapMenu instance's virtual function pointers for Videos page input. PBVP validates the menu ID, table storage, and every original function pointer before replacing `HandleClick` and `HandleKeyboardInput` in its copy. Keyboard and mouse edges come from xNVSE's filtered input object. Controller edges come from XInput. The replacement handlers consume MapMenu events only while the Videos page is open.
+
+Reason: xNVSE 6.4.5 does not return its older `NVSEIOInterface` from `QueryInterface`. Data Interface version 3 intentionally exposes the filtered `DIHookControl` singleton, and the maintained source documents the input-state layout. The MapMenu object already receives scoped click and keyboard events, so it provides a narrow consumption boundary.
+
+Rejected alternatives: do not install a global keyboard hook, patch a DirectInput call, write to the shared MapMenu virtual table, add an ESP for input, or guess an internal xNVSE function address.
+
+August 11 update: the full VNV Extended Phase 5 profile resolved the UIO video rectangle, but the original validator rejected the active MapMenu table and hid the Videos layer. That result disproves the assumption that the table and all 15 function pointers remain inside `FalloutNV.exe` in the supported UI stack. The log did not identify which enabled component supplied the replacement, so no component is blamed without further evidence.
+
+Revised decision: accept a readable, committed per-instance table when all 15 entries point to committed executable memory and the two slots PBVP needs, `HandleClick` and `HandleKeyboardInput`, still point inside `FalloutNV.exe`. Preserve every unrelated entry exactly. Refuse attachment if either required slot is already owned outside the game executable, if any entry is not executable, or if the table cannot be read safely. Record whether the accepted table used game-image or private storage, and identify the exact occupied slot on refusal without logging an absolute path.
+
+Rejected alternatives after the live result: do not chain an occupied click or keyboard handler, whitelist a DLL by filename, require the user to disable an installed VNV component, or accept arbitrary readable pointers as callable functions.
+
+Consequence: PBVP still does not patch executable code or write to a shared virtual table. It can compose with a per-instance table that changes unrelated menu behavior, but it fails closed when another component owns either input boundary. The full Extended profile must pass mouse, keyboard, controller, and input-method switching tests before Phase 5 is accepted.
+
+Second August 11 result: the compatible-copy build still hid the Videos layer. Its new diagnostic identified `MapMenu::HandleKeyboardInput` as owned by `nvse_stewie_tweaks.dll`; `HandleClick` remained inside the game executable. The installed DLL reports version 9.80 and includes a matching private-symbol PDB. This is a real shared input boundary, not an unreadable table.
+
+Decision: keep the occupied keyboard handler closed until its module-relative target is matched to the installed symbols and its call-through behavior is verified. Add a privacy-safe module offset to the refusal line, then inspect that exact function. A recognized chain may call the existing handler when Videos is inactive and consume keyboard input only when Videos owns focus. An unknown target must remain rejected.
+
+Verified result: the next run identified module RVA `0x3C370`. The matching PDB maps that address exactly to `MenuSearch::Map::HandleKeyboardInput`, a 525-byte fastcall wrapper. Its unhandled path loads the saved original handler from module RVA `0xF3728`, passes the MapMenu instance and original key, calls that handler, and returns with four-byte stack cleanup. The installed image has timestamp `0x6949B18D`, image size `0x106000`, and machine type `IMAGE_FILE_MACHINE_I386`.
+
+Revised decision: support this one pinned Stewie Tweaks 9.80 keyboard chain. Runtime validation must match the module basename, PE machine, timestamp, image size, handler RVA, reviewed entry bytes, reviewed forwarding tail, original-pointer storage RVA, and a live original target inside executable `FalloutNV.exe` memory. PBVP then installs its private table above Stewie's handler. It calls Stewie for every key while Videos is inactive and consumes keyboard calls while Videos owns focus. Any changed build, handler, forwarding sequence, or original target remains rejected.
+
+Rejected alternatives: do not accept every Stewie Tweaks address by module name, hash files during menu input, patch Stewie's code or data, disable Menu Search, or bypass the existing handler while the Videos page is closed.
+
+### Resolve clicks from named PBVP button ancestors
+
+Date: August 11, 2026
+
+Live result: the pinned Stewie chain attached, and the `VIDEOS` label became visible. Clicking the label did not open the catalog, and the log contained no catalog scan. This proves that visibility and MapMenu attachment succeeded, but it does not prove that the clicked nested tile delivered its parent hotrect ID.
+
+Decision: retain the unique numeric button IDs as the first click lookup. If an ID is not recognized, inspect at most eight ancestors from the clicked tile and match only the fixed PBVP button names declared by the shipped prefab. Queue the same bounded action used by the numeric ID. Log the first recognized named-ancestor click so the live run can distinguish this path from a missing MapMenu callback.
+
+Rejected alternatives: do not treat arbitrary unknown IDs as PBVP actions, search the whole MapMenu during a click callback, compare visible text, or attach behavior to another mod's tile names.
+
+Consequence: nested text and image children can activate their PBVP hotrect without widening the input scope. A click outside the fixed PBVP subtree still passes to the existing MapMenu handler while Videos is inactive.
+
+Second live result: the named-ancestor build attached to MapMenu and displayed the complete black `VIDEOS` button. Clicking it produced `button=10 pbvp=0`. In the active Vanilla UI Plus MapMenu, button 10 is `MM_RadioStationList`. The radio-list target therefore wins the mouse hit test even though PBVP draws above it. The clicked tile is not part of the PBVP subtree, so ancestor lookup cannot recover the intended action.
+
+Revised decision: keep numeric IDs and named ancestors as the first two click paths. When neither resolves, read the game UI cursor position and compare it with the absolute bounds of visible, named PBVP hotrects. Perform this fallback only inside the validated MapMenu click callback. While Videos is closed, check only `PBVP_OpenButton`. While Videos owns focus, check only visible catalog or playback controls. Consume the original click only after an exact PBVP bounds match.
+
+Rejected alternatives after the second result: do not remap every radio-list click, poll the global left mouse button, disable the radio list, move the button without proving the new position is free of targets, or edit the complete MapMenu XML to change child order.
+
+Consequence: a later UIO sibling can no longer make a visible PBVP control unclickable. Ordinary MapMenu clicks still reach the existing handler unless the engine cursor is inside a visible PBVP control. The coordinate resolver and boundary checks require automated coverage and a live mouse test before this path is accepted.
+
+Third live result: the engine-cursor build loaded, resolved the UI rectangle, and attached through the verified Stewie chain. The user clicked the visible entry and closed the game after it did not open. The log contained no MapMenu click callback. Some overlapped points therefore produce no `HandleClick` call, so callback-only recovery is incomplete.
+
+Revised decision: keep the validated MapMenu callback as the first mouse path. Also read the left-button edge from xNVSE's filtered game-input state while the MapMenu is open, the PBVP layer is enabled, and `PBVP_OpenButton` is visible. Queue `open_page` only when the engine cursor is inside that exact button rectangle. Arm the edge detector only after observing a released button, which prevents a click used to leave Videos from reopening it. Catalog and playback mouse actions remain inside the MapMenu callback while Videos owns focus.
+
+Rejected alternatives after the third result: do not use `GetAsyncKeyState`, add a Windows mouse hook, accept a left click outside the named open button, poll mouse input when the MapMenu is absent, or move all Videos controls to frame polling.
+
+Consequence: the Data entry can receive its activation click even where no underlying MapMenu control emits a callback. The additional poll observes one filtered button only at the entry boundary. It does not widen catalog or playback input ownership.
+
+Fourth live result: the filtered-input build attached to MapMenu and displayed the entry, but clicking it produced neither a MapMenu callback nor a filtered click record. Review of the pinned xNVSE source found a layout error in PBVP. `DIHookControl` inherits from `ISingleton`, whose virtual destructor adds a virtual-table pointer before `DIHookControl::m_keys`. PBVP had treated the object address as the first key record, so mouse button 256 read unrelated state.
+
+Correction: model the x86 virtual-table pointer at the start of the returned singleton and require the key array to begin at offset 4. Continue using only each key's filtered `gameState` member. Add one bounded record when entry polling becomes active so a live run can separate an inactive polling branch from a missed press.
+
+Rejected alternatives after the fourth result: do not switch to raw input, add a Windows mouse API, or move the visible entry to hide a verified memory-layout error.
+
+Consequence: PBVP now follows the complete xNVSE object layout instead of only the nested `KeyInfo` layout. The correction needs x86 build verification and another live click test before the entry path is accepted.
+
+Fifth live result: the corrected input layout activated filtered entry polling. Clicking the visible entry reached the MapMenu callback with button ID 25, but the cursor fallback read 0,0 while the open-button rectangle was 438,505 through 550,539. The button's visible position is not the cause. The cursor tile traits are not the live menu cursor coordinates.
+
+Correction: read the verified `InterfaceManager::cursorX` and `cursorY` fields at x86 offsets `0x38` and `0x40`. The maintained JIP-LN-NVSE layout names these fields, and JIP's `GetCursorPos` command reads them directly. Keep compile-time offset checks, finite-value checks, guarded game-thread access, and the existing exact PBVP rectangle match.
+
+Rejected alternatives after the fifth result: do not remap dynamic button ID 25, use the cursor tile's visual traits, convert a Windows desktop cursor, or move the visible button to hide a proven coordinate-source error.
+
+Consequence: both the MapMenu callback and the filtered entry edge can use the game's own menu-space cursor coordinates. The replacement still needs x86 build verification and a live click test before the entry path is accepted.
+
+Sixth live result: the direct-cursor build reported 649.50,396.00 for a visible click on `VIDEOS`, while the manual parent walk reported the button at 438,505 through 550,539. The callback arrived as radio-list button ID 10. Direct cursor access is working, but adding parent `x` and `y` traits does not reproduce the transformed button origin.
+
+Correction: call the verified runtime 1.4.0.525 `Tile::GetLocusAdjustedPosX` and `GetLocusAdjustedPosY` routines for each named PBVP button. Continue reading finite width and height traits from that same tile. Walk no more than the existing ancestor limit to require visibility and prove that the button belongs to the active MapMenu.
+
+Rejected alternatives after the sixth result: do not add an observed offset, assume a fixed 1280 by 720 transform, expand the hit box toward the last click, or accept radio-list button ID 10 as Videos.
+
+Consequence: button hit testing will use the same tile and locus transforms as the game instead of a PBVP coordinate approximation. The engine routine addresses are tied to the already required runtime 1.4.0.525. The replacement needs automated checks, x86 build verification, and another live click test.
+
+Seventh live result: the locus-adjusted build still received radio-list button ID 10. It reported the direct cursor at 649.50,217.12 and the button at 438,505 through 550,539, the same rectangle produced before the engine routines were introduced. The final Pip-Boy rendering transform remains between MapMenu tile layout and the cursor coordinates, so the locus routines do not solve this hit test.
+
+Placement experiment: move only `PBVP_OpenButton` to a right-anchored position just above the accepted video panel. The user proposed moving the button after the seventh failed click. The radio list occupies the left side of the active Vanilla UI Plus Data page, and the map controls occupy the lower edge. A focused placement test can establish whether a free native target area lets the injected hotrect receive its own ID before any deeper input hook is considered.
+
+Rejected alternatives after the seventh result: do not remap radio-list ID 10, guess a fixed cursor offset, disable native controls, or claim the locus routines return final cursor coordinates. Do not change the approved video-panel position during the entry test.
+
+Eighth live result: the right-anchored XML was installed and loaded, but the visible label stayed at its original top-left position. Clicking it produced neither a MapMenu callback nor a filtered PBVP click. The open hotrect lacked `locus=1`, so its new position did not carry its local image and text children with it.
+
+Correction: give `PBVP_OpenButton` child locus ownership. Keep the right-side hotrect anchor, dimensions, IDs, drawing depths, and input bridge unchanged. Require the locus trait in the automated data contract and repeat the live placement and activation test.
+
+Ninth live result: the corrected entry moved and opened the catalog through PBVP button ID 9100. The catalog displayed 10 files, and the log recorded two successful transitions to playing state. The entry activation path is now verified in the full Phase 5 profile.
+
+The catalog row labels overlapped because each row positioned its child text without owning a child locus. Add `locus=1` to rows 0 through 7 and the Back hotrect. Keep the reviewed 20-unit row spacing, selection strings, button IDs, and panel placement unchanged. Require these traits in the data contract before another live catalog test.
+
+Tenth live result: mouse row activation still opened the selected catalog entries, but the user reported that Up, Down, Back, and Escape did not act on the Videos page. The current normal log has no keyboard-edge record, so this result does not prove whether the filtered xNVSE state is absent, whether only raw state is present, or whether the MapMenu keyboard callback supplies a separate code.
+
+Diagnostic decision: keep action dispatch unchanged and log a bounded, one-time numeric probe for each configured key seen in xNVSE raw or filtered state. Also log each distinct MapMenu input character once while Videos owns focus. Do not log typed text, poll outside Videos focus, or use a Windows keyboard API. Use the result to choose one verified input source instead of guessing a second binding scheme.
+
+Eleventh live result: the xNVSE raw and filtered probes saw none of the tested menu keys. The scoped MapMenu callback received character values for Enter, all four arrows, Backspace, Tab, Space, and T. The callback was already returning handled while Videos owned focus, which explains why Fallout did not act and PBVP's polling path had no action to process.
+
+Decision: dispatch keyboard actions from the scoped MapMenu callback. Translate the configured DirectInput scan codes into Fallout's menu character values so the INI remains authoritative. Keep filtered xNVSE state for mouse input and as a secondary keyboard source. Accept Backspace as a close alias, remove the temporary numeric probes, and keep all input consumption limited to Videos focus. The Up, Down, Left, Right interpretation of values 1 through 4 still needs one focused live check.
+
+Twelfth live result: the first callback mapping reversed Enter and Backspace and sent each arrow to the wrong action. Backspace started playback, Enter closed Videos, and the arrow controls did not follow their labeled directions. This disproves the assumption that the callback argument is an eight-bit character.
+
+Superseding decision: treat `HandleKeyboardInput` as a 32-bit value. JIP-LN's maintained New Vegas header uses `UInt32` for this virtual function. Bethesda's special-key encoding uses `0x80000000` for Backspace, followed by Left, Right, Up, and Down, with Enter at `0x80000008`. The earlier diagnostic recorded only the low byte because PBVP used xNVSE's `char` declaration. The low bytes match the failed live behavior exactly. PBVP will preserve the full value, map those named codes, and continue to treat ordinary printable keys as character values.
+
+Thirteenth live result: the 32-bit mapping passed. The user confirmed that Up, Down, Enter, Left, Right, Space, Backspace, and Escape all performed their labeled actions. The selected metadata fixture changed to its embedded `PBVP Metadata Title` after open, which is the intended lazy-title behavior. Several files opened and stopped without an input error, and process shutdown joined the decoder and audio worker cleanly.
+
+Consequence: accept the scoped MapMenu keyboard path for the tested keyboard and mouse VNV profile. Keep controller navigation and input-method switching open until a controller is tested. Preserve the 32-bit ABI check and the regression that rejects truncated special-key values.
+
+### Presentation-aware aspect scaling
+
+Date: August 11, 2026
+
+Finding: the renderer scaled decoded frames against the square 256 by 256 engine texture. Gamebryo then displayed that texture in the 384 by 216 `PBVP_VideoRect`. A 16:9 source in Fit mode therefore received bars inside the square texture before the UI stretched the result to 16:9. The scaler tests covered only the backing texture dimensions and did not model the visible rectangle.
+
+Decision: pass the named video rectangle's width and height to the CPU scaler as a separate presentation extent. Fit and Fill calculations use that visible aspect ratio, while pixel writes remain bounded to the validated 256 by 256 texture. Invalid presentation geometry must fail safely, and a valid geometry change applies when the next decoded frame arrives.
+
+Rejected alternative: do not replace the accepted DDS with a non-square texture. The square managed texture has passed the target UI stacks and Direct3D validation, while a new texture shape would reopen device-capability and engine-loader testing without fixing the missing presentation input in the scaler API.
+
+Consequence: add portable Fit and Fill cases that model a square backing texture displayed at 16:9, plus a live comparison in both modes. The existing live playback result does not count as an aspect-mode acceptance test.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.
 
 Reason: the player should be safe to add or remove and should not leave missing state in a playthrough.
+
+### First-release input support
+
+Date: August 11, 2026
+
+Finding: the project owner removed controller support from the first release. The accepted mouse and keyboard controls already cover catalog navigation, playback, seeking, presentation changes, and returning to the Data page.
+
+Decision: support mouse and keyboard input only. Remove XInput loading, controller polling, controller action mappings, controller prompt variants, input-method transition logs, and controller-specific tests. `PlaybackController` remains the name of the internal playback state machine and is unrelated to gamepad input.
+
+Rejected alternative: do not leave the controller path dormant or ship it without a live acceptance test. Untested input code would add another system DLL dependency and create a support claim that the release cannot verify.
+
+Consequence: Phase 5 no longer requires controller navigation or prompt switching. User documentation must state that controllers are unsupported. Adding controller input later requires a new scoped change with portable tests and an in-game acceptance run.
 
 ## Open questions before phase one
 

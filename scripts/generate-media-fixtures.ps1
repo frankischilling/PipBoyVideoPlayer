@@ -13,6 +13,7 @@ $expectedFiles = [ordered]@{
     'h264-aac-48000-51.mp4' = '8107202846710F8E4A8E33B97B5E31B708DF18514A0130BAE49B3A58ECE61F66'
     'h264-aac-48000-mono.mp4' = '1EB91CF836ED2EE1D61883EBB0113190CF034945879C4551808AA130FBDE3169'
     'h264-aac-rotate90.mp4' = '50A6C659DF9A93D326CB57532900FB45125ECE026CA295FEA4383199713F5995'
+    'h264-title-metadata.mp4' = '2124A894CD02C5E0388C63B59B780FDCB90864A690559B8086FBDCD41D7C6593'
     'h264-vfr-silent.mp4' = '916E9074593A4FEC98C9BAA9324DA5D47B2A0E6AD36DDEDB8C4E572BE22DC1EE'
     'h264-unsupported-mp3.mp4' = '9866BAA718B072C51968E4109A16BB28D2FA5E6C1789C7163CEE74FC7AA76A7B'
     'unsupported-mpeg4-mp3.mp4' = '8FB137AAB7A033BE866607812C5032D14C76EA53657DCFF9B994E2B9706CF990'
@@ -50,10 +51,18 @@ $fullHd = Join-Path $output 'h264-aac-1080p.mp4'
 $multichannel = Join-Path $output 'h264-aac-48000-51.mp4'
 $mono = Join-Path $output 'h264-aac-48000-mono.mp4'
 $rotated = Join-Path $output 'h264-aac-rotate90.mp4'
+$metadataTitle = Join-Path $output 'h264-title-metadata.mp4'
 $vfr = Join-Path $output 'h264-vfr-silent.mp4'
 $unsupportedAudio = Join-Path $output 'h264-unsupported-mp3.mp4'
 $unsupported = Join-Path $output 'unsupported-mpeg4-mp3.mp4'
 $x264Options = 'threads=1:lookahead_threads=1:sliced_threads=0:sync_lookahead=0:deterministic=1'
+
+Invoke-FixtureGenerator @(
+    '-hide_banner', '-loglevel', 'error', '-y',
+    '-i', $base, '-map', '0', '-c', 'copy', '-map_metadata', '-1',
+    '-metadata', 'title=PBVP Metadata Title', '-fflags', '+bitexact',
+    '-movflags', '+faststart+disable_chpl', '-write_tmcd', '0', $metadataTitle
+)
 
 Invoke-FixtureGenerator @(
     '-hide_banner', '-loglevel', 'error', '-y',
@@ -159,4 +168,4 @@ foreach ($entry in $expectedFiles.GetEnumerator()) {
     }
 }
 
-Write-Host "Regenerated eight media fixtures and verified all $($expectedFiles.Count) files in $output."
+Write-Host "Regenerated the deterministic media fixtures and verified all $($expectedFiles.Count) files in $output."
