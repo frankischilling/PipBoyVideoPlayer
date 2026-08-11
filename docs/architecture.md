@@ -60,6 +60,8 @@ The renderer receives BGRA frames and uploads them on the game render thread. UI
 
 The renderer locks the engine-owned texture, copies rows using the returned Direct3D pitch, and releases its temporary COM reference before returning. It does not bind the texture or issue a primitive draw, so Gamebryo retains its normal UI render state and draws the surface in XML order. An upload at the final frame callback becomes visible on the next rendered frame. Frame selection must include that one-frame presentation offset.
 
+The CPU scaler treats the 256 by 256 backing texture and the named visible rectangle as separate dimensions. Fit and Fill use the visible rectangle's aspect ratio, then map the result into the square texture before upload. This keeps the accepted engine texture contract without stretching a frame when Gamebryo draws it in the 384 by 216 playback area.
+
 The plugin does not retain ownership of the UI texture across callbacks. The engine owns its lifetime and reset behavior. PBVP accepts only `D3DPOOL_MANAGED` for this surface and rejects default-pool or unknown-pool textures. It stores non-owning device and surface identities so a later callback can detect a replacement, validate it, and upload again.
 
 The renderer keeps fixed-size session counters for frame callbacks, visible frames, validated devices, upload attempts, successful uploads, and failures. It records the minimum, average, and maximum successful checkerboard upload time. An orderly shutdown writes one summary line. The counters do not allocate memory and the render callback does not write a line for each frame.

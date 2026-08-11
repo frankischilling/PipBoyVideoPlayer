@@ -148,9 +148,14 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
     bool new_video_pixels = false;
     std::optional<DecodedVideoFrame> pending = TakePendingFrame();
     if (pending.has_value()) {
-        new_video_pixels = PrepareVideoPixels(*pending);
+        const PixelExtent presentation_extent{
+            ui_rect.rect.right - ui_rect.rect.left,
+            ui_rect.rect.bottom - ui_rect.rect.top,
+        };
+        new_video_pixels = PrepareVideoPixels(*pending, presentation_extent);
         if (!new_video_pixels && error_count_++ < 8u) {
-            PBVP_LOG_WARN("Decoded video frame failed the bounded 256x256 scaling contract");
+            PBVP_LOG_WARN(
+                "Decoded video frame failed the bounded presentation scaling contract");
         }
     }
 
@@ -338,7 +343,9 @@ std::optional<DecodedVideoFrame> D3dRenderer::TakePendingFrame() noexcept {
     }
 }
 
-bool D3dRenderer::PrepareVideoPixels(const DecodedVideoFrame& frame) noexcept {
+bool D3dRenderer::PrepareVideoPixels(
+    const DecodedVideoFrame& frame,
+    const PixelExtent presentation_extent) noexcept {
     const VideoScaleMode scale_mode =
         aspect_mode_.load(std::memory_order_acquire) ==
                 static_cast<std::uint32_t>(AspectMode::fill)
@@ -349,10 +356,10 @@ bool D3dRenderer::PrepareVideoPixels(const DecodedVideoFrame& frame) noexcept {
                 static_cast<std::uint32_t>(TintMode::full_color)
             ? VideoColorMode::full_color
             : VideoColorMode::pipboy_luminance;
-    const VideoScaleResult scaled = ScaleBgra(
+    const VideoScaleResult scaled = ScaleBgraForPresentation(
         frame.bgra, frame.width, frame.height, frame.stride,
         presentation_pixels_, kTextureWidth, kTextureHeight, kTextureWidth * 4u,
-        scale_mode, color_mode);
+        presentation_extent, scale_mode, color_mode);
     if (scaled.status != VideoScaleStatus::ok) {
         return false;
     }

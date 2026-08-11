@@ -13,6 +13,7 @@
 - Corrected the xNVSE input singleton layout so the x86 virtual-table pointer precedes the filtered key records.
 - Routed keyboard actions through the scoped MapMenu callback after the target VNV stack produced no xNVSE keyboard state at the game-thread polling point. The hook preserves Fallout's full 32-bit special-key values, configured DirectInput bindings are translated into those values, and Backspace also closes the Videos page.
 - Added portable controller-edge tests for every shipped XInput action. The tests cover simultaneous presses, held buttons, and unmapped buttons without loading XInput outside the game plugin.
+- Corrected Fit and Fill scaling to use the named Pip-Boy presentation rectangle instead of the square engine texture's aspect ratio.
 - Corrected the menu cursor source to use `InterfaceManager::cursorX` and `cursorY` instead of the cursor tile's visual traits.
 - Corrected PBVP button hit testing to use the game's locus-adjusted tile position routines instead of adding parent coordinates.
 - Connected the decoder, XAudio2 sample clock, video scheduler, renderer mailbox, Pip-Boy status text, and game lifecycle into a bounded playback controller.

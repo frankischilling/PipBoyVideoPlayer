@@ -928,6 +928,18 @@ Thirteenth live result: the 32-bit mapping passed. The user confirmed that Up, D
 
 Consequence: accept the scoped MapMenu keyboard path for the tested keyboard and mouse VNV profile. Keep controller navigation and input-method switching open until a controller is tested. Preserve the 32-bit ABI check and the regression that rejects truncated special-key values.
 
+### Presentation-aware aspect scaling
+
+Date: August 11, 2026
+
+Finding: the renderer scaled decoded frames against the square 256 by 256 engine texture. Gamebryo then displayed that texture in the 384 by 216 `PBVP_VideoRect`. A 16:9 source in Fit mode therefore received bars inside the square texture before the UI stretched the result to 16:9. The scaler tests covered only the backing texture dimensions and did not model the visible rectangle.
+
+Decision: pass the named video rectangle's width and height to the CPU scaler as a separate presentation extent. Fit and Fill calculations use that visible aspect ratio, while pixel writes remain bounded to the validated 256 by 256 texture. Invalid presentation geometry must fail safely, and a valid geometry change applies when the next decoded frame arrives.
+
+Rejected alternative: do not replace the accepted DDS with a non-square texture. The square managed texture has passed the target UI stacks and Direct3D validation, while a new texture shape would reopen device-capability and engine-loader testing without fixing the missing presentation input in the scaler API.
+
+Consequence: add portable Fit and Fill cases that model a square backing texture displayed at 16:9, plus a live comparison in both modes. The existing live playback result does not count as an aspect-mode acceptance test.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.

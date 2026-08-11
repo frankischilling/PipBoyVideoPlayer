@@ -3,6 +3,7 @@
 #include "pbvp/checked_math.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 
 namespace pbvp {
@@ -29,7 +30,7 @@ bool RequiredBytes(
 
 } // namespace
 
-VideoScaleResult ScaleBgra(
+VideoScaleResult ScaleBgraForPresentation(
     const std::span<const std::uint8_t> source,
     const std::uint32_t source_width,
     const std::uint32_t source_height,
@@ -38,6 +39,7 @@ VideoScaleResult ScaleBgra(
     const std::uint32_t destination_width,
     const std::uint32_t destination_height,
     const std::uint32_t destination_stride,
+    const PixelExtent presentation_extent,
     const VideoScaleMode scale_mode,
     const VideoColorMode color_mode) noexcept {
     VideoScaleResult result{};
@@ -64,10 +66,19 @@ VideoScaleResult ScaleBgra(
         return result;
     }
 
-    const std::uint64_t source_aspect =
-        static_cast<std::uint64_t>(source_width) * destination_height;
-    const std::uint64_t destination_aspect =
-        static_cast<std::uint64_t>(destination_width) * source_height;
+    if (!std::isfinite(presentation_extent.width) ||
+        !std::isfinite(presentation_extent.height) ||
+        presentation_extent.width <= 0.0f || presentation_extent.height <= 0.0f) {
+        result.status = VideoScaleStatus::invalid_presentation;
+        return result;
+    }
+
+    const double source_aspect_left =
+        static_cast<double>(source_width) *
+        static_cast<double>(presentation_extent.height);
+    const double presentation_aspect_left =
+        static_cast<double>(source_height) *
+        static_cast<double>(presentation_extent.width);
     std::uint32_t source_x = 0u;
     std::uint32_t source_y = 0u;
     std::uint32_t sampled_width = source_width;
@@ -75,33 +86,41 @@ VideoScaleResult ScaleBgra(
     if (scale_mode == VideoScaleMode::fill) {
         result.content_width = destination_width;
         result.content_height = destination_height;
-        if (source_aspect > destination_aspect) {
+        if (source_aspect_left > presentation_aspect_left) {
             sampled_width = static_cast<std::uint32_t>(
-                static_cast<std::uint64_t>(source_height) * destination_width /
-                destination_height);
+                static_cast<double>(source_height) *
+                static_cast<double>(presentation_extent.width) /
+                static_cast<double>(presentation_extent.height));
             sampled_width = std::clamp(sampled_width, 1u, source_width);
             source_x = (source_width - sampled_width) / 2u;
-        } else if (source_aspect < destination_aspect) {
+        } else if (source_aspect_left < presentation_aspect_left) {
             sampled_height = static_cast<std::uint32_t>(
-                static_cast<std::uint64_t>(source_width) * destination_height /
-                destination_width);
+                static_cast<double>(source_width) *
+                static_cast<double>(presentation_extent.height) /
+                static_cast<double>(presentation_extent.width));
             sampled_height = std::clamp(sampled_height, 1u, source_height);
             source_y = (source_height - sampled_height) / 2u;
         }
     } else {
-        if (source_aspect > destination_aspect) {
+        if (source_aspect_left > presentation_aspect_left) {
             result.content_width = destination_width;
             result.content_height = static_cast<std::uint32_t>(
-                static_cast<std::uint64_t>(source_height) * destination_width /
-                source_width);
+                static_cast<double>(destination_height) *
+                static_cast<double>(presentation_extent.width) *
+                static_cast<double>(source_height) /
+                (static_cast<double>(presentation_extent.height) *
+                 static_cast<double>(source_width)));
         } else {
             result.content_height = destination_height;
             result.content_width = static_cast<std::uint32_t>(
-                static_cast<std::uint64_t>(source_width) * destination_height /
-                source_height);
+                static_cast<double>(destination_width) *
+                static_cast<double>(source_width) *
+                static_cast<double>(presentation_extent.height) /
+                (static_cast<double>(source_height) *
+                 static_cast<double>(presentation_extent.width)));
         }
-        result.content_width = (std::max)(result.content_width, 1u);
-        result.content_height = (std::max)(result.content_height, 1u);
+        result.content_width = std::clamp(result.content_width, 1u, destination_width);
+        result.content_height = std::clamp(result.content_height, 1u, destination_height);
         result.content_x = (destination_width - result.content_width) / 2u;
         result.content_y = (destination_height - result.content_height) / 2u;
     }
@@ -146,6 +165,24 @@ VideoScaleResult ScaleBgra(
 
     result.status = VideoScaleStatus::ok;
     return result;
+}
+
+VideoScaleResult ScaleBgra(
+    const std::span<const std::uint8_t> source,
+    const std::uint32_t source_width,
+    const std::uint32_t source_height,
+    const std::uint32_t source_stride,
+    const std::span<std::uint8_t> destination,
+    const std::uint32_t destination_width,
+    const std::uint32_t destination_height,
+    const std::uint32_t destination_stride,
+    const VideoScaleMode scale_mode,
+    const VideoColorMode color_mode) noexcept {
+    return ScaleBgraForPresentation(
+        source, source_width, source_height, source_stride,
+        destination, destination_width, destination_height, destination_stride,
+        {static_cast<float>(destination_width), static_cast<float>(destination_height)},
+        scale_mode, color_mode);
 }
 
 } // namespace pbvp
