@@ -186,7 +186,7 @@ if(PBVP_BUILD_PLUGIN)
                 "${CMAKE_SOURCE_DIR}/tests/fixtures")
 
         add_executable(pbvp_playback_controller_test tests/playback_controller_tests.cpp)
-        target_link_libraries(pbvp_playback_controller_test PRIVATE pbvp_playback)
+        target_link_libraries(pbvp_playback_controller_test PRIVATE pbvp_playback Psapi.lib)
         target_compile_features(pbvp_playback_controller_test PRIVATE cxx_std_20)
         target_compile_options(pbvp_playback_controller_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus /Zm200)
         set_target_properties(pbvp_playback_controller_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -374,6 +374,64 @@ if(PBVP_BUILD_TESTS)
             -ExecutionPolicy Bypass
             -File ${CMAKE_SOURCE_DIR}/tests/test-phase5-ui-matrix-logs.ps1
             -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase5-ui-matrix-logs.ps1)
+
+    add_test(
+        NAME pbvp_release_package_audit_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-release-package-audit.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/audit-release-package.ps1
+            -RepositoryRoot ${CMAKE_SOURCE_DIR})
+
+    add_test(
+        NAME pbvp_phase6_process_metrics_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase6-process-metrics.ps1
+            -SamplerPath ${CMAKE_SOURCE_DIR}/scripts/measure-phase6-process.ps1)
+
+    add_test(
+        NAME pbvp_phase6_process_metrics_checker_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase6-process-metrics-checker.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase6-process-metrics.ps1)
+
+    add_test(
+        NAME pbvp_phase6_repetition_log_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase6-repetition-log.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase6-repetition-log.ps1)
+
+    add_test(
+        NAME pbvp_phase6_profile_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase6-profile.ps1
+            -ProfileScript ${CMAKE_SOURCE_DIR}/scripts/prepare-phase6-profile.ps1)
+
+    add_test(
+        NAME pbvp_phase6_fault_fixture_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase6-fault-fixtures.ps1
+            -FixtureScript ${CMAKE_SOURCE_DIR}/scripts/prepare-phase6-fault-fixtures.ps1
+            -FixtureDirectory ${CMAKE_SOURCE_DIR}/tests/fixtures)
+
+    add_test(
+        NAME pbvp_phase6_install_removal_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase6-install-removal.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase6-install-removal.ps1)
 
     add_test(
         NAME pbvp_data_contract_test

@@ -4,6 +4,8 @@
 #include "test_support.hpp"
 
 #include <Windows.h>
+#include <Psapi.h>
+#include <TlHelp32.h>
 
 #include <chrono>
 #include <cstdint>
@@ -26,11 +28,73 @@ namespace {
 
 using namespace std::chrono_literals;
 
+void TestTerminalReasonNames() {
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        pbvp::PlaybackTerminalReason::none)) == "none");
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        pbvp::PlaybackTerminalReason::completed)) == "completed");
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        pbvp::PlaybackTerminalReason::stopped)) == "stopped");
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        pbvp::PlaybackTerminalReason::presentation_hidden)) ==
+        "presentation_hidden");
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        pbvp::PlaybackTerminalReason::lifecycle_transition)) ==
+        "lifecycle_transition");
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        pbvp::PlaybackTerminalReason::failed)) == "failed");
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        pbvp::PlaybackTerminalReason::shutdown)) == "shutdown");
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        static_cast<pbvp::PlaybackTerminalReason>(999u))) == "unknown");
+}
+
 pbvp::PlaybackControllerConfig TestConfig() {
     pbvp::PlaybackControllerConfig config{};
     config.muted = true;
     config.maximum_underruns = 3u;
     return config;
+}
+
+struct ProcessStats final {
+    std::uint64_t private_bytes{};
+    std::uint32_t handles{};
+    std::uint32_t threads{};
+};
+
+std::optional<ProcessStats> ReadProcessStats() {
+    PROCESS_MEMORY_COUNTERS_EX memory{};
+    memory.cb = sizeof(memory);
+    DWORD handles = 0u;
+    if (GetProcessMemoryInfo(
+            GetCurrentProcess(),
+            reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memory),
+            sizeof(memory)) == FALSE ||
+        GetProcessHandleCount(GetCurrentProcess(), &handles) == FALSE) {
+        return std::nullopt;
+    }
+
+    const DWORD process_id = GetCurrentProcessId();
+    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0u);
+    if (snapshot == INVALID_HANDLE_VALUE) {
+        return std::nullopt;
+    }
+    std::uint32_t threads = 0u;
+    THREADENTRY32 entry{};
+    entry.dwSize = sizeof(entry);
+    if (Thread32First(snapshot, &entry) != FALSE) {
+        do {
+            if (entry.th32OwnerProcessID == process_id) {
+                ++threads;
+            }
+        } while (Thread32Next(snapshot, &entry) != FALSE);
+    }
+    CloseHandle(snapshot);
+    return ProcessStats{
+        static_cast<std::uint64_t>(memory.PrivateUsage),
+        static_cast<std::uint32_t>(handles),
+        threads,
+    };
 }
 
 bool AdvanceUntil(
@@ -167,6 +231,76 @@ void TestPauseAndSeeks(
     PBVP_CHECK(snapshot.metrics.seek_count == 2u);
     PBVP_CHECK(snapshot.metrics.pause_count == 1u);
     PBVP_CHECK(snapshot.metrics.resume_count == 1u);
+}
+
+void TestRepeatedOpenStopAndSeeks(
+    const pbvp::FfmpegRuntime& runtime,
+    const std::wstring& fixture_root) {
+    pbvp::PlaybackController controller(runtime, TestConfig());
+    for (std::uint32_t warmup = 0u; warmup < 5u; ++warmup) {
+        PBVP_CHECK(controller.Open(
+            fixture_root, L"h264-aac-44100-stereo.mp4"));
+        PBVP_CHECK(controller.Update(true));
+        controller.Stop();
+    }
+    const std::optional<ProcessStats> before = ReadProcessStats();
+    PBVP_CHECK(before.has_value());
+
+    for (std::uint32_t cycle = 0u; cycle < 100u; ++cycle) {
+        PBVP_CHECK(controller.Open(
+            fixture_root, L"h264-aac-44100-stereo.mp4"));
+        PBVP_CHECK(controller.Update(true));
+        controller.Stop();
+        const pbvp::PlaybackControllerSnapshot snapshot = controller.Snapshot();
+        PBVP_CHECK(snapshot.playback.state == pbvp::PlaybackState::idle);
+        PBVP_CHECK(snapshot.playback.error == pbvp::PlaybackError::none);
+        PBVP_CHECK(snapshot.staged_video_frames == 0u);
+        PBVP_CHECK(snapshot.staged_video_bytes == 0u);
+        PBVP_CHECK(snapshot.audio_lookahead_chunks == 0u);
+        PBVP_CHECK(!snapshot.frame_ready);
+    }
+
+    const std::optional<ProcessStats> after = ReadProcessStats();
+    PBVP_CHECK(after.has_value());
+    if (before.has_value() && after.has_value()) {
+        constexpr std::uint64_t kMaximumRetainedBytes = 16u * 1024u * 1024u;
+        PBVP_CHECK(after->handles <= before->handles + 4u);
+        PBVP_CHECK(after->threads <= before->threads + 1u);
+        PBVP_CHECK(after->private_bytes <=
+                   before->private_bytes + kMaximumRetainedBytes);
+        std::printf(
+            "100 open-stop cycles: private_delta=%lld handles=%u->%u threads=%u->%u\n",
+            static_cast<long long>(after->private_bytes) -
+                static_cast<long long>(before->private_bytes),
+            before->handles, after->handles,
+            before->threads, after->threads);
+    }
+
+    PBVP_CHECK(controller.Open(
+        fixture_root, L"h264-aac-44100-stereo.mp4"));
+    std::uint64_t delivered_frames = 0u;
+    PBVP_CHECK(AdvanceUntil(
+        controller, pbvp::PlaybackState::playing,
+        std::chrono::steady_clock::now() + 5s, delivered_frames));
+    for (std::uint32_t seek = 0u; seek < 20u; ++seek) {
+        PBVP_CHECK(controller.Seek(1'200'000));
+        PBVP_CHECK(AdvanceUntil(
+            controller, pbvp::PlaybackState::playing,
+            std::chrono::steady_clock::now() + 5s, delivered_frames));
+        PBVP_CHECK(controller.Seek(200'000));
+        PBVP_CHECK(AdvanceUntil(
+            controller, pbvp::PlaybackState::playing,
+            std::chrono::steady_clock::now() + 5s, delivered_frames));
+    }
+    const pbvp::PlaybackControllerSnapshot seek_snapshot = controller.Snapshot();
+    PBVP_CHECK(seek_snapshot.playback.state == pbvp::PlaybackState::playing);
+    PBVP_CHECK(seek_snapshot.playback.error == pbvp::PlaybackError::none);
+    PBVP_CHECK(seek_snapshot.metrics.seek_count == 40u);
+    PBVP_CHECK(seek_snapshot.metrics.forward_seek_count == 20u);
+    PBVP_CHECK(seek_snapshot.metrics.backward_seek_count == 20u);
+    PBVP_CHECK(seek_snapshot.generation == 41u);
+    PBVP_CHECK(seek_snapshot.audio.underruns == 0u);
+    controller.Stop();
 }
 
 void TestForcedAudioRebuffer(
@@ -395,6 +529,8 @@ int wmain(int argc, wchar_t** argv) {
         return 2;
     }
 
+    TestTerminalReasonNames();
+
     pbvp::FfmpegRuntime runtime;
     pbvp::FfmpegLoadFailure failure{};
     PBVP_CHECK(runtime.Load(argv[1], failure));
@@ -405,6 +541,7 @@ int wmain(int argc, wchar_t** argv) {
     TestAudioCompletion(runtime, argv[2]);
     TestLowCadenceFrameAccounting(runtime, argv[2]);
     TestPauseAndSeeks(runtime, argv[2]);
+    TestRepeatedOpenStopAndSeeks(runtime, argv[2]);
     TestForcedAudioRebuffer(runtime, argv[2]);
     TestStopAndThreadOwnership(runtime, argv[2]);
     TestHighResolutionCompletion(runtime, argv[2]);

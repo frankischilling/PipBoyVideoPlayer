@@ -83,7 +83,7 @@ foreach ($dependency in $dependencies) {
             $savedPath = $env:PATH
             try {
                 $env:PATH = (Join-Path $Msys2Root 'usr\bin') + [IO.Path]::PathSeparator + $env:PATH
-                & $tar -xf $archive -C $temporary
+                & $tar --force-local -xf $archive -C $temporary
                 if ($LASTEXITCODE -ne 0) {
                     throw "$($dependency.Name) extraction failed."
                 }

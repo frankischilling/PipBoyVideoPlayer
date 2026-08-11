@@ -692,6 +692,16 @@ Remove or rename a selected media file before open. Deny read access. Simulate a
 
 Automate or manually script the acceptance loops from the project scope. Capture process memory, handle count, thread count, frame time, audio underruns, video drops, and clock error.
 
+The native Win32 playback test now performs five warm-up cycles, records process private bytes, handles, and threads, then completes 100 additional open and stop cycles with the same controller instance. The accepted run retained 765,952 private bytes, kept handles at 184, and kept threads at 6. Every stop returned to idle with empty staged video, audio lookahead, and presentation slots.
+
+The same test opens a fresh session and completes 20 forward and 20 backward seeks. It returns to playing after every seek, reaches generation 41 with an exact seek count of 40, and reports zero XAudio2 underruns. This automates the worker, queue, generation, and audio flush boundaries. It does not replace the required in-game repetition or mixed soak.
+
+The normal release build writes one privacy-safe terminal summary per playback session. `scripts\check-phase6-repetition-log.ps1` requires sequential session numbers, at least 100 matched catalog opens and summaries, decoded video and audio in each session, 20 forward and 20 backward seeks, zero underruns, bounded queue peaks, complete renderer accounting, and orderly shutdown. The dedicated `PBVP Phase 6 Hardening` profile enables both short catalog fixtures and the 30-minute fixture while keeping its save directory empty.
+
+Run `scripts\measure-phase6-process.ps1` beside each live repetition or soak session. The sampler waits for FalloutNV, records one JSON sample every five seconds by default, and stops when that process exits. Its summary uses samples after a configurable warm-up period. The script reads standard Windows process counters and does not inject code or call into FalloutNV.
+
+After the process exits, run `scripts\check-phase6-process-metrics.ps1` against the JSON file. The default gate requires at least two hours, a five-minute warm-up, 80 percent sampling coverage, less than 128 MiB of private-memory growth after warm-up, no more than 32 extra handles, and no more than eight extra threads. It rejects a changed summary by recalculating every range from the raw samples.
+
 ## Performance measurements
 
 Record at least:
@@ -708,9 +718,13 @@ Record at least:
 
 Results need the CPU, GPU, operating system, display mode, graphics path, source media properties, game FPS cap, and VNV profile.
 
+The process sampler records elapsed time, private bytes, working set, handles, threads, and process CPU time. Keep its JSON output with the matching privacy-checked plugin log. Direct3D upload time, video drops, audio underruns, and synchronization error still come from the plugin's bounded shutdown metrics.
+
 ## Stability soak
 
 The release candidate runs a two-hour mixed test: repeated short clips, one 30-minute clip, seeks, pauses, Pip-Boy closures, cell changes between sessions, and regular Alt+Tab cycles. Memory and handle graphs must level off after warm-up. Any crash, deadlock, stuck audio, failed reset, or continuing growth blocks release.
+
+Status for private candidate 0.1.0-rc.1: not run. The project owner waived this gate on August 11, 2026. No soak result is inferred from the shorter live sessions or native repetition tests. The candidate remains a private prerelease with this limitation recorded.
 
 ## Save safety
 

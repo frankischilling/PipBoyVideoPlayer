@@ -6,11 +6,11 @@ The repository contains the implementation, automated tests, UIO files, build sc
 
 ## Project status
 
-Status: Phase 5 catalog and controls in live validation
+Status: Phase 6 hardening and release validation
 
 The current build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, and installs a UIO prefab. Once the Pip-Boy is open, it validates the live UIO image, engine texture objects, managed Direct3D texture, device, and callback thread before uploading decoded frames. Any unknown object type, texture profile, or thread arrangement disables the update instead of guessing. The plugin does not patch game functions or a Direct3D device vtable.
 
-The Host Release suite passes 20 of 20 tests. The Win32 Release suite passes 29 of 29 tests. Two overlay draw points were rejected because they rendered above the Pip-Boy UI. The accepted path updates an engine-owned managed texture and leaves drawing to the game. It uses no executable hook or Direct3D device vtable patch. The raised 384 by 216 panel passed all four isolated UI profiles at 1920 by 1080 during Phase 1. Keyboard and mouse input, ten Pip-Boy reopen cycles, and 50 measured focus-loss and return cycles passed in the tested native windowed configuration.
+The Host Release suite passes 27 of 27 tests. The Win32 Release suite passes 36 of 36 tests. Two overlay draw points were rejected because they rendered above the Pip-Boy UI. The accepted path updates an engine-owned managed texture and leaves drawing to the game. It uses no executable hook or Direct3D device vtable patch. The raised 384 by 216 panel passed all four isolated UI profiles at 1920 by 1080 during Phase 1. Keyboard and mouse input, ten Pip-Boy reopen cycles, and 50 measured focus-loss and return cycles passed in the tested native windowed configuration.
 
 A synthetic recreation test froze inside the game's native reset sequence, so the test, reset hook, and MinHook dependency were removed. A PBVP-disabled control later reproduced the native fullscreen NVIDIA driver crash, so repeated fullscreen Alt+Tab is not supported. The isolated test-profile save guard passes Base and full Extended exit checks without changing normal profiles. Native windowed rows passed at 1280x720 and 30 FPS, 1280x960 and 60 FPS, 2560x1440 and 90 FPS, and 3440x1440 and 120 FPS. The two larger windows were clipped by the 1920x1080 monitor, so those results cover the visible panel and logged backbuffer rather than the full window.
 
@@ -32,7 +32,7 @@ The accepted live five-minute 10 FPS run used the same 30 FPS fixture. It decode
 
 Phase 5 adds a bounded direct-child MP4 catalog with Unicode filenames, natural sorting, eight visible rows, lazy title metadata, and scoped mouse and keyboard controls. It implements aspect fit, aspect fill, Pip-Boy tint, full color, volume and resource settings, idle-only configuration reload, and privacy-safe normal logs. The accepted live catalog run displayed ten separate entries and played selected files. Mouse activation and every shipped keyboard action worked, including both seek directions, pause, stop, and return to the Data page. Controller input is not supported.
 
-These results satisfy the Phase 4 synchronization, frame-rate independence, seek and buffering-stop automation, and memory exit criteria. Phase 5 portable checks, the live Fit and Fill comparison, idle configuration reload, the four-profile UI matrix, and the final mouse and keyboard smoke run passed. Controller support is outside the release scope. DXVK, repetition tests, and the two-hour soak remain Phase 6 work.
+These results satisfy the Phase 4 synchronization, frame-rate independence, seek and buffering-stop automation, and memory exit criteria. Phase 5 portable checks, the live Fit and Fill comparison, idle configuration reload, the four-profile UI matrix, and the final mouse and keyboard smoke run passed. Controller support is outside the release scope. The native 100-cycle repetition and 40-seek tests also passed. Deterministic native tests cover damaged, unsupported, and encrypted media. The two-hour mixed soak was not run for private candidate 0.1.0-rc.1 at the project owner's direction. DXVK is not supported.
 
 ## Build
 
@@ -44,7 +44,7 @@ Required tools are CMake, Visual Studio with the x86 C++ workload, PowerShell, M
 .\scripts\fetch-dependencies.ps1
 .\scripts\build-ffmpeg.ps1 -Clean
 .\scripts\configure.ps1 -Target plugin
-.\scripts\build.ps1 -Configuration Debug
+.\scripts\build.ps1 -Configuration Debug -Jobs 2
 .\scripts\test.ps1 -Configuration Debug
 ```
 
@@ -55,6 +55,24 @@ The dependency script downloads the official xNVSE 6.4.5 and FFmpeg 8.1.2 source
 cmake --build build-host --parallel
 ctest --test-dir build-host --output-on-failure
 ```
+
+Release packaging performs a second audit after both ZIP files are written. It requires the exact runtime and symbols inventories, consistent entry timestamps, safe entry names, bounded expansion, the approved DLL set, and no personal media, saves, logs, dumps, build objects, executables, PDB files in the runtime archive, or absolute local paths. It then installs, removes, and reinstalls the runtime archive in an isolated MO2-shaped directory. A separate save sentinel must remain unchanged.
+
+The native Phase 6 lifecycle test completes 100 open and stop cycles, followed by 20 forward and 20 backward seeks in one playback session. The accepted run retained 765,952 private bytes, kept process handles at 184 and threads at 6, and reported zero audio underruns after the seek loop. These checks exercise the decoder, XAudio2, and playback state machine outside the game. A three-session in-game smoke also passed with zero underruns and complete renderer accounting. The two-hour soak remains unverified for private candidate 0.1.0-rc.1.
+
+`scripts\measure-phase6-process.ps1` records private bytes, working set, handles, threads, CPU time, and elapsed time for a live FalloutNV process. It waits for the game, samples until that process exits, ignores the first five minutes when it calculates the default summary, and writes the raw samples and summary as JSON. The sampler does not inject code or call game objects. Use a path under the ignored `build-host` directory for private test evidence:
+
+```powershell
+.\scripts\measure-phase6-process.ps1 `
+  -OutputPath .\build-host\phase6-soak-process.json `
+  -IntervalMilliseconds 5000 `
+  -WarmupSeconds 300
+
+.\scripts\check-phase6-process-metrics.ps1 `
+  -MetricsPath .\build-host\phase6-soak-process.json
+```
+
+The checker requires two hours of samples, a five-minute warm-up, at least 80 percent sample coverage, private-memory growth below 128 MiB, and bounded handle and thread growth. It also recalculates every summary from the raw samples before accepting the file.
 
 ## Intended user experience
 
@@ -92,7 +110,12 @@ The plugin remains ESP-less. xNVSE and UIO are required. JIP LN, JohnnyGuitar, a
 - [UI, input, and files](docs/ui-input-and-files.md)
 - [Build, packaging, and licensing](docs/build-packaging-and-licensing.md)
 - [Compatibility and test plan](docs/compatibility-and-test-plan.md)
+- [Installation and use](docs/installation-and-use.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Bug report guide](docs/bug-report-guide.md)
+- [0.1.0-rc.1 release notes](docs/release-notes-0.1.0-rc.1.md)
 - [Phase 5 live test guide](docs/phase5-live-test-guide.md)
+- [Phase 6 live test guide](docs/phase6-live-test-guide.md)
 - [Risk register](docs/risk-register.md)
 - [Roadmap](docs/roadmap.md)
 - [Decisions and open questions](docs/decisions-and-open-questions.md)

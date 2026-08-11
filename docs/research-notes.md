@@ -500,3 +500,55 @@ The live Phase 2 test confirmed that custom Win32 I/O sees a file supplied only 
 - DXVK behavior at the selected frame boundary if support is later claimed;
 - codec patent review for binary distribution;
 - permission and naming checks before a public mod page is created.
+
+## Phase 6 package audit
+
+The first hardening change audits the written ZIP files instead of relying only on the staging tree. The candidate runtime archive contains the exact 33-file inventory derived from the repository documentation and pinned FFmpeg manifest. The symbols archive contains only the matching cleaned PDB and README. The checker also requires safe unique entry names, consistent timestamps, bounded expansion, and no private absolute path.
+
+The negative fixtures reject an extra DLL, an MP4 file, a local user path, a missing README, and a traversal entry. Host Release passes 21 of 21 tests, Win32 Release passes 30 of 30 tests, and the integrated package command accepted both real archives.
+
+## Phase 6 native lifecycle repetition
+
+The Win32 playback test warms the decoder and audio path, records process counters, and then runs 100 additional open and stop cycles. The accepted run retained 765,952 private bytes. Handles remained at 184 and threads remained at 6. Every stopped snapshot was idle with no staged video frame, staged byte, audio lookahead chunk, or ready presentation frame.
+
+A fresh session then completed 20 forward and 20 backward seeks. The controller returned to playing after each request, reached generation 41, recorded exactly 40 seeks, and reported zero audio underruns. The native result covers repeated worker joins, audio flushes, generation changes, and bounded queue cleanup. It does not establish the in-game UI, render, or menu-lifecycle repetition result.
+
+## Phase 6 process sampling
+
+The live process sampler waits for a named process or an exact process ID and reads Windows process counters until that process exits. Each JSON sample contains elapsed time, private bytes, working set, handle count, thread count, and process CPU time. The summary reports the initial, final, minimum, maximum, and delta for each counter after the configured warm-up period. The sampler stays outside the game process and does not install a hook.
+
+The sampler test starts a short hidden PowerShell child, samples it every 100 milliseconds, and checks the schema, process identity, lifetime, sample count, and every metric range. The accepted run collected 14 samples over 1,789 milliseconds.
+
+The result checker independently reads the JSON, verifies monotonic elapsed and CPU counters, recalculates each summary, and enforces duration, warm-up, coverage, private-memory, handle, and thread limits. Its negative fixtures cover wrong identity and schema, short duration, slow or missing samples, invalid timestamps, nonmonotonic counters, changed summaries, and each resource limit. Host Release passes 23 of 23 tests and Win32 Release passes 32 of 32 tests with both checks enabled.
+
+The first combined Win32 rebuild used unrestricted MSBuild parallelism and left 12 worker nodes after one task ran out of memory. A one-worker rebuild with node reuse disabled built the DLL and passed all 31 tests. The build helper now uses two jobs by default, accepts an explicit job count, and restores the caller's node-reuse environment after the build.
+
+## Phase 6 live repetition evidence
+
+The normal plugin now records one terminal summary for each playback sequence. The game thread writes it after session teardown and never includes the selected path or metadata title. Forward and backward seeks have separate counters, so a total of 40 requests cannot hide a missing direction.
+
+The strict checker accepts only sequential playback numbers with matching catalog opens. Every accepted session must decode and present video, submit audio, report no playback error or underrun, and stay inside the existing queue limits. It also checks renderer accounting and shutdown order. Negative fixtures cover a warning, private path, missing or duplicate session, empty presentation, underrun, missing seek direction, queue overflow, upload failure, and reordered teardown.
+
+The Phase 6 profile script copies the accepted Extended test profile without saves. It enables the development mod, generated catalog, long fixture, fault fixtures, and save guard while disabling earlier armed diagnostics. Its automated test verifies selection, mod isolation, unrelated file preservation, exact enablement, and refusal to touch an existing save. With the install and removal check included, Host Release contains 27 tests and Win32 Release contains 36 tests.
+
+The first live session-summary smoke run completed three playback sequences with zero underruns or errors. It accounted for 79 playback submissions as 79 uploads and recorded four additional successful startup test uploads. The initial repetition checker incorrectly required total upload successes to equal playback uploads, even though the renderer has always kept those counters in separate domains. The corrected rule requires every playback submission to end as uploaded, replaced, or cleared; total successful attempts may be higher but may not be lower than playback uploads. A negative fixture rejects missing playback upload coverage.
+
+## Phase 6 fault fixtures and soak waiver
+
+The hardening fixture generator creates seven direct-child MP4 entries in a separate MO2 mod. It copies one valid H.264 and AAC control plus the canonical unsupported-codec and encrypted fixtures. It also writes deterministic empty, random-byte, and 1,024-byte truncated cases. Verification checks every source hash, output size, byte pattern, exact filename, and directory inventory. The script refuses to replace an unexpected file and will not change the live instance while FalloutNV or its Mod Organizer process is running.
+
+The existing Win32 decoder tests open the same generated source set through the private FFmpeg runtime. They require structured failures for empty input, random bytes, truncation, unsupported video, unsupported audio, and encrypted media. The valid control decodes video and audio before and after the failure tests in the wider suite.
+
+The package workflow extracts the completed runtime archive into an isolated MO2-shaped directory, verifies its required installation roots, removes it, and installs it again. A save sentinel outside the mod directory keeps the same SHA-256 through both operations. Negative fixtures reject an ESP and a traversal entry. This check proves the archive's install boundary and absence of save or plugin files. It does not claim that Mod Organizer 2 itself was automated.
+
+The project owner waived the two-hour mixed soak for private candidate 0.1.0-rc.1 on August 11, 2026. The soak was not run and is not counted as passed. The 30-minute synchronization test, five-minute low-FPS test, native 100-cycle test, 40-seek test, short live hardening smoke, and earlier focus-cycle tests remain separate evidence with their original scope.
+
+## Phase 6 clean-checkout reproduction
+
+The first clean clone verified commit `b2762faae5ca083a28bd745838bceefaa198da99` and downloaded both pinned source archives. xNVSE extracted correctly. GNU tar rejected the drive-qualified FFmpeg archive path because it interpreted the colon as remote-host syntax. This stopped the build before any dependency compiled.
+
+The extraction command now uses GNU tar's `--force-local` option. The manifest test requires that option so a later script change cannot restore the ambiguous drive-colon behavior. The failed clone is not release evidence.
+
+A new clone then downloaded and verified both sources, rebuilt the five i686 FFmpeg DLLs, compiled the portable and Win32 targets, passed all 27 portable and 36 Win32 Release tests, cleaned the public PDB, and created both archives. The runtime archive passed its exact 33-file audit. The symbols archive contained only the matching cleaned PDB and README. The isolated install, removal, reinstallation, and save-sentinel check also passed.
+
+The packaged plugin and the live-tested plugin have identical `.text`, `.data`, `.fptable`, `.rsrc`, and `.reloc` section hashes. Their `.rdata` sections differ because the clean linker invocation wrote a new timestamp and PDB identifier. Both CodeView records name only `PipBoyVideoPlayer.pdb`, and the package audit found no checkout path. The identical code and data sections let the earlier live playback result apply to the clean binary while the new public symbols remain paired with that clean build.

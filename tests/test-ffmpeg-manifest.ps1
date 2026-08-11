@@ -67,6 +67,7 @@ foreach ($runtime in $manifest.runtime) {
 $fetchText = Get-Content -LiteralPath $FetchScript -Raw
 $buildText = Get-Content -LiteralPath $BuildScript -Raw
 if ($fetchText -notmatch [regex]::Escape($manifest.sourceSha256) -or
+    $fetchText -notmatch '--force-local' -or
     $buildText -notmatch 'SOURCE_DATE_EPOCH' -or
     $buildText -notmatch 'ffile-prefix-map' -or
     $buildText -notmatch 'audit-ffmpeg-runtime\.ps1') {

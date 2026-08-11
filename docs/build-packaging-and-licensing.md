@@ -43,34 +43,30 @@ These DLLs belong in the private `PipBoyVideoPlayer\bin` directory. The plugin m
 
 PBVP links the x86 Windows SDK `xaudio2.lib` import library and uses the system `XAudio2_9.dll` supplied by Windows 10 and Windows 11. The release does not include an XAudio2 DLL or the legacy DirectX SDK runtime. The package audit must reject any bundled `XAudio2*.dll` file.
 
-## Proposed release layout
+## Release layout
 
 ```text
-Data\
-  Config\
-    PipBoyVideoPlayer.ini
-  Menus\
-    Prefabs\
-      PipBoyVideoPlayer\
-        Player.xml
-  NVSE\
-    Plugins\
-      PipBoyVideoPlayer.dll
-      PipBoyVideoPlayer\
-        bin\
-          FFmpeg runtime DLLs
-        Videos\
-          Place videos here.txt
-  UIO\
-    Public\
-      PipBoyVideoPlayer.txt
+Config\PipBoyVideoPlayer.ini
+menus\prefabs\PipBoyVideoPlayer\Player.xml
+NVSE\Plugins\PipBoyVideoPlayer.dll
+NVSE\Plugins\PipBoyVideoPlayer\bin\
+  avcodec-62.dll
+  avformat-62.dll
+  avutil-60.dll
+  swresample-6.dll
+  swscale-9.dll
+textures\Interface\PipBoyVideoPlayer\Surface.dds
+uio\public\PipBoyVideoPlayer.txt
 LICENSES\
-  Project license
-  FFmpeg license and notices
-README.txt
+  FFmpeg\
+  winpthreads\
+README.md
+CHANGELOG.md
+THIRD_PARTY_NOTICES.md
+docs\
 ```
 
-The exact XML filenames may change after the UIO spike. The matching stripped PDB belongs in the separate symbols archive because New Vegas crash loggers can produce better stacks when symbols are available. The full PDB remains private and is never packaged.
+This is an MO2-ready archive, so the mod's `Data` contents are at the archive root. The matching stripped PDB belongs in the separate symbols archive because New Vegas crash loggers can produce better stacks when symbols are available. The full PDB remains private and is never packaged. A project license file is not present because the owner has not selected a license.
 
 ## Package separation
 
@@ -80,6 +76,8 @@ Development artifacts should produce two archives:
 2. A symbols archive containing the matching stripped PDB and source-reference information.
 
 Personal media is never part of either archive.
+
+After creating both ZIP files, `audit-release-package.ps1` opens them and checks their contents independently of the staging tree. It rejects unsafe or duplicate entry names, inconsistent timestamps, oversized expansion, an unexpected file or directory, personal media, saves, logs, dumps, build outputs, executables, private paths, a PDB in the runtime archive, or any DLL outside the approved plugin and FFmpeg set. Automated negative fixtures cover unexpected DLLs, personal media, absolute local paths, missing required files, and traversal entries.
 
 The linker writes the explicit filename `PipBoyVideoPlayer.pdb` into the DLL. The raw stripped PDB still contains the absolute names of contributing object files and libraries. Before packaging, a format-aware cleanup reads the DBI logical stream, replaces each absolute module or object path with an equal-length path-neutral name, and writes the same-size stream back to its existing MSF blocks. It also clears unreferenced blocks and unused block tails that may retain stale linker data. It does not resize records or rebuild the PDB. The symbols archive renames the cleaned output to the filename expected by the DLL.
 
@@ -112,9 +110,9 @@ Codec patent rules vary by country and distribution method. Before a public bina
 
 The repository and release must not contain Bethesda game assets, Bink components, commercial video samples, or code copied from another mod without permission.
 
-## Continuous integration plan
+## Release verification
 
-Once code exists, CI should:
+The local release workflow:
 
 - configure and build x86 debug and release targets;
 - run unit tests for timestamp math, checked allocation math, catalog normalization, and state transitions;
@@ -122,6 +120,6 @@ Once code exists, CI should:
 - inspect the DLL architecture and imported libraries;
 - assemble the release tree from a clean checkout;
 - reject unexpected files, absolute paths, and personal media extensions;
-- publish checksums and a dependency inventory with release candidates.
+- records checksums and a dependency inventory with release candidates.
 
-CI configuration is intentionally absent during the documentation-only phase.
+GitHub CI is not configured for the private candidate. The accepted package was built in a separate clean clone with the pinned local toolchain, then audited again after its two archives were copied to the main project directory.

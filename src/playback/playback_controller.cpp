@@ -28,6 +28,20 @@ PlaybackError DecoderPlaybackError(const DecoderSnapshot& snapshot) noexcept {
 
 } // namespace
 
+const char* PlaybackTerminalReasonName(
+    const PlaybackTerminalReason reason) noexcept {
+    switch (reason) {
+        case PlaybackTerminalReason::none: return "none";
+        case PlaybackTerminalReason::completed: return "completed";
+        case PlaybackTerminalReason::stopped: return "stopped";
+        case PlaybackTerminalReason::presentation_hidden: return "presentation_hidden";
+        case PlaybackTerminalReason::lifecycle_transition: return "lifecycle_transition";
+        case PlaybackTerminalReason::failed: return "failed";
+        case PlaybackTerminalReason::shutdown: return "shutdown";
+    }
+    return "unknown";
+}
+
 const char* PlaybackFailureSiteName(const PlaybackFailureSite site) noexcept {
     switch (site) {
         case PlaybackFailureSite::none: return "none";
@@ -279,6 +293,8 @@ bool PlaybackController::Seek(std::int64_t target_us) noexcept {
         return false;
     }
 
+    const std::int64_t previous_media_time_us =
+        snapshot_.metrics.last_media_time_us;
     std::uint64_t requested_generation = 0u;
     if (!decoder_->RequestSeek(target_us, requested_generation) ||
         !state_.BeginSeek()) {
@@ -305,6 +321,11 @@ bool PlaybackController::Seek(std::int64_t target_us) noexcept {
     end_of_stream_submitted_ = false;
     completion_pending_ = false;
     ++snapshot_.metrics.seek_count;
+    if (target_us > previous_media_time_us) {
+        ++snapshot_.metrics.forward_seek_count;
+    } else if (target_us < previous_media_time_us) {
+        ++snapshot_.metrics.backward_seek_count;
+    }
     ++snapshot_.metrics.buffering_events;
     snapshot_.playback = state_.Snapshot();
     snapshot_.generation = generation_;

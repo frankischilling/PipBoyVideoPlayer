@@ -1,7 +1,19 @@
 # Changelog
 
-## 0.1.0 - Unreleased
+## 0.1.0-rc.1 - 2026-08-11
 
+- Fixed clean-checkout FFmpeg extraction by forcing GNU tar to treat the Windows drive-colon archive path as local.
+- Added deterministic Phase 6 fault fixtures for an empty file, random bytes, truncation, unsupported video, unsupported audio, and encrypted media, with an automated installer and inventory check.
+- Added an isolated archive install, removal, and reinstallation check. A save sentinel must retain its exact hash across both operations.
+- Accepted a three-session live hardening smoke with 79 decoded-frame uploads, zero underruns, no playback error, and normal shutdown.
+- Recorded that the project owner waived the two-hour mixed soak for this private candidate. It was not run and is not claimed as passed.
+- Added one privacy-safe summary for each playback session. It records terminal state, decoded and presented frames, audio samples, underruns, seek direction counts, buffering, update gaps, and bounded queue peaks.
+- Added a strict live repetition checker for 100 numbered playback sessions and 20 seeks in each direction.
+- Added a save-free Phase 6 MO2 profile that enables the catalog and 30-minute generated fixtures without changing an existing VNV profile.
+- Added a live process sampler and strict result checker for the Phase 6 soak. They record and verify private bytes, working set, handles, threads, CPU time, elapsed time, raw samples, and a post-warm-up summary without entering the game process.
+- Limited the build helper to two jobs by default and disabled MSBuild node reuse for that invocation. The job count remains configurable.
+- Added a post-archive release audit with negative fixtures for unexpected DLLs, personal media, absolute local paths, missing files, and ZIP traversal entries. The package command runs the audit on the completed runtime and symbols archives.
+- Added a native hardening loop for 100 open and stop cycles plus 20 forward and 20 backward seeks. The accepted run retained 765,952 private bytes, kept handle and thread counts unchanged, and completed the seek loop without an audio underrun.
 - Added a clickable `VIDEOS` entry, an eight-row scrolling catalog, mouse and keyboard controls, and prompts that show the configured keyboard bindings. Closing the Pip-Boy stops playback, and the same file can be selected again after reopening it. The scoped MapMenu bridge accepts compatible per-instance table copies, preserves unrelated entries, recognizes the audited Stewie Tweaks 9.80 Menu Search keyboard chain, and refuses unknown input handlers. Controller input is not supported.
 - Added aspect fit and fill rendering. Fit centers the full frame with black bars. Fill uses a centered crop. Pip-Boy tint converts the frame to luminance and lets the UI apply the player's active Pip-Boy color. Full-color mode keeps the converted BGRA colors.
 - Added bounded UTF-8 INI loading for playback, rendering, catalog, input, resource, and logging settings. Keyboard bindings use unique DirectInput scan codes, and the UI shows the active bindings. Invalid values keep safe defaults. Runtime reload is limited to the idle state and a rejected reload leaves playback unchanged.
