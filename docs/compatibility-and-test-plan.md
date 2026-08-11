@@ -522,6 +522,10 @@ The checker regression accepts a final audio clock up to 50 milliseconds early o
 
 The first live 10 FPS run reached playing, then returned to buffering 499 milliseconds later and did not recover before normal shutdown. RTSS held the visible callback rate between 10.00 and 10.06 FPS. The renderer uploaded four frames without failure, and shutdown stopped audio and joined the decoder worker. This fails the Phase 4 frame-rate-change criterion. The next candidate must recover from a forced audio underrun in an automated integrated test before the live 10 FPS case repeats.
 
+The second 10 FPS run showed that rebuffering can return to playback, but the result still fails the Phase 4 gate. Playback recovered three times, then the next underrun reached the configured limit and produced `audio_stream_failed`. The visible callback rate was 9.97 FPS. The recorded state intervals after the first underrun were 399, 401, 399, 400, 400, and 428 milliseconds. The preserved log has SHA-256 `06CE62C475101DADD8043BEACB94D637680E4F8C7EB04A307BAF162994786504`.
+
+The current error record does not include controller update count, submitted audio, played samples, queued XAudio2 buffers, or decoder queue depth. The next diagnostic will add those bounded counters. Phase 4 remains open, and the 10 FPS row remains failed. Do not hide the failure by raising the underrun limit. Do not enlarge queues or move playback between xNVSE callbacks until the next short run identifies the empty queue and its service cadence.
+
 ## UI matrix
 
 Test these layouts independently:

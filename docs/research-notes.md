@@ -341,6 +341,10 @@ The first live low-FPS attempt used the same 30 FPS long fixture with RTSS holdi
 
 The decoder uses one worker for interleaved media. Initial buffering drains and discards excess video when staging is full, which lets the worker continue producing audio. Rebuffering does not discard because the current predicate requires `audio_started_` to be false. At the measured 10 FPS update rate, the bounded video path can block the worker before XAudio2 rebuilds its 200-millisecond prebuffer. The next regression forces an audio underrun, verifies recovery, and retains the existing queue and thread ownership limits.
 
+The recovery predicate was widened to every buffering state. In the next 10 FPS run, playback returned from buffering three times. It then reached `audio_stream_failed` on the next underrun. State intervals after the first underrun ranged from 399 to 428 milliseconds, while the frame-present diagnostic measured 9.97 visible callbacks per second. The failure log has SHA-256 `06CE62C475101DADD8043BEACB94D637680E4F8C7EB04A307BAF162994786504`.
+
+The pinned xNVSE 6.4.5 source dispatches `kMessage_MainGameLoop` from `HandleMainLoopHook` and `kMessage_OnFramePresent` from the normal display call. The existing failure record does not count controller updates or record both audio queues. A short diagnostic must capture controller update count, submitted audio, played samples, XAudio2 buffers, and decoder video and audio queue depth before the playback callback or bounded capacities change.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

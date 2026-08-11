@@ -674,6 +674,18 @@ Decision: update the injected `PBVP_LayerProbe` string from the game thread with
 
 Reason: Phase 4 needs visible opening, buffering, paused, and failure states. Replacing menu XML is out of scope, and workers cannot touch game objects. The existing injected status strip is already at the reviewed depth and position. Fixed messages also keep local paths and media metadata out of the UI.
 
+### Low-FPS recovery remains open
+
+Date: August 10, 2026
+
+Decision: keep Phase 4 open after the second 10 FPS run. Add controller update count, submitted audio, played samples, queued XAudio2 buffers, and decoder queue depth to the next failure record before changing queue sizes or callback ownership.
+
+Reason: rebuffering returned to playback three times, but the next underrun reached the configured limit and produced `audio_stream_failed`. The visible callback rate was 9.97 FPS. State changes alone cannot identify whether the empty audio path came from controller service cadence, the interleaved decoder, or queue capacity.
+
+Rejected alternatives: do not hide the failure by raising the underrun limit. Do not enlarge queues or move playback between xNVSE callbacks without the missing counters.
+
+Consequence: the 10 FPS row remains failed. The next in-game run is a short diagnostic, not an acceptance retest.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.
