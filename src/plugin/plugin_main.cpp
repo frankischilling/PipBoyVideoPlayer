@@ -489,6 +489,11 @@ void SeekRelative(const std::int64_t direction) noexcept {
 }
 
 void ProcessVideosInput(const pbvp::UiInputSnapshot& input) noexcept {
+    if (input.method != g_last_input_method) {
+        PBVP_LOG_INFO(
+            "Videos input method changed: %s",
+            pbvp::UiInputMethodName(input.method));
+    }
     g_last_input_method = input.method;
     if (g_videos_page_state == VideosPageState::data_page) {
         if (HasUiAction(input, pbvp::UiInputAction::open_page)) {

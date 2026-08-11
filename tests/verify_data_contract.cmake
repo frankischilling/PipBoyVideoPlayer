@@ -194,6 +194,11 @@ string(FIND "${plugin_text}" "Playback stream summary:" stream_summary_offset)
 if(stream_summary_offset EQUAL -1)
     message(FATAL_ERROR "plugin_main.cpp does not log the bounded media stream summary")
 endif()
+
+string(FIND "${plugin_text}" "Videos input method changed: %s" input_method_log_offset)
+if(input_method_log_offset EQUAL -1)
+    message(FATAL_ERROR "plugin_main.cpp does not log bounded input-method transitions")
+endif()
 string(FIND "${plugin_text}"
     "xNVSE frame-present presentation path enabled without executable hooks"
     hook_free_log_offset)

@@ -12,6 +12,8 @@ enum class UiInputMethod : std::uint32_t {
     controller,
 };
 
+[[nodiscard]] const char* UiInputMethodName(UiInputMethod input_method) noexcept;
+
 struct UiPromptLabels final {
     const char* select_or_play{};
     const char* pause_resume{};

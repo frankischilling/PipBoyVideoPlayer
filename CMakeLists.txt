@@ -369,6 +369,14 @@ if(PBVP_BUILD_TESTS)
             -ProfileScript ${CMAKE_SOURCE_DIR}/scripts/prepare-phase5-ui-profiles.ps1)
 
     add_test(
+        NAME pbvp_phase5_controller_log_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase5-controller-log.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase5-controller-log.ps1)
+
+    add_test(
         NAME pbvp_data_contract_test
         COMMAND ${CMAKE_COMMAND}
             -DPBVP_SOURCE_DIR=${CMAKE_SOURCE_DIR}

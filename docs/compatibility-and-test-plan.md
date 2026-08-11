@@ -602,6 +602,8 @@ Portable tests cover D-pad selection, A activation, B closure, X pause and resum
 
 Portable prompt tests compare the exact keyboard and controller text for the catalog, Back control, buffering, playback, pause, and every fixed error state. They also reject missing keyboard labels and undersized output buffers. These tests prove prompt selection and formatting, but a live run must still show that keyboard, mouse, and controller activity switch the visible prompt at the correct time.
 
+Normal logging records an input-method transition only as `controller` or `keyboard-mouse`. It does not record button values, typed text, or cursor positions. The live controller checker requires a controller transition before a catalog item opens, a matching stream summary, and a later return to keyboard or mouse input. The user must still confirm that the visible prompts changed and that each labeled controller action worked.
+
 The portable catalog tests assert exact relative paths and extension-free display names for Japanese text and a combining acute accent. This supplements the generated MO2 catalog profile without claiming that the game font can draw every Unicode character.
 
 Portable privacy tests cover normal basenames, diagnostic relative names, absolute drive and UNC inputs, parent traversal, UTF-8 filenames, control characters, invalid UTF-16, and short buffers. The runtime uses this formatter when it logs a catalog playback start or rejection. It does not pass metadata titles to the formatter.

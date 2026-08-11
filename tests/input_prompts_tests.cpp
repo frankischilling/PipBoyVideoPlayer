@@ -23,6 +23,13 @@ void RunInputPromptTests() {
     std::array<char, 192u> output{};
     const pbvp::UiPromptLabels labels = KeyboardLabels();
 
+    PBVP_CHECK(std::string(pbvp::UiInputMethodName(
+        pbvp::UiInputMethod::keyboard_mouse)) == "keyboard-mouse");
+    PBVP_CHECK(std::string(pbvp::UiInputMethodName(
+        pbvp::UiInputMethod::controller)) == "controller");
+    PBVP_CHECK(std::string(pbvp::UiInputMethodName(
+        static_cast<pbvp::UiInputMethod>(99u))) == "unknown");
+
     PBVP_CHECK(pbvp::FormatCatalogPrompt(
         pbvp::UiInputMethod::keyboard_mouse, labels, output));
     PBVP_CHECK(Text(output) == "ENTER PLAY  UP/DOWN SELECT");

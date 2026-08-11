@@ -22,6 +22,14 @@ bool Format(std::span<char> output, const char* format, ...) noexcept {
 
 } // namespace
 
+const char* UiInputMethodName(const UiInputMethod input_method) noexcept {
+    switch (input_method) {
+        case UiInputMethod::keyboard_mouse: return "keyboard-mouse";
+        case UiInputMethod::controller: return "controller";
+    }
+    return "unknown";
+}
+
 bool FormatCatalogPrompt(
     const UiInputMethod input_method,
     const UiPromptLabels& labels,
