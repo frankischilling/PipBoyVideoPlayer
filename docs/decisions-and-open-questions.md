@@ -686,6 +686,22 @@ Rejected alternatives: do not hide the failure by raising the underrun limit. Do
 
 Consequence: the 10 FPS row remains failed. The next in-game run is a short diagnostic, not an acceptance retest.
 
+### Pause XAudio2 during underrun recovery
+
+Date: August 10, 2026
+
+Decision: pause the started source voice when a detected underrun enters rebuffering. Continue bounded decode and submission while the voice is paused, then resume only after the existing 200 millisecond prebuffer is ready. If the user requests pause during recovery, keep the voice paused when buffering completes. Keep all queue limits and callback ownership unchanged.
+
+Reason: `BeginRebuffer` changes the playback state but does not stop the source voice. Newly submitted samples are consumed while the controller is trying to rebuild the prebuffer.
+
+Evidence: the short diagnostic recorded 32 controller updates, an audio clock of 2,816,000 microseconds, 86 decoded video frames, 140,288 submitted samples, and 135,168 played samples before the fourth underrun. XAudio2 still had five buffers queued after the final refill. The decoder retained two video items and two audio items, so neither decoder queue was full. The preserved log has SHA-256 `7E8721DF3B317093411CBEDAA780FA3C9ACAE4E1CFD5A9E07C0BABBBC409B2D5`.
+
+Rejected alternatives: do not raise the underrun limit, grow either queue, move playback between xNVSE callbacks, or replace the consumed-sample clock.
+
+Consequence: add an integrated recovery regression that verifies the source voice is paused during rebuffering and resumed after the fixed threshold. Repeat the five-minute 10 FPS live case after the native suites pass.
+
+Implementation evidence: the native controller regression forces rebuffering after the XAudio2 voice has started. It verifies the voice pauses in `buffering`, resumes when automatic recovery returns to `playing`, and stays paused when the user requests pause during recovery. All 15 host tests, all 24 normal x86 tests, and all 24 armed x86 tests pass with the existing prebuffer and queue limits.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.

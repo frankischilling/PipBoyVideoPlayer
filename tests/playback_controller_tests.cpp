@@ -12,6 +12,16 @@
 #include <string>
 #include <thread>
 
+namespace pbvp {
+
+struct PlaybackControllerTestAccess final {
+    static bool BeginAudioRebuffer(PlaybackController& controller) noexcept {
+        return controller.BeginAudioRebuffer();
+    }
+};
+
+} // namespace pbvp
+
 namespace {
 
 using namespace std::chrono_literals;
@@ -123,6 +133,44 @@ void TestPauseAndSeeks(
     PBVP_CHECK(snapshot.metrics.seek_count == 2u);
     PBVP_CHECK(snapshot.metrics.pause_count == 1u);
     PBVP_CHECK(snapshot.metrics.resume_count == 1u);
+}
+
+void TestForcedAudioRebuffer(
+    const pbvp::FfmpegRuntime& runtime,
+    const std::wstring& fixture_root) {
+    pbvp::PlaybackController controller(runtime, TestConfig());
+    PBVP_CHECK(controller.Open(fixture_root, L"h264-aac-44100-stereo.mp4"));
+
+    std::uint64_t delivered_frames = 0u;
+    PBVP_CHECK(AdvanceUntil(
+        controller, pbvp::PlaybackState::playing,
+        std::chrono::steady_clock::now() + 5s, delivered_frames));
+    PBVP_CHECK(pbvp::PlaybackControllerTestAccess::BeginAudioRebuffer(controller));
+    auto snapshot = controller.Snapshot();
+    PBVP_CHECK(snapshot.playback.state == pbvp::PlaybackState::buffering);
+    PBVP_CHECK(snapshot.audio_started);
+    PBVP_CHECK(snapshot.audio.paused);
+    PBVP_CHECK(snapshot.metrics.buffering_events == 2u);
+
+    PBVP_CHECK(AdvanceUntil(
+        controller, pbvp::PlaybackState::playing,
+        std::chrono::steady_clock::now() + 5s, delivered_frames));
+    snapshot = controller.Snapshot();
+    PBVP_CHECK(!snapshot.audio.paused);
+
+    PBVP_CHECK(pbvp::PlaybackControllerTestAccess::BeginAudioRebuffer(controller));
+    PBVP_CHECK(controller.Pause());
+    PBVP_CHECK(AdvanceUntil(
+        controller, pbvp::PlaybackState::paused,
+        std::chrono::steady_clock::now() + 5s, delivered_frames));
+    snapshot = controller.Snapshot();
+    PBVP_CHECK(snapshot.audio.paused);
+    PBVP_CHECK(snapshot.playback.pause_after_buffering);
+    PBVP_CHECK(controller.Resume());
+    snapshot = controller.Snapshot();
+    PBVP_CHECK(snapshot.playback.state == pbvp::PlaybackState::playing);
+    PBVP_CHECK(!snapshot.audio.paused);
+    controller.Stop();
 }
 
 void TestStopAndThreadOwnership(
@@ -240,6 +288,7 @@ int wmain(int argc, wchar_t** argv) {
 
     TestAudioCompletion(runtime, argv[2]);
     TestPauseAndSeeks(runtime, argv[2]);
+    TestForcedAudioRebuffer(runtime, argv[2]);
     TestStopAndThreadOwnership(runtime, argv[2]);
     TestHighResolutionCompletion(runtime, argv[2]);
     TestSilentCompletion(runtime, argv[2]);

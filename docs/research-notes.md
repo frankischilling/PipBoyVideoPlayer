@@ -345,6 +345,12 @@ The recovery predicate was widened to every buffering state. In the next 10 FPS 
 
 The pinned xNVSE 6.4.5 source dispatches `kMessage_MainGameLoop` from `HandleMainLoopHook` and `kMessage_OnFramePresent` from the normal display call. The existing failure record does not count controller updates or record both audio queues. A short diagnostic must capture controller update count, submitted audio, played samples, XAudio2 buffers, and decoder video and audio queue depth before the playback callback or bounded capacities change.
 
+The diagnostic build recorded 32 controller updates before the fourth underrun. The audio clock reached 2,816,000 microseconds. The controller submitted 140,288 samples, XAudio2 played 135,168, and five buffers were queued after the final refill. The decoder had supplied 86 video frames and retained two video and two audio items. These counters do not show a full decoder queue or a missing game-loop cadence. The preserved log has SHA-256 `7E8721DF3B317093411CBEDAA780FA3C9ACAE4E1CFD5A9E07C0BABBBC409B2D5`.
+
+`PlaybackController::Update` detects an underrun after feeding audio. It enters the buffering state but leaves the started XAudio2 voice running. The voice therefore consumes the same samples that are meant to rebuild the 200 millisecond threshold. The next candidate pauses the voice on entry to rebuffering, continues bounded submission while paused, and resumes only when the threshold is ready.
+
+The native regression forces the controller through both recovery outcomes. Automatic recovery pauses and resumes XAudio2 around the existing prebuffer. A pause requested while recovery is active leaves the voice paused when buffering completes, and an explicit resume restarts it. The full host, normal x86, and armed x86 suites pass without changing queue limits.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

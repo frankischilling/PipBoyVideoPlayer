@@ -115,11 +115,14 @@ public:
     [[nodiscard]] PlaybackControllerSnapshot Snapshot() noexcept;
 
 private:
+    friend struct PlaybackControllerTestAccess;
+
     [[nodiscard]] bool ValidateConfig() const noexcept;
     [[nodiscard]] bool IsOwnerThread() const noexcept;
     [[nodiscard]] bool ConfigureOpenedMedia(const DecoderSnapshot& snapshot) noexcept;
     [[nodiscard]] bool DrainVideo(bool discard_when_full) noexcept;
     [[nodiscard]] bool FeedAudio(const DecoderSnapshot& snapshot) noexcept;
+    [[nodiscard]] bool BeginAudioRebuffer() noexcept;
     [[nodiscard]] bool StartBufferedPlayback() noexcept;
     [[nodiscard]] bool SelectVideoForCurrentClock() noexcept;
     [[nodiscard]] std::optional<std::int64_t> MediaTimeUs() noexcept;

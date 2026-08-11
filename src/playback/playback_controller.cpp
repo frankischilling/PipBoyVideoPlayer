@@ -172,8 +172,8 @@ bool PlaybackController::Update(const bool presentation_visible) noexcept {
                 return false;
             }
             if (state_.Snapshot().state == PlaybackState::playing &&
-                state_.BeginRebuffer()) {
-                ++snapshot_.metrics.buffering_events;
+                !BeginAudioRebuffer()) {
+                return false;
             }
         }
     }
@@ -535,6 +535,22 @@ bool PlaybackController::FeedAudio(const DecoderSnapshot& decoder_snapshot) noex
     return true;
 }
 
+bool PlaybackController::BeginAudioRebuffer() noexcept {
+    if (audio_ == nullptr || state_.Snapshot().state != PlaybackState::playing ||
+        !state_.BeginRebuffer()) {
+        return false;
+    }
+    const XAudioStreamStatus status = audio_->Pause();
+    if (status != XAudioStreamStatus::ok) {
+        Fail(status == XAudioStreamStatus::audio_device_failed
+                 ? PlaybackError::audio_device_failed
+                 : PlaybackError::audio_stream_failed);
+        return false;
+    }
+    ++snapshot_.metrics.buffering_events;
+    return true;
+}
+
 bool PlaybackController::StartBufferedPlayback() noexcept {
     if (staged_video_.empty()) {
         return false;
@@ -561,6 +577,14 @@ bool PlaybackController::StartBufferedPlayback() noexcept {
             audio_started_ = true;
             if (pause_after_start && audio_->Pause() != XAudioStreamStatus::ok) {
                 Fail(PlaybackError::audio_stream_failed);
+                return false;
+            }
+        } else if (!pause_after_start && audio_snapshot.paused) {
+            const XAudioStreamStatus status = audio_->Resume();
+            if (status != XAudioStreamStatus::ok) {
+                Fail(status == XAudioStreamStatus::audio_device_failed
+                         ? PlaybackError::audio_device_failed
+                         : PlaybackError::audio_stream_failed);
                 return false;
             }
         }
