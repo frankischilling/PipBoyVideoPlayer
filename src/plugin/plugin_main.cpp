@@ -55,7 +55,6 @@ enum class VideosPageState : std::uint32_t {
 VideosPageState g_videos_page_state{VideosPageState::data_page};
 pbvp::MediaCatalogResult g_media_catalog{};
 pbvp::MediaCatalogSelection g_catalog_selection{pbvp::kUiCatalogVisibleRows};
-pbvp::UiInputMethod g_last_input_method{pbvp::UiInputMethod::keyboard_mouse};
 std::wstring g_current_display_title;
 bool g_current_title_metadata_checked{};
 bool g_current_stream_summary_logged{};
@@ -407,7 +406,7 @@ void PublishCatalogRows() noexcept {
             }
         }
         static_cast<void>(pbvp::UiBridge::Instance().SetCatalogRows(
-            rows, row_count, selected_row, g_last_input_method));
+            rows, row_count, selected_row));
     } catch (...) {
         PBVP_LOG_WARN("Catalog rows could not be prepared for the Pip-Boy UI");
     }
@@ -489,12 +488,6 @@ void SeekRelative(const std::int64_t direction) noexcept {
 }
 
 void ProcessVideosInput(const pbvp::UiInputSnapshot& input) noexcept {
-    if (input.method != g_last_input_method) {
-        PBVP_LOG_INFO(
-            "Videos input method changed: %s",
-            pbvp::UiInputMethodName(input.method));
-    }
-    g_last_input_method = input.method;
     if (g_videos_page_state == VideosPageState::data_page) {
         if (HasUiAction(input, pbvp::UiInputAction::open_page)) {
             OpenVideosCatalog();
@@ -733,7 +726,7 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
 #endif
     if (ui_snapshot.visible &&
         !pbvp::UiBridge::Instance().SetPlaybackStatus(
-            after.playback, g_last_input_method) &&
+            after.playback) &&
         after.playback.state == pbvp::PlaybackState::error) {
         PBVP_LOG_WARN("The Pip-Boy status text could not display the playback error");
     }

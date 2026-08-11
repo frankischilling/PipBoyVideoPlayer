@@ -42,7 +42,7 @@ Other codecs may work through FFmpeg, but they are not supported until they have
 - a bundled library of films, trailers, or television clips;
 - support for ENB, New Vegas Reloaded, or unknown graphics injectors at launch;
 - save-file persistence for playback position;
-- loading videos from arbitrary absolute paths.
+- loading videos from arbitrary absolute paths;
 - controller and gamepad input.
 
 ## User story

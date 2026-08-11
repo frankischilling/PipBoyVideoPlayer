@@ -32,10 +32,8 @@ constexpr std::uint32_t kUiCatalogRowMask = 0xFFu << kUiCatalogRowShift;
 
 struct UiInputSnapshot final {
     std::uint32_t actions{};
-    UiInputMethod method{UiInputMethod::keyboard_mouse};
     bool map_menu_visible{};
     bool menu_hook_available{};
-    bool controller_connected{};
 };
 
 enum class UiVideosMode : std::uint32_t {
@@ -98,11 +96,9 @@ public:
     [[nodiscard]] bool SetCatalogRows(
         const std::array<std::wstring, kUiCatalogVisibleRows>& rows,
         std::size_t row_count,
-        std::size_t selected_row,
-        UiInputMethod input_method) noexcept;
+        std::size_t selected_row) noexcept;
     [[nodiscard]] bool SetPlaybackStatus(
-        const PlaybackStateSnapshot& playback,
-        UiInputMethod input_method) noexcept;
+        const PlaybackStateSnapshot& playback) noexcept;
     [[nodiscard]] bool SetPlaybackDetails(
         const std::wstring& title,
         std::int64_t current_time_us,
@@ -137,7 +133,6 @@ private:
     bool map_menu_visible_{};
     PlaybackState last_status_state_{PlaybackState::unavailable};
     PlaybackError last_status_error_{PlaybackError::none};
-    UiInputMethod last_status_input_method_{UiInputMethod::keyboard_mouse};
     bool found_logged_{};
 };
 

@@ -1,6 +1,5 @@
 #include "pbvp/ui_bridge.hpp"
 
-#include "pbvp/controller_input.hpp"
 #include "pbvp/input_edge.hpp"
 #include "pbvp/log.hpp"
 #include "pbvp/menu_keyboard.hpp"
@@ -9,8 +8,6 @@
 #include "nvse/GameTiles.h"
 
 #include <Windows.h>
-#include <Xinput.h>
-
 #include <array>
 #include <atomic>
 #include <cmath>
@@ -203,8 +200,6 @@ bool AddressIsExecutable(const void* address) noexcept;
 using MenuHandleClick = void(__thiscall*)(void*, std::uint32_t, Tile*);
 using MenuHandleKeyboardInput = bool(__thiscall*)(void*, std::uint32_t);
 using TileGetLocusAdjustedPosition = float(__thiscall*)(Tile*);
-using XInputGetStateFunction = DWORD(WINAPI*)(DWORD, XINPUT_STATE*);
-
 std::array<void*, kMenuVtableEntryCount> g_map_menu_vtable{};
 MenuHandleClick g_original_handle_click{};
 MenuHandleKeyboardInput g_original_handle_keyboard{};
@@ -216,16 +211,9 @@ bool g_last_menu_layout_invalid{};
 bool g_last_menu_access_violation{};
 std::atomic<std::uint32_t> g_pending_input_actions{0u};
 std::atomic<bool> g_videos_page_active{false};
-std::atomic<UiInputMethod> g_input_method{UiInputMethod::keyboard_mouse};
 std::array<bool, kNvseInputCount> g_key_down{};
 std::atomic<std::uintptr_t> g_nvse_input_state{};
 InputSettings g_input_settings{};
-HMODULE g_xinput_module{};
-XInputGetStateFunction g_xinput_get_state{};
-WORD g_previous_controller_buttons{};
-bool g_controller_connected{};
-POINT g_previous_cursor_position{};
-bool g_cursor_position_known{};
 bool g_input_hook_logged{};
 bool g_input_hook_failure_logged{};
 bool g_click_callback_logged{};
@@ -242,8 +230,7 @@ std::array<char, 192u> g_playback_prompt{};
 std::array<char, 96u> g_catalog_prompt{};
 std::array<char, 32u> g_catalog_back_prompt{};
 
-void QueueAction(const UiInputAction action, const UiInputMethod method) noexcept {
-    g_input_method.store(method, std::memory_order_release);
+void QueueAction(const UiInputAction action) noexcept {
     g_pending_input_actions.fetch_or(
         static_cast<std::uint32_t>(action), std::memory_order_acq_rel);
 }
@@ -530,7 +517,7 @@ void __fastcall MapMenuHandleClickHook(
     }
     if (action != UiInputAction::none &&
         (action == UiInputAction::open_page || videos_page_active)) {
-        QueueAction(action, UiInputMethod::keyboard_mouse);
+        QueueAction(action);
         return;
     }
     if (videos_page_active) {
@@ -549,7 +536,7 @@ bool __fastcall MapMenuHandleKeyboardHook(
         const UiInputAction action = ActionForMenuCommand(
             CommandForMenuCharacter(input_character, g_input_settings));
         if (action != UiInputAction::none) {
-            QueueAction(action, UiInputMethod::keyboard_mouse);
+            QueueAction(action);
             if (!g_keyboard_callback_logged) {
                 PBVP_LOG_INFO("Scoped MapMenu keyboard actions active");
                 g_keyboard_callback_logged = true;
@@ -898,7 +885,7 @@ void PollOpenButtonMouse() noexcept {
         g_filtered_open_click_logged = true;
     }
     if (action == UiInputAction::open_page && resolved_button_id == kOpenButtonId) {
-        QueueAction(action, UiInputMethod::keyboard_mouse);
+        QueueAction(action);
     }
 }
 
@@ -922,78 +909,7 @@ void PollKeyboardAndMouse() noexcept {
     }};
     for (const KeyAction& key : keys) {
         if (GameInputPressedEdge(key.key)) {
-            QueueAction(key.action, UiInputMethod::keyboard_mouse);
-        }
-    }
-    POINT cursor{};
-    if (GetCursorPos(&cursor) != FALSE) {
-        if (g_cursor_position_known &&
-            (cursor.x != g_previous_cursor_position.x ||
-             cursor.y != g_previous_cursor_position.y)) {
-            g_input_method.store(
-                UiInputMethod::keyboard_mouse, std::memory_order_release);
-        }
-        g_previous_cursor_position = cursor;
-        g_cursor_position_known = true;
-    }
-}
-
-void LoadXInput() noexcept {
-    if (g_xinput_module != nullptr || g_xinput_get_state != nullptr) {
-        return;
-    }
-    constexpr std::array<const wchar_t*, 2u> names{{
-        L"xinput1_4.dll", L"xinput9_1_0.dll"}};
-    for (const wchar_t* name : names) {
-        HMODULE module = LoadLibraryExW(name, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
-        if (module == nullptr) {
-            continue;
-        }
-        auto function = reinterpret_cast<XInputGetStateFunction>(
-            GetProcAddress(module, "XInputGetState"));
-        if (function != nullptr) {
-            g_xinput_module = module;
-            g_xinput_get_state = function;
-            return;
-        }
-        FreeLibrary(module);
-    }
-}
-
-void PollController() noexcept {
-    LoadXInput();
-    if (g_xinput_get_state == nullptr) {
-        g_controller_connected = false;
-        g_cursor_position_known = false;
-        return;
-    }
-    XINPUT_STATE state{};
-    if (g_xinput_get_state(0u, &state) != ERROR_SUCCESS) {
-        g_controller_connected = false;
-        g_previous_controller_buttons = 0u;
-        return;
-    }
-    g_controller_connected = true;
-    const std::uint32_t commands = ControllerCommandsForButtonEdges(
-        state.Gamepad.wButtons, g_previous_controller_buttons);
-    g_previous_controller_buttons = state.Gamepad.wButtons;
-    struct CommandAction final {
-        ControllerCommand command;
-        UiInputAction action;
-    };
-    constexpr std::array<CommandAction, 8u> mappings{{
-        {ControllerCommand::previous_item, UiInputAction::previous_item},
-        {ControllerCommand::next_item, UiInputAction::next_item},
-        {ControllerCommand::activate, UiInputAction::activate},
-        {ControllerCommand::pause_resume, UiInputAction::pause_resume},
-        {ControllerCommand::close_page, UiInputAction::close_page},
-        {ControllerCommand::seek_backward, UiInputAction::seek_backward},
-        {ControllerCommand::seek_forward, UiInputAction::seek_forward},
-        {ControllerCommand::toggle_presentation, UiInputAction::toggle_presentation},
-    }};
-    for (const CommandAction& mapping : mappings) {
-        if ((commands & static_cast<std::uint32_t>(mapping.command)) != 0u) {
-            QueueAction(mapping.action, UiInputMethod::controller);
+            QueueAction(key.action);
         }
     }
 }
@@ -1085,7 +1001,7 @@ KeyLabel KeyLabelForScanCode(const std::uint32_t scan_code) noexcept {
     return label;
 }
 
-const char* CatalogPromptText(const UiInputMethod input_method) noexcept {
+const char* CatalogPromptText() noexcept {
     const KeyLabel activate = KeyLabelForScanCode(g_input_settings.select_or_play);
     const KeyLabel previous = KeyLabelForScanCode(g_input_settings.previous_item);
     const KeyLabel next = KeyLabelForScanCode(g_input_settings.next_item);
@@ -1094,22 +1010,21 @@ const char* CatalogPromptText(const UiInputMethod input_method) noexcept {
         .previous_item = previous.text.data(),
         .next_item = next.text.data(),
     };
-    return FormatCatalogPrompt(input_method, labels, g_catalog_prompt)
+    return FormatCatalogPrompt(labels, g_catalog_prompt)
         ? g_catalog_prompt.data()
         : "CONTROLS UNAVAILABLE";
 }
 
-const char* CatalogBackPromptText(const UiInputMethod input_method) noexcept {
+const char* CatalogBackPromptText() noexcept {
     const KeyLabel back = KeyLabelForScanCode(g_input_settings.back_or_stop);
     const UiPromptLabels labels{.back_or_stop = back.text.data()};
-    return FormatCatalogBackPrompt(input_method, labels, g_catalog_back_prompt)
+    return FormatCatalogBackPrompt(labels, g_catalog_back_prompt)
         ? g_catalog_back_prompt.data()
         : "BACK";
 }
 
 const char* PlaybackStatusText(
-    const PlaybackStateSnapshot& playback,
-    const UiInputMethod input_method) noexcept {
+    const PlaybackStateSnapshot& playback) noexcept {
     const KeyLabel pause = KeyLabelForScanCode(g_input_settings.pause_resume);
     const KeyLabel back = KeyLabelForScanCode(g_input_settings.back_or_stop);
     const KeyLabel seek_backward = KeyLabelForScanCode(g_input_settings.seek_backward);
@@ -1122,7 +1037,7 @@ const char* PlaybackStatusText(
         .seek_forward = seek_forward.text.data(),
         .toggle_color = toggle.text.data(),
     };
-    return FormatPlaybackPrompt(playback, input_method, labels, g_playback_prompt)
+    return FormatPlaybackPrompt(playback, labels, g_playback_prompt)
         ? g_playback_prompt.data()
         : "PLAYBACK ERROR";
 }
@@ -1537,7 +1452,6 @@ void UiBridge::UpdateInputOnGameThread(const bool videos_page_active) noexcept {
 
     if (videos_page_active && menu_input_available_) {
         PollKeyboardAndMouse();
-        PollController();
         g_open_mouse_armed = false;
     } else if (menu_input_available_ && g_layer_enabled_for_input &&
                g_open_button_visible) {
@@ -1547,23 +1461,17 @@ void UiBridge::UpdateInputOnGameThread(const bool videos_page_active) noexcept {
             }
         }
         PollOpenButtonMouse();
-        g_previous_controller_buttons = 0u;
-        g_controller_connected = false;
     } else {
         g_key_down.fill(false);
         g_open_mouse_armed = false;
-        g_previous_controller_buttons = 0u;
-        g_controller_connected = false;
     }
 }
 
 UiInputSnapshot UiBridge::TakeInputSnapshot() noexcept {
     UiInputSnapshot snapshot{};
     snapshot.actions = g_pending_input_actions.exchange(0u, std::memory_order_acq_rel);
-    snapshot.method = g_input_method.load(std::memory_order_acquire);
     snapshot.map_menu_visible = map_menu_visible_;
     snapshot.menu_hook_available = menu_input_available_;
-    snapshot.controller_connected = g_controller_connected;
     return snapshot;
 }
 
@@ -1694,8 +1602,7 @@ bool UiBridge::SetVideosMode(const UiVideosMode mode) noexcept {
 bool UiBridge::SetCatalogRows(
     const std::array<std::wstring, kUiCatalogVisibleRows>& rows,
     const std::size_t row_count,
-    const std::size_t selected_row,
-    const UiInputMethod input_method) noexcept {
+    const std::size_t selected_row) noexcept {
     const std::uint32_t expected_thread = game_thread_id_.load(std::memory_order_acquire);
     if (expected_thread == 0u || GetCurrentThreadId() != expected_thread ||
         row_count > rows.size() || (row_count > 0u && selected_row >= row_count)) {
@@ -1716,16 +1623,15 @@ bool UiBridge::SetCatalogRows(
         }
         return SetCatalogStringsGuarded(
             row_pointers,
-            CatalogPromptText(input_method),
-            CatalogBackPromptText(input_method));
+            CatalogPromptText(),
+            CatalogBackPromptText());
     } catch (...) {
         return false;
     }
 }
 
 bool UiBridge::SetPlaybackStatus(
-    const PlaybackStateSnapshot& playback,
-    const UiInputMethod input_method) noexcept {
+    const PlaybackStateSnapshot& playback) noexcept {
     const std::uint32_t expected_thread = game_thread_id_.load(std::memory_order_acquire);
     if (expected_thread == 0u || GetCurrentThreadId() != expected_thread) {
         return false;
@@ -1751,8 +1657,7 @@ bool UiBridge::SetPlaybackStatus(
         const std::uintptr_t status_address = reinterpret_cast<std::uintptr_t>(status_tile);
         if (last_status_tile_ == status_address &&
             last_status_state_ == playback.state &&
-            last_status_error_ == playback.error &&
-            last_status_input_method_ == input_method) {
+            last_status_error_ == playback.error) {
             return true;
         }
 
@@ -1762,11 +1667,10 @@ bool UiBridge::SetPlaybackStatus(
             kTileSetStringValueAddress);
         set_string(
             status_tile, kValueString,
-            PlaybackStatusText(playback, input_method), true);
+            PlaybackStatusText(playback), true);
         last_status_tile_ = status_address;
         last_status_state_ = playback.state;
         last_status_error_ = playback.error;
-        last_status_input_method_ = input_method;
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         last_status_tile_ = 0u;
@@ -1934,13 +1838,9 @@ void UiBridge::Clear() noexcept {
     g_open_mouse_armed = false;
     g_keyboard_callback_logged = false;
     g_pending_input_actions.store(0u, std::memory_order_release);
-    g_previous_controller_buttons = 0u;
-    g_controller_connected = false;
-    g_cursor_position_known = false;
     g_key_down.fill(false);
     last_status_state_ = PlaybackState::unavailable;
     last_status_error_ = PlaybackError::none;
-    last_status_input_method_ = UiInputMethod::keyboard_mouse;
 }
 
 void UiBridge::Publish(const UiRectSnapshot& snapshot) noexcept {

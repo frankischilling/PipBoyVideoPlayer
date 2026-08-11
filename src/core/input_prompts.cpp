@@ -22,21 +22,9 @@ bool Format(std::span<char> output, const char* format, ...) noexcept {
 
 } // namespace
 
-const char* UiInputMethodName(const UiInputMethod input_method) noexcept {
-    switch (input_method) {
-        case UiInputMethod::keyboard_mouse: return "keyboard-mouse";
-        case UiInputMethod::controller: return "controller";
-    }
-    return "unknown";
-}
-
 bool FormatCatalogPrompt(
-    const UiInputMethod input_method,
     const UiPromptLabels& labels,
     const std::span<char> output) noexcept {
-    if (input_method == UiInputMethod::controller) {
-        return Format(output, "A PLAY  D-PAD SELECT");
-    }
     return labels.select_or_play != nullptr && labels.previous_item != nullptr &&
            labels.next_item != nullptr && Format(
         output, "%s PLAY  %s/%s SELECT",
@@ -44,22 +32,16 @@ bool FormatCatalogPrompt(
 }
 
 bool FormatCatalogBackPrompt(
-    const UiInputMethod input_method,
     const UiPromptLabels& labels,
     const std::span<char> output) noexcept {
-    if (input_method == UiInputMethod::controller) {
-        return Format(output, "B BACK");
-    }
     return labels.back_or_stop != nullptr &&
            Format(output, "%s BACK", labels.back_or_stop);
 }
 
 bool FormatPlaybackPrompt(
     const PlaybackStateSnapshot& playback,
-    const UiInputMethod input_method,
     const UiPromptLabels& labels,
     const std::span<char> output) noexcept {
-    const bool controller = input_method == UiInputMethod::controller;
     switch (playback.state) {
         case PlaybackState::unavailable:
             return Format(output, "PLAYER UNAVAILABLE");
@@ -68,50 +50,36 @@ bool FormatPlaybackPrompt(
         case PlaybackState::opening:
             return Format(output, "OPENING VIDEO");
         case PlaybackState::buffering:
-            if (!controller && (labels.back_or_stop == nullptr ||
-                                (playback.pause_after_buffering &&
-                                 labels.pause_resume == nullptr))) {
+            if (labels.back_or_stop == nullptr ||
+                (playback.pause_after_buffering && labels.pause_resume == nullptr)) {
                 return false;
             }
             if (playback.pause_after_buffering) {
                 return Format(
                     output, "BUFFERING PAUSED  %s RESUME  %s STOP",
-                    controller ? "X" : labels.pause_resume,
-                    controller ? "B" : labels.back_or_stop);
+                    labels.pause_resume, labels.back_or_stop);
             }
-            return Format(
-                output, "BUFFERING  %s STOP",
-                controller ? "B" : labels.back_or_stop);
+            return Format(output, "BUFFERING  %s STOP", labels.back_or_stop);
         case PlaybackState::playing:
-            if (!controller && (labels.pause_resume == nullptr ||
-                                labels.back_or_stop == nullptr ||
-                                labels.seek_backward == nullptr ||
-                                labels.seek_forward == nullptr ||
-                                labels.toggle_color == nullptr)) {
+            if (labels.pause_resume == nullptr || labels.back_or_stop == nullptr ||
+                labels.seek_backward == nullptr || labels.seek_forward == nullptr ||
+                labels.toggle_color == nullptr) {
                 return false;
             }
             return Format(
                 output, "PLAYING  %s PAUSE  %s STOP  %s/%s SEEK  %s COLOR",
-                controller ? "X" : labels.pause_resume,
-                controller ? "B" : labels.back_or_stop,
-                controller ? "LB" : labels.seek_backward,
-                controller ? "RB" : labels.seek_forward,
-                controller ? "Y" : labels.toggle_color);
+                labels.pause_resume, labels.back_or_stop,
+                labels.seek_backward, labels.seek_forward, labels.toggle_color);
         case PlaybackState::paused:
-            if (!controller && (labels.pause_resume == nullptr ||
-                                labels.back_or_stop == nullptr ||
-                                labels.seek_backward == nullptr ||
-                                labels.seek_forward == nullptr ||
-                                labels.toggle_color == nullptr)) {
+            if (labels.pause_resume == nullptr || labels.back_or_stop == nullptr ||
+                labels.seek_backward == nullptr || labels.seek_forward == nullptr ||
+                labels.toggle_color == nullptr) {
                 return false;
             }
             return Format(
                 output, "PAUSED  %s RESUME  %s STOP  %s/%s SEEK  %s COLOR",
-                controller ? "X" : labels.pause_resume,
-                controller ? "B" : labels.back_or_stop,
-                controller ? "LB" : labels.seek_backward,
-                controller ? "RB" : labels.seek_forward,
-                controller ? "Y" : labels.toggle_color);
+                labels.pause_resume, labels.back_or_stop,
+                labels.seek_backward, labels.seek_forward, labels.toggle_color);
         case PlaybackState::stopping:
             return Format(output, "STOPPING");
         case PlaybackState::error:

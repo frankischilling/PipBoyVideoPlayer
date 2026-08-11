@@ -12,7 +12,7 @@ Pip-Flicks remains a design and compatibility reference rather than a runtime
 dependency. Pip-Boy Video Player keeps its ESP-less UIO entry and native media
 pipeline.
 
-Phase 1 verified the injection target and panel geometry against vanilla UI, Vanilla UI Plus, Clean Vanilla HUD, and Pip-Boy UI Tweaks. Phase 5 must repeat those profiles with the catalog and playback controls active. UIO registration owns the prefab insertion. The package does not overwrite a full menu XML file.
+Phase 1 verified the injection target and panel geometry against vanilla UI, Vanilla UI Plus, Clean Vanilla HUD, and Pip-Boy UI Tweaks. Phase 5 repeated those profiles with the catalog and playback controls active. UIO registration owns the prefab insertion. The package does not overwrite a full menu XML file.
 
 ## Layout contract
 
@@ -24,7 +24,7 @@ The injected prefab exposes named traits for the native plugin:
 | Player state | Idle, buffering, playing, paused, seeking, ended, or error |
 | Media text | Display title, current time, duration, and error message |
 | Catalog | Visible rows, selected index, scroll position, and empty state |
-| Input prompts | Current keyboard or controller labels |
+| Input prompts | Current keyboard labels |
 | Presentation | Aspect mode, tint mode, opacity, and safe-area adjustment |
 
 Names and numeric state values become a versioned bridge between XML and the DLL. Changing them after release needs a bridge version bump and a compatibility check at startup.
@@ -39,32 +39,32 @@ prefabs.
 
 The title and time appear along the top of the playback stage. State and control text use the lower inset. Both overlays are children of the named video rectangle, so they follow UI scaling and replacement layouts. They exist only while the Videos page owns focus and cannot cover Radio, Map, Quests, or Notes content.
 
-The current playback stage uses a 384 by 216 rectangle raised above the Local Map and World Map buttons. The rectangle establishes the local coordinate origin for its image and status elements. The position passed the Phase 1 UI profiles and the full Extended Phase 5 catalog run. The other three Phase 5 profiles remain release gates.
+The current playback stage uses a 384 by 216 rectangle raised above the Local Map and World Map buttons. The rectangle establishes the local coordinate origin for its image and status elements. The position passed the Phase 1 UI profiles and all four Phase 5 UI profiles.
 
 ## Controls
 
 Default actions:
 
-| Action | Keyboard and mouse | Controller |
-| --- | --- | --- |
-| Select or play | Enter or left click | A |
-| Pause or resume | Space | X |
-| Stop or back | Escape, Backspace, or right click | B |
-| Seek backward | Left Arrow | Left bumper |
-| Seek forward | Right Arrow | Right bumper |
-| Previous item | Up Arrow or wheel up | D-pad up |
-| Next item | Down Arrow or wheel down | D-pad down |
-| Toggle presentation mode | T | Y |
+| Action | Keyboard and mouse |
+| --- | --- |
+| Select or play | Enter or left click |
+| Pause or resume | Space |
+| Stop or back | Escape, Backspace, or right click |
+| Seek backward | Left Arrow |
+| Seek forward | Right Arrow |
+| Previous item | Up Arrow or wheel up |
+| Next item | Down Arrow or wheel down |
+| Toggle presentation mode | T |
 
 The binding layer must use game control state or verified menu input events, not a global low-level keyboard hook. Input is consumed only while the Videos page has focus. Holding a seek button does not produce an unbounded command stream; it repeats at a controlled interval.
 
-The implementation receives keyboard actions from the live MapMenu's 32-bit `HandleKeyboardInput` callback and controller edges from XInput. It translates configured DirectInput scan codes into Fallout's printable or high-bit special-key values, so the shipped INI remains the source of keyboard bindings. Backspace is also accepted as a close key. The tested VNV stack did not expose menu keyboard presses through the xNVSE input singleton when PBVP polled it on the game thread. PBVP still uses that singleton for filtered mouse state and as a secondary keyboard source.
+The implementation receives keyboard actions from the live MapMenu's 32-bit `HandleKeyboardInput` callback. It translates configured DirectInput scan codes into Fallout's printable or high-bit special-key values, so the shipped INI remains the source of keyboard bindings. Backspace is also accepted as a close key. The tested VNV stack did not expose menu keyboard presses through the xNVSE input singleton when PBVP polled it on the game thread. PBVP still uses that singleton for filtered mouse state and as a secondary keyboard source. Controller and gamepad input are unsupported.
 
 A private virtual-table copy on the live MapMenu instance consumes clicks and keyboard calls while Videos owns focus. Before attaching it, PBVP validates the MapMenu ID, readable table storage, and executable protection for all 15 entries. `HandleClick` must belong to `FalloutNV.exe`. `HandleKeyboardInput` may belong to the game or the exact Stewie Tweaks 9.80 Menu Search handler reviewed for the target VNV stack. PBVP calls that Stewie handler unchanged while Videos is inactive. Changes to unrelated entries are also copied without modification. Any unknown input handler keeps the Videos layer hidden and leaves ordinary Pip-Boy input unchanged.
 
 Keyboard settings under `[Input]` are DirectInput scan codes, not Windows virtual-key numbers. Codes must be between 1 and 255, and the eight actions must use different codes. An out-of-range or duplicate value resets all keyboard actions to their shipped defaults so a partial configuration cannot bind one key to two actions.
 
-Catalog and playback prompts use the active keyboard bindings. Pressing a controller button switches them to controller labels. Pressing a keyboard key, clicking, scrolling, or moving the mouse switches them back.
+Catalog and playback prompts use the active keyboard bindings.
 
 Mouse buttons use unique MapMenu IDs. Nested button visuals are not mouse targets. If the engine still reports one of those children, PBVP walks no more than eight parent links and accepts only exact button names from its own prefab. Vanilla UI Plus can report the radio-list target or produce no callback where the injected entry is visible. The scoped MapMenu callback handles an overlapping target by checking exact PBVP bounds against the game's `InterfaceManager::cursorX` and `cursorY` fields. It obtains the button origin from the game's locus-adjusted tile routines instead of adding parent positions. If no callback occurs, the game thread checks one filtered xNVSE left-button edge for `PBVP_OpenButton` only. Catalog and playback mouse input still requires Videos focus. PBVP does not read cursor tile traits, use a Windows mouse hook, map visible text, or accept another mod's tile name.
 

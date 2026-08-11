@@ -2,7 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
-- Added a clickable `VIDEOS` entry, an eight-row scrolling catalog, mouse and keyboard controls, controller polling, and input-method prompts. Closing the Pip-Boy stops playback, and the same file can be selected again after reopening it. The scoped MapMenu bridge accepts compatible per-instance table copies, preserves unrelated entries, recognizes the audited Stewie Tweaks 9.80 Menu Search keyboard chain, and refuses unknown input handlers.
+- Added a clickable `VIDEOS` entry, an eight-row scrolling catalog, mouse and keyboard controls, and prompts that show the configured keyboard bindings. Closing the Pip-Boy stops playback, and the same file can be selected again after reopening it. The scoped MapMenu bridge accepts compatible per-instance table copies, preserves unrelated entries, recognizes the audited Stewie Tweaks 9.80 Menu Search keyboard chain, and refuses unknown input handlers. Controller input is not supported.
 - Added aspect fit and fill rendering. Fit centers the full frame with black bars. Fill uses a centered crop. Pip-Boy tint converts the frame to luminance and lets the UI apply the player's active Pip-Boy color. Full-color mode keeps the converted BGRA colors.
 - Added bounded UTF-8 INI loading for playback, rendering, catalog, input, resource, and logging settings. Keyboard bindings use unique DirectInput scan codes, and the UI shows the active bindings. Invalid values keep safe defaults. Runtime reload is limited to the idle state and a rejected reload leaves playback unchanged.
 - Added bounded direct-child MP4 catalog discovery with MO2-compatible Win32 enumeration, Unicode paths, invariant natural sorting, stable session identifiers, display clipping, reparse-point rejection, and tests for 0, 1, 10, 100, and 500 entries.
@@ -13,10 +13,9 @@
 - Resolved clicks from exact PBVP button IDs, a bounded chain of named PBVP ancestors, or exact visible PBVP bounds under the engine UI cursor. The open entry also reads one filtered xNVSE left-button edge when Vanilla UI Plus produces no MapMenu callback. Catalog and playback mouse input remains scoped to Videos focus.
 - Corrected the xNVSE input singleton layout so the x86 virtual-table pointer precedes the filtered key records.
 - Routed keyboard actions through the scoped MapMenu callback after the target VNV stack produced no xNVSE keyboard state at the game-thread polling point. The hook preserves Fallout's full 32-bit special-key values, configured DirectInput bindings are translated into those values, and Backspace also closes the Videos page.
-- Added portable controller-edge tests for every shipped XInput action. The tests cover simultaneous presses, held buttons, and unmapped buttons without loading XInput outside the game plugin.
 - Corrected Fit and Fill scaling to use the named Pip-Boy presentation rectangle instead of the square engine texture's aspect ratio.
 - Added portable coverage for the idle-only configuration reload gate across every playback state.
-- Moved bounded catalog and playback prompt formatting into the portable core and added exact keyboard and controller text tests.
+- Moved bounded catalog and playback prompt formatting into the portable core and added exact keyboard text tests.
 - Added path and display-name round-trip checks for Japanese and combining-character catalog filenames.
 - Added bounded playback log names. Normal logging records the selected basename. Diagnostic logging can record a validated relative catalog name, while absolute paths and traversal still reduce to the basename. Metadata titles are not used for log names.
 - Added one numeric stream summary after a media file opens. It records dimensions, rotation, duration, and audio layout without logging an absolute path or embedded metadata text.
@@ -26,7 +25,6 @@
 - Stopped normal MapMenu closure from producing an engine-texture warning during the one-frame snapshot transition. Other UI surface failures retain their warning records.
 - Passed the Base, Vanilla UI Plus, Clean Vanilla HUD, and full Extended UI matrix with separate clean logs and empty save folders. Corrected the matrix checker's startup order to match the runtime's configuration-then-FFmpeg records.
 - Added guarded setup for four Phase 5 UI test profiles. The script copies only the existing save-isolated profiles, refuses targets with save data, and changes the selected profile only while MO2 and Fallout are closed.
-- Added privacy-safe input-method transition records and a strict controller log checker. The checker requires controller playback followed by a return to keyboard or mouse input.
 - Added one checker for the four live Phase 5 UI profiles. Every profile needs a separate clean log with catalog playback, a decoded upload, worker shutdown, and valid renderer accounting.
 - Corrected the menu cursor source to use `InterfaceManager::cursorX` and `cursorY` instead of the cursor tile's visual traits.
 - Corrected PBVP button hit testing to use the game's locus-adjusted tile position routines instead of adding parent coordinates.

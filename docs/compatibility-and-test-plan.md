@@ -125,7 +125,7 @@ This accepts explicit drawable depths 10 through 12 for the active fullscreen 19
 
 Sixth run: input and repeat-cycle checks
 
-The user confirmed that keyboard and mouse input still worked while the engine-owned checkerboard was visible. Five Alt+Tab cycles with Data open and ten Pip-Boy close and reopen cycles looked correct. A controller was not connected, so controller navigation and input-method switching were not tested.
+The user confirmed that keyboard and mouse input still worked while the engine-owned checkerboard was visible. Five Alt+Tab cycles with Data open and ten Pip-Boy close and reopen cycles looked correct. Controller input was outside this Phase 1 check and was later removed from the release scope.
 
 The session logged 19 successful surface uploads and no plugin errors. No `NiDX9Renderer::Recreate` callback appeared, so the Alt+Tab result verifies visual persistence but not the forced device-recreation path. The user also requested that the temporary status strip move to the lower-left of the playback area so it does not sit over the top of radio station entries.
 
@@ -181,7 +181,7 @@ Profile: Viva New Vegas Extended, native Direct3D 9, fullscreen 1920x1080
 
 The first run after removing the recreation hook displayed the checkerboard in the accepted position. The user reported that the game did not freeze, the panel looked correct, and it remained correct after Alt+Tab. The plugin logged the hook-free presentation path, a 256x256 `A8R8G8B8` texture in `D3DPOOL_MANAGED`, and one successful upload at 26.30 microseconds. It recorded zero upload failures and wrote both renderer and cadence summaries before normal process shutdown.
 
-The strict Phase 1 log check passed with one validated device, one successful upload, a 1920x1080 fullscreen backbuffer, and a clean exit. This accepts the hook-free managed-texture path for the tested VNV Extended configuration. It does not prove a Direct3D device recreation occurred during Alt+Tab, and it does not extend the result to other profiles, resolutions, display modes, controllers, or DXVK.
+The strict Phase 1 log check passed with one validated device, one successful upload, a 1920x1080 fullscreen backbuffer, and a clean exit. This accepts the hook-free managed-texture path for the tested VNV Extended configuration. It does not prove a Direct3D device recreation occurred during Alt+Tab, and it does not extend the result to other profiles, resolutions, display modes, or DXVK.
 
 ### Repeatable diagnostic log check
 
@@ -337,7 +337,7 @@ Date: August 10, 2026
 
 The supported Phase 1 graphics path is native Direct3D 9 in windowed mode. The required native resolutions, aspect ratios, VSync states, frame caps, UI profiles, keyboard and mouse checks, exact 50-cycle focus test, upload measurements, and clean shutdown checks passed. Native fullscreen remains usable for ordinary presentation, but repeated focus changes are excluded because the same NVIDIA driver crash occurred with PBVP disabled.
 
-DXVK and a safe root-management tool are absent from the target VNV instance. PBVP does not install a root `d3d9.dll` proxy, so Phase 1 makes no DXVK claim. Controller navigation and input-method switching belong to Phase 5, where the controls are implemented.
+DXVK and a safe root-management tool are absent from the target VNV instance. PBVP does not install a root `d3d9.dll` proxy, so Phase 1 makes no DXVK claim. Controller input was later removed from the first-release scope.
 
 The native windowed focus path did not expose a device recreation. PBVP creates no Direct3D resource, accepts only the engine's managed texture, and releases every temporary COM reference before returning from the callback. A changed device or surface identity triggers validation before use. This satisfies the Phase 1 resource-ownership gate without claiming that a natural Direct3D Reset passed.
 
@@ -496,7 +496,7 @@ All 15 portable host tests and all 24 Win32 Release tests pass. The integrated x
 
 The live `PBVP Phase 4 Playback` profile used the generated two-second H.264 and AAC fixture from its separate MO2 media mod. At 1920x1080 native D3D9 fullscreen, the user saw the video and state text, heard synchronized audio, and reported correct behavior after Alt+Tab. The plugin decoded 20 frames, presented 18, dropped two at startup, and uploaded every submitted frame. Upload time was 20.10 microseconds minimum, 27.52 microseconds average, and 59.40 microseconds maximum. The mailbox replaced no frame, XAudio2 reported no underrun, and the process shut down after the decoder joined.
 
-This accepts the short integrated path for the tested profile. It does not close the live 30-minute synchronization test, low-FPS in-game playback, pause and seek input scenarios, controller coverage, DXVK, other UI profiles, or the two-hour stability soak.
+This accepts the short integrated path for the tested profile. It does not close the live 30-minute synchronization test, low-FPS in-game playback, pause and seek input scenarios, DXVK, other UI profiles, or the two-hour stability soak.
 
 The live 30-minute test now has a reproducible private fixture and strict checker. The pinned generator produced an exact 1,800-second, 54,000-frame, 1280x720 H.264 stream with stereo 48 kHz AAC. The 15,720,894 byte file reproduced SHA-256 `431220B5D0F941E85E44671CDC46F04E43C3D6FA5AFA04988B35073E5C2FA239`. The armed build records progress every five minutes and measures final synchronization error, private-memory growth, queue peaks, upload cost, underruns, and shutdown order. Packaging rejects that build. This describes prepared test infrastructure, not a passed live result.
 
@@ -596,13 +596,11 @@ This closes the five-minute 10 FPS frame-dropping gate. The earlier intermittent
 
 The accepted 32-bit MapMenu build passed the shipped keyboard controls in the active VNV profile. The user confirmed correct Up and Down catalog movement, Enter activation, Left and Right seeking, Space pause and resume, and Backspace and Escape closure. The metadata fixture changed to its embedded `PBVP Metadata Title` after open, as required by the lazy metadata design.
 
-The run opened several catalog entries and uploaded 77 decoded frames without an upload failure. Maximum measured upload time was 142.70 microseconds. Playback stopped between selections, audio and the decoder worker joined, and process shutdown completed normally. The preserved log has SHA-256 `A46CC2BCA61D26EA9B1034C8B94FBEB2E5C11E2A923482AD0722229335854A89`. Controller navigation and prompt switching remain open because this run used keyboard and mouse only.
+The run opened several catalog entries and uploaded 77 decoded frames without an upload failure. Maximum measured upload time was 142.70 microseconds. Playback stopped between selections, audio and the decoder worker joined, and process shutdown completed normally. The preserved log has SHA-256 `A46CC2BCA61D26EA9B1034C8B94FBEB2E5C11E2A923482AD0722229335854A89`. This run covers the supported keyboard and mouse input scope.
 
-Portable tests cover D-pad selection, A activation, B closure, X pause and resume, Y presentation changes, and both seek bumpers. They also cover simultaneous button edges, held-button suppression, and unmapped buttons. These checks validate the deterministic action table but do not replace a live controller and prompt-switching run.
+On August 11, 2026, the project owner removed controller support from the first release. The XInput loader, polling path, action table, controller prompt variants, transition records, and controller log checker were removed. The data-contract test rejects those runtime fragments if they return. All 20 Host Release tests and all 29 Win32 Release tests pass after the cleanup.
 
-Portable prompt tests compare the exact keyboard and controller text for the catalog, Back control, buffering, playback, pause, and every fixed error state. They also reject missing keyboard labels and undersized output buffers. These tests prove prompt selection and formatting, but a live run must still show that keyboard, mouse, and controller activity switch the visible prompt at the correct time.
-
-Normal logging records an input-method transition only as `controller` or `keyboard-mouse`. It does not record button values, typed text, or cursor positions. The live controller checker requires a controller transition before a catalog item opens, a matching stream summary, and a later return to keyboard or mouse input. The user must still confirm that the visible prompts changed and that each labeled controller action worked.
+Portable prompt tests compare the exact configured keyboard text for the catalog, Back control, buffering, playback, pause, and every fixed error state. They also reject missing labels and undersized output buffers. A final in-game mouse and keyboard smoke run remains required for the cleaned build.
 
 The portable catalog tests assert exact relative paths and extension-free display names for Japanese text and a combining acute accent. This supplements the generated MO2 catalog profile without claiming that the game font can draw every Unicode character.
 
@@ -635,9 +633,7 @@ Test these layouts independently:
 - Vanilla UI Plus with Clean Vanilla HUD;
 - the complete VNV Extended UI stack;
 - each claimed Pip-Boy replacer;
-- mouse and keyboard only;
-- controller only;
-- switching between mouse and controller while the page is open.
+- mouse and keyboard controls.
 
 Test catalog sizes of zero, one, ten, one hundred, and five hundred files. Long titles must clip or scroll without moving the video rectangle. Empty and error states must leave the ordinary Data page usable.
 
@@ -720,4 +716,4 @@ The planned plugin is ESP-less and stores no playback state in saves or xNVSE co
 
 ## Bug report data
 
-A useful report contains the plugin log, crash log if any, VNV profile and versions, graphics path, display mode, input method, and a media probe summary that omits the file itself. Users should not upload copyrighted or private videos to demonstrate a bug.
+A useful report contains the plugin log, crash log if any, VNV profile and versions, graphics path, display mode, the mouse or keyboard action that failed, and a media probe summary that omits the file itself. Users should not upload copyrighted or private videos to demonstrate a bug.

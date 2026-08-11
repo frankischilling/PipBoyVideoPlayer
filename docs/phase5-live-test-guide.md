@@ -54,29 +54,6 @@ Copy-Item `
 
 Restore `AspectMode=Fit` after the test.
 
-## Check controller actions and prompt switching
-
-Connect an Xbox-compatible controller before launching the game. Use the Extended test profile and start with the keyboard or mouse prompt visible.
-
-1. Open `VIDEOS` with the mouse or keyboard.
-2. Press D-pad Down and confirm that the selection moves and the prompt changes to controller labels.
-3. Press A to play the selected file and wait until the picture and audio begin.
-4. Press X to pause and X again to resume.
-5. Use the left and right bumpers to seek in both directions.
-6. Press Y and confirm that the tint mode changes.
-7. Press B to stop and return to the catalog.
-8. Move the mouse and confirm that the prompt changes back to keyboard and mouse labels.
-9. Press B again to return to Data, then exit normally.
-
-Preserve that run as `build-host\phase5-controller-accepted.log` and check it:
-
-```powershell
-& .\scripts\check-phase5-controller-log.ps1 `
-    -LogPath '.\build-host\phase5-controller-accepted.log'
-```
-
-The checker proves that controller input opened a file and that keyboard or mouse input later became active. It cannot see the labels or confirm every button action, so record the visual result separately.
-
 ## Check the four UI profiles
 
 Test these profiles one at a time:
@@ -96,7 +73,7 @@ Before selecting another profile, exit the game and close MO2. Select the next p
     -SelectProfile 'PBVP Phase 5 Base'
 ```
 
-For each profile, open Data and `VIDEOS`, inspect all visible rows, play one generated file, wait for a decoded frame and audio, stop, return to Data, and exit normally. Confirm that the Pip-Boy frame and ordinary controls remain visible and usable. Preserve each finished log under `build-host` with the names below:
+For each profile, open Data and `VIDEOS`, inspect all visible rows, play one generated file, wait for a decoded frame and audio, stop, return to Data, and exit normally. Confirm that the Pip-Boy frame and ordinary controls remain visible and usable with mouse and keyboard. Controller input is not part of the release. Preserve each finished log under `build-host` with the names below:
 
 - `phase5-ui-base.log`
 - `phase5-ui-vui-plus.log`

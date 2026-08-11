@@ -199,10 +199,19 @@ if(stream_summary_offset EQUAL -1)
     message(FATAL_ERROR "plugin_main.cpp does not log the bounded media stream summary")
 endif()
 
-string(FIND "${plugin_text}" "Videos input method changed: %s" input_method_log_offset)
-if(input_method_log_offset EQUAL -1)
-    message(FATAL_ERROR "plugin_main.cpp does not log bounded input-method transitions")
-endif()
+file(READ "${PBVP_SOURCE_DIR}/src/ui/ui_bridge.cpp" ui_bridge_text)
+foreach(removed_controller_fragment IN ITEMS
+        "XInputGetState"
+        "PollController"
+        "Videos input method changed: %s"
+        "controller_input.cpp")
+    string(FIND "${plugin_text}${ui_bridge_text}${cmake_text}"
+        "${removed_controller_fragment}" controller_fragment_offset)
+    if(NOT controller_fragment_offset EQUAL -1)
+        message(FATAL_ERROR
+            "Removed controller support is still present: ${removed_controller_fragment}")
+    endif()
+endforeach()
 string(FIND "${plugin_text}"
     "xNVSE frame-present presentation path enabled without executable hooks"
     hook_free_log_offset)
@@ -256,7 +265,6 @@ foreach(required_input_fragment IN ITEMS
         "Filtered Videos entry polling active"
         "Scoped MapMenu keyboard actions active"
         "CommandForMenuCharacter"
-        "ControllerCommandsForButtonEdges"
         "FormatCatalogPrompt"
         "FormatPlaybackPrompt"
         "kMenuKeyBackspace"
@@ -267,8 +275,7 @@ foreach(required_input_fragment IN ITEMS
         "kNVSEData_DIHookControl"
         "SetInputBindings"
         "GetKeyNameTextA"
-        "CatalogBackPromptText"
-        "LOAD_LIBRARY_SEARCH_SYSTEM32")
+        "CatalogBackPromptText")
     string(FIND "${plugin_text}${renderer_text}" "${required_input_fragment}" input_fragment_offset)
     if(input_fragment_offset EQUAL -1)
         file(READ "${PBVP_SOURCE_DIR}/src/ui/ui_bridge.cpp" ui_bridge_text)
