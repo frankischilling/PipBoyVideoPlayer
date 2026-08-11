@@ -2,6 +2,9 @@
 
 ## 0.1.0 - Unreleased
 
+- Added one privacy-safe summary for each playback session. It records terminal state, decoded and presented frames, audio samples, underruns, seek direction counts, buffering, update gaps, and bounded queue peaks.
+- Added a strict live repetition checker for 100 numbered playback sessions and 20 seeks in each direction.
+- Added a save-free Phase 6 MO2 profile that enables the catalog and 30-minute generated fixtures without changing an existing VNV profile.
 - Added a live process sampler and strict result checker for the Phase 6 soak. They record and verify private bytes, working set, handles, threads, CPU time, elapsed time, raw samples, and a post-warm-up summary without entering the game process.
 - Limited the build helper to two jobs by default and disabled MSBuild node reuse for that invocation. The job count remains configurable.
 - Added a post-archive release audit with negative fixtures for unexpected DLLs, personal media, absolute local paths, missing files, and ZIP traversal entries. The package command runs the audit on the completed runtime and symbols archives.

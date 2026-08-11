@@ -696,6 +696,8 @@ The native Win32 playback test now performs five warm-up cycles, records process
 
 The same test opens a fresh session and completes 20 forward and 20 backward seeks. It returns to playing after every seek, reaches generation 41 with an exact seek count of 40, and reports zero XAudio2 underruns. This automates the worker, queue, generation, and audio flush boundaries. It does not replace the required in-game repetition or mixed soak.
 
+The normal release build writes one privacy-safe terminal summary per playback session. `scripts\check-phase6-repetition-log.ps1` requires sequential session numbers, at least 100 matched catalog opens and summaries, decoded video and audio in each session, 20 forward and 20 backward seeks, zero underruns, bounded queue peaks, complete renderer accounting, and orderly shutdown. The dedicated `PBVP Phase 6 Hardening` profile enables both short catalog fixtures and the 30-minute fixture while keeping its save directory empty.
+
 Run `scripts\measure-phase6-process.ps1` beside each live repetition or soak session. The sampler waits for FalloutNV, records one JSON sample every five seconds by default, and stops when that process exits. Its summary uses samples after a configurable warm-up period. The script reads standard Windows process counters and does not inject code or call into FalloutNV.
 
 After the process exits, run `scripts\check-phase6-process-metrics.ps1` against the JSON file. The default gate requires at least two hours, a five-minute warm-up, 80 percent sampling coverage, less than 128 MiB of private-memory growth after warm-up, no more than 32 extra handles, and no more than eight extra threads. It rejects a changed summary by recalculating every range from the raw samples.

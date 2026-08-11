@@ -522,3 +522,11 @@ The sampler test starts a short hidden PowerShell child, samples it every 100 mi
 The result checker independently reads the JSON, verifies monotonic elapsed and CPU counters, recalculates each summary, and enforces duration, warm-up, coverage, private-memory, handle, and thread limits. Its negative fixtures cover wrong identity and schema, short duration, slow or missing samples, invalid timestamps, nonmonotonic counters, changed summaries, and each resource limit. Host Release passes 23 of 23 tests and Win32 Release passes 32 of 32 tests with both checks enabled.
 
 The first combined Win32 rebuild used unrestricted MSBuild parallelism and left 12 worker nodes after one task ran out of memory. A one-worker rebuild with node reuse disabled built the DLL and passed all 31 tests. The build helper now uses two jobs by default, accepts an explicit job count, and restores the caller's node-reuse environment after the build.
+
+## Phase 6 live repetition evidence
+
+The normal plugin now records one terminal summary for each playback sequence. The game thread writes it after session teardown and never includes the selected path or metadata title. Forward and backward seeks have separate counters, so a total of 40 requests cannot hide a missing direction.
+
+The strict checker accepts only sequential playback numbers with matching catalog opens. Every accepted session must decode and present video, submit audio, report no playback error or underrun, and stay inside the existing queue limits. It also checks renderer accounting and shutdown order. Negative fixtures cover a warning, private path, missing or duplicate session, empty presentation, underrun, missing seek direction, queue overflow, upload failure, and reordered teardown.
+
+The Phase 6 profile script copies the accepted Extended test profile without saves. It enables the development mod, generated catalog, long fixture, and save guard while disabling earlier armed diagnostics. Its automated test verifies selection, mod isolation, unrelated file preservation, exact enablement, and refusal to touch an existing save. Host Release now contains 25 tests and Win32 Release contains 34 tests.

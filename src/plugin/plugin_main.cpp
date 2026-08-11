@@ -58,6 +58,8 @@ pbvp::MediaCatalogSelection g_catalog_selection{pbvp::kUiCatalogVisibleRows};
 std::wstring g_current_display_title;
 bool g_current_title_metadata_checked{};
 bool g_current_stream_summary_logged{};
+std::uint64_t g_playback_sequence{};
+bool g_playback_session_summary_logged{true};
 std::int64_t g_last_display_second{-1ll};
 std::int64_t g_last_display_duration_second{-1ll};
 #if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST) || defined(PBVP_ENABLE_PLAYBACK_LONG_TEST)
@@ -356,6 +358,41 @@ bool PlaybackActive(const pbvp::PlaybackState state) noexcept {
            state == pbvp::PlaybackState::paused;
 }
 
+void LogPlaybackSessionSummary(
+    const pbvp::PlaybackControllerSnapshot& snapshot) noexcept {
+    if (g_playback_session_summary_logged || g_playback_sequence == 0u) {
+        return;
+    }
+    PBVP_LOG_INFO(
+        "Playback session summary: playback=%llu terminal=%s state=%s error=%s failure_site=%s generation=%llu decoded=%llu presented=%llu dropped=%llu stale_video=%llu audio_samples=%llu stale_audio=%llu clock_us=%lld video_end_us=%lld underruns=%llu seeks=%llu forward_seeks=%llu backward_seeks=%llu pauses=%llu resumes=%llu buffering=%llu max_update_gap_ms=%llu staged_peak=%zu decoder_video_peak=%zu decoder_audio_peak=%zu",
+        static_cast<unsigned long long>(g_playback_sequence),
+        pbvp::PlaybackTerminalReasonName(snapshot.terminal_reason),
+        pbvp::PlaybackStateName(snapshot.playback.state),
+        pbvp::PlaybackErrorName(snapshot.playback.error),
+        pbvp::PlaybackFailureSiteName(snapshot.failure_site),
+        static_cast<unsigned long long>(snapshot.generation),
+        static_cast<unsigned long long>(snapshot.metrics.decoded_video_frames),
+        static_cast<unsigned long long>(snapshot.metrics.presented_video_frames),
+        static_cast<unsigned long long>(snapshot.metrics.dropped_video_frames),
+        static_cast<unsigned long long>(snapshot.metrics.stale_video_frames),
+        static_cast<unsigned long long>(snapshot.metrics.submitted_audio_samples),
+        static_cast<unsigned long long>(snapshot.metrics.stale_audio_chunks),
+        static_cast<long long>(snapshot.metrics.last_media_time_us),
+        static_cast<long long>(snapshot.metrics.last_presented_video_end_us),
+        static_cast<unsigned long long>(snapshot.audio.underruns),
+        static_cast<unsigned long long>(snapshot.metrics.seek_count),
+        static_cast<unsigned long long>(snapshot.metrics.forward_seek_count),
+        static_cast<unsigned long long>(snapshot.metrics.backward_seek_count),
+        static_cast<unsigned long long>(snapshot.metrics.pause_count),
+        static_cast<unsigned long long>(snapshot.metrics.resume_count),
+        static_cast<unsigned long long>(snapshot.metrics.buffering_events),
+        static_cast<unsigned long long>(snapshot.metrics.maximum_update_gap_ms),
+        snapshot.metrics.peak_staged_video_bytes,
+        snapshot.metrics.peak_decoder_video_bytes,
+        snapshot.metrics.peak_decoder_audio_bytes);
+    g_playback_session_summary_logged = true;
+}
+
 void StopPlayback(const pbvp::PlaybackTerminalReason reason) noexcept {
     if (g_playback_controller == nullptr) {
         return;
@@ -363,6 +400,7 @@ void StopPlayback(const pbvp::PlaybackTerminalReason reason) noexcept {
     const pbvp::PlaybackState state = g_playback_controller->Snapshot().playback.state;
     if (state != pbvp::PlaybackState::idle && state != pbvp::PlaybackState::unavailable) {
         g_playback_controller->Stop(reason);
+        LogPlaybackSessionSummary(g_playback_controller->Snapshot());
     }
     pbvp::D3dRenderer::Instance().ClearVideoFrame();
 }
@@ -451,6 +489,8 @@ void OpenSelectedCatalogEntry() noexcept {
     std::array<char, pbvp::kMaximumMediaLogNameBytes> media_name{};
     const bool media_name_available = pbvp::FormatPrivacySafeMediaName(
         entry.relative_name, g_settings.logging_detail, media_name);
+    ++g_playback_sequence;
+    g_playback_session_summary_logged = false;
     if (g_playback_controller->Open(g_media_root, entry.relative_name)) {
         g_videos_page_state = VideosPageState::playback;
         PBVP_LOG_INFO(
@@ -459,6 +499,7 @@ void OpenSelectedCatalogEntry() noexcept {
             static_cast<unsigned long long>(entry.file_bytes),
             media_name_available ? media_name.data() : "unavailable");
     } else {
+        LogPlaybackSessionSummary(g_playback_controller->Snapshot());
         g_videos_page_state = VideosPageState::playback;
         PBVP_LOG_WARN(
             "Playback rejected catalog item: session=%llu media=%s",
@@ -766,6 +807,7 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
         g_last_playback_state = after.playback.state;
     }
     if (!PlaybackActive(after.playback.state) && PlaybackActive(before.playback.state)) {
+        LogPlaybackSessionSummary(after);
         pbvp::D3dRenderer::Instance().ClearVideoFrame();
     }
 

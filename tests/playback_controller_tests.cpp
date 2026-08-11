@@ -28,6 +28,27 @@ namespace {
 
 using namespace std::chrono_literals;
 
+void TestTerminalReasonNames() {
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        pbvp::PlaybackTerminalReason::none)) == "none");
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        pbvp::PlaybackTerminalReason::completed)) == "completed");
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        pbvp::PlaybackTerminalReason::stopped)) == "stopped");
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        pbvp::PlaybackTerminalReason::presentation_hidden)) ==
+        "presentation_hidden");
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        pbvp::PlaybackTerminalReason::lifecycle_transition)) ==
+        "lifecycle_transition");
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        pbvp::PlaybackTerminalReason::failed)) == "failed");
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        pbvp::PlaybackTerminalReason::shutdown)) == "shutdown");
+    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
+        static_cast<pbvp::PlaybackTerminalReason>(999u))) == "unknown");
+}
+
 pbvp::PlaybackControllerConfig TestConfig() {
     pbvp::PlaybackControllerConfig config{};
     config.muted = true;
@@ -275,6 +296,8 @@ void TestRepeatedOpenStopAndSeeks(
     PBVP_CHECK(seek_snapshot.playback.state == pbvp::PlaybackState::playing);
     PBVP_CHECK(seek_snapshot.playback.error == pbvp::PlaybackError::none);
     PBVP_CHECK(seek_snapshot.metrics.seek_count == 40u);
+    PBVP_CHECK(seek_snapshot.metrics.forward_seek_count == 20u);
+    PBVP_CHECK(seek_snapshot.metrics.backward_seek_count == 20u);
     PBVP_CHECK(seek_snapshot.generation == 41u);
     PBVP_CHECK(seek_snapshot.audio.underruns == 0u);
     controller.Stop();
@@ -505,6 +528,8 @@ int wmain(int argc, wchar_t** argv) {
             stderr);
         return 2;
     }
+
+    TestTerminalReasonNames();
 
     pbvp::FfmpegRuntime runtime;
     pbvp::FfmpegLoadFailure failure{};

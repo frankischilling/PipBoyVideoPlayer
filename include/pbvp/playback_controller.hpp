@@ -37,6 +37,9 @@ enum class PlaybackTerminalReason : std::uint32_t {
     shutdown,
 };
 
+[[nodiscard]] const char* PlaybackTerminalReasonName(
+    PlaybackTerminalReason reason) noexcept;
+
 enum class PlaybackFailureSite : std::uint32_t {
     none,
     decoder_state_before_drain,
@@ -60,6 +63,8 @@ struct PlaybackMetrics final {
     std::uint64_t stale_audio_chunks{};
     std::uint64_t buffering_events{};
     std::uint64_t seek_count{};
+    std::uint64_t forward_seek_count{};
+    std::uint64_t backward_seek_count{};
     std::uint64_t pause_count{};
     std::uint64_t resume_count{};
     std::uint64_t maximum_update_gap_ms{};
