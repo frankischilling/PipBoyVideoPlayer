@@ -1,5 +1,6 @@
 #include "pbvp/ui_bridge.hpp"
 
+#include "pbvp/controller_input.hpp"
 #include "pbvp/input_edge.hpp"
 #include "pbvp/log.hpp"
 #include "pbvp/menu_keyboard.hpp"
@@ -973,26 +974,26 @@ void PollController() noexcept {
         return;
     }
     g_controller_connected = true;
-    const WORD pressed = static_cast<WORD>(
-        state.Gamepad.wButtons & ~g_previous_controller_buttons);
+    const std::uint32_t commands = ControllerCommandsForButtonEdges(
+        state.Gamepad.wButtons, g_previous_controller_buttons);
     g_previous_controller_buttons = state.Gamepad.wButtons;
-    struct ButtonAction final {
-        WORD button;
+    struct CommandAction final {
+        ControllerCommand command;
         UiInputAction action;
     };
-    constexpr std::array<ButtonAction, 8u> buttons{{
-        {XINPUT_GAMEPAD_DPAD_UP, UiInputAction::previous_item},
-        {XINPUT_GAMEPAD_DPAD_DOWN, UiInputAction::next_item},
-        {XINPUT_GAMEPAD_A, UiInputAction::activate},
-        {XINPUT_GAMEPAD_X, UiInputAction::pause_resume},
-        {XINPUT_GAMEPAD_B, UiInputAction::close_page},
-        {XINPUT_GAMEPAD_LEFT_SHOULDER, UiInputAction::seek_backward},
-        {XINPUT_GAMEPAD_RIGHT_SHOULDER, UiInputAction::seek_forward},
-        {XINPUT_GAMEPAD_Y, UiInputAction::toggle_presentation},
+    constexpr std::array<CommandAction, 8u> mappings{{
+        {ControllerCommand::previous_item, UiInputAction::previous_item},
+        {ControllerCommand::next_item, UiInputAction::next_item},
+        {ControllerCommand::activate, UiInputAction::activate},
+        {ControllerCommand::pause_resume, UiInputAction::pause_resume},
+        {ControllerCommand::close_page, UiInputAction::close_page},
+        {ControllerCommand::seek_backward, UiInputAction::seek_backward},
+        {ControllerCommand::seek_forward, UiInputAction::seek_forward},
+        {ControllerCommand::toggle_presentation, UiInputAction::toggle_presentation},
     }};
-    for (const ButtonAction& button : buttons) {
-        if ((pressed & button.button) != 0u) {
-            QueueAction(button.action, UiInputMethod::controller);
+    for (const CommandAction& mapping : mappings) {
+        if ((commands & static_cast<std::uint32_t>(mapping.command)) != 0u) {
+            QueueAction(mapping.action, UiInputMethod::controller);
         }
     }
 }

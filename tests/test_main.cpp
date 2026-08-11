@@ -6,6 +6,7 @@ void RunFrameCadenceTests();
 void RunAudioCallbackStateTests();
 void RunCheckedMathTests();
 void RunConfigurationTests();
+void RunControllerInputTests();
 void RunInputEdgeTests();
 void RunMediaLimitTests();
 void RunMediaCatalogTests();
@@ -23,6 +24,7 @@ int main() {
     RunAudioCallbackStateTests();
     RunCheckedMathTests();
     RunConfigurationTests();
+    RunControllerInputTests();
     RunInputEdgeTests();
     RunMediaLimitTests();
     RunMediaCatalogTests();

@@ -12,6 +12,7 @@
 - Resolved clicks from exact PBVP button IDs, a bounded chain of named PBVP ancestors, or exact visible PBVP bounds under the engine UI cursor. The open entry also reads one filtered xNVSE left-button edge when Vanilla UI Plus produces no MapMenu callback. Catalog and playback mouse input remains scoped to Videos focus.
 - Corrected the xNVSE input singleton layout so the x86 virtual-table pointer precedes the filtered key records.
 - Routed keyboard actions through the scoped MapMenu callback after the target VNV stack produced no xNVSE keyboard state at the game-thread polling point. The hook preserves Fallout's full 32-bit special-key values, configured DirectInput bindings are translated into those values, and Backspace also closes the Videos page.
+- Added portable controller-edge tests for every shipped XInput action. The tests cover simultaneous presses, held buttons, and unmapped buttons without loading XInput outside the game plugin.
 - Corrected the menu cursor source to use `InterfaceManager::cursorX` and `cursorY` instead of the cursor tile's visual traits.
 - Corrected PBVP button hit testing to use the game's locus-adjusted tile position routines instead of adding parent coordinates.
 - Connected the decoder, XAudio2 sample clock, video scheduler, renderer mailbox, Pip-Boy status text, and game lifecycle into a bounded playback controller.

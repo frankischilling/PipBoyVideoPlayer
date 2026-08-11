@@ -598,6 +598,8 @@ The accepted 32-bit MapMenu build passed the shipped keyboard controls in the ac
 
 The run opened several catalog entries and uploaded 77 decoded frames without an upload failure. Maximum measured upload time was 142.70 microseconds. Playback stopped between selections, audio and the decoder worker joined, and process shutdown completed normally. The preserved log has SHA-256 `A46CC2BCA61D26EA9B1034C8B94FBEB2E5C11E2A923482AD0722229335854A89`. Controller navigation and prompt switching remain open because this run used keyboard and mouse only.
 
+Portable tests cover D-pad selection, A activation, B closure, X pause and resume, Y presentation changes, and both seek bumpers. They also cover simultaneous button edges, held-button suppression, and unmapped buttons. These checks validate the deterministic action table but do not replace a live controller and prompt-switching run.
+
 ## UI matrix
 
 Test these layouts independently:

@@ -241,6 +241,7 @@ foreach(required_input_fragment IN ITEMS
         "Filtered Videos entry polling active"
         "Scoped MapMenu keyboard actions active"
         "CommandForMenuCharacter"
+        "ControllerCommandsForButtonEdges"
         "kMenuKeyBackspace"
         "using MenuHandleKeyboardInput = bool(__thiscall*)(void*, std::uint32_t)"
         "ReadInputState"

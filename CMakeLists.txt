@@ -21,6 +21,7 @@ include(CTest)
 add_library(pbvp_core STATIC
     src/core/checked_math.cpp
     src/core/configuration.cpp
+    src/core/controller_input.cpp
     src/core/frame_cadence.cpp
     src/core/input_edge.cpp
     src/core/media_catalog.cpp
@@ -360,6 +361,7 @@ if(PBVP_BUILD_TESTS)
         tests/bounded_queue_tests.cpp
         tests/checked_math_tests.cpp
         tests/configuration_tests.cpp
+        tests/controller_input_tests.cpp
         tests/frame_cadence_tests.cpp
         tests/input_edge_tests.cpp
         tests/media_catalog_tests.cpp
