@@ -572,6 +572,14 @@ The real XAudio2 regression recorded a 469 millisecond controller service gap. D
 
 The diagnostic change passed the 15-test host matrix and both 24-test x86 matrices. The five-minute real-fixture cadence regression remained in `playing` with zero underruns. It decoded 8,996 frames, delivered 2,747, dropped 6,248, submitted 14,405,632 samples, reached a 299,790,000 microsecond audio clock, retained 11 XAudio2 buffers, and completed 2,750 controller updates. Its maximum update gap stayed within the asserted 90 to 250 millisecond range.
 
+The first diagnostic launch played for 4 minutes 28 seconds at 10 FPS without buffering or an audio error. Closing the Pip-Boy stopped playback, audio, and the decoder worker cleanly. The armed fixture starts only once per FalloutNV process, so reopening the Pip-Boy did not restart it. The preserved preliminary log has SHA-256 `9A08062943D5C0E8F1AC9C86CA7C2F45C5E8D76FCD659A7C7CF676EEAC25F361`.
+
+A fresh launch passed the five-minute live audio gate. It reached a 299,980,000 microsecond audio clock with zero underruns, used 39,239,680 bytes of additional private memory, and recorded a 110 millisecond maximum update gap. The user saw and heard normal playback without Alt+Tab. Shutdown stopped audio and joined the decoder worker. The preserved log has SHA-256 `F838AC515F1295EF49542C9034E91E2D2B1E678DB1D7D0DA80FCB3C06B8ECDC2`.
+
+The strict low-FPS checker does not accept this as a complete phase gate. The progress record reports 9,001 decoded frames, 8,991 presented frames, and 6,002 dropped frames. The controller counts a replaced ready frame in both presentation categories. The next candidate makes presented and dropped accounting mutually exclusive, adds a short 250 millisecond cadence regression, and repeats the live gate. The successful run's 110 millisecond gap does not reproduce or explain the earlier intermittent failure, so the live audio risk remains open.
+
+The accounting correction passed the 15-test host matrix and both 24-test x86 matrices. The short regression services its fixture every 250 milliseconds, requires a frame drop, and requires presented frames to equal frames delivered through `TakeVideoFrame`. It also bounds the residual between decoded frames and mutually exclusive presentation outcomes to one frame. The corrected diagnostic DLL still needs a fresh five-minute Fallout log that passes the strict checker.
+
 ## UI matrix
 
 Test these layouts independently:

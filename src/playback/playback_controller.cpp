@@ -651,7 +651,12 @@ bool PlaybackController::SelectVideoForCurrentClock() noexcept {
                 return false;
             }
             if (ready_frame_.has_value()) {
+                if (snapshot_.metrics.presented_video_frames == 0u) {
+                    Fail(PlaybackError::decoder_failed, PlaybackFailureSite::video_timeline);
+                    return false;
+                }
                 ++snapshot_.metrics.dropped_video_frames;
+                --snapshot_.metrics.presented_video_frames;
             }
             snapshot_.metrics.last_presented_video_pts_us = selected.pts_us;
             snapshot_.metrics.last_presented_video_end_us =

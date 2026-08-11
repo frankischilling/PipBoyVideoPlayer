@@ -381,6 +381,16 @@ The real XAudio2 regression measured a 469 millisecond gap between controller up
 
 The diagnostic change passed the 15-test host matrix and both 24-test x86 matrices. Its five-minute real-fixture run decoded 8,996 frames, delivered 2,747, dropped 6,248, submitted 14,405,632 samples, reached a 299,790,000 microsecond audio clock, retained 11 XAudio2 buffers, and completed 2,750 updates without an underrun. The maximum update gap stayed within the asserted 90 to 250 millisecond range.
 
+The first diagnostic launch played for 4 minutes 28 seconds at 10 FPS without buffering or an audio error. Pip-Boy closure stopped playback, audio, and the decoder worker cleanly. The preserved preliminary log has SHA-256 `9A08062943D5C0E8F1AC9C86CA7C2F45C5E8D76FCD659A7C7CF676EEAC25F361`.
+
+The next launch reached the five-minute progress record with a 299,980,000 microsecond audio clock, zero underruns, 39,239,680 bytes of additional private memory, and a 110 millisecond maximum update gap. The user reported normal video and audio without Alt+Tab. The preserved log has SHA-256 `F838AC515F1295EF49542C9034E91E2D2B1E678DB1D7D0DA80FCB3C06B8ECDC2`.
+
+The strict checker rejected the same run because its progress record reports 9,001 decoded frames, 8,991 presented frames, and 6,002 dropped frames. `SelectVideoForCurrentClock` increments the presented count when a frame enters the single ready slot. If a later selection replaces that frame before `TakeVideoFrame`, it also increments the dropped count. The renderer totals remain plausible, but the controller categories overlap. The correction removes a replaced ready frame from the presented count and adds a 250 millisecond cadence regression that requires frame drops and exact delivered-frame accounting.
+
+The 110 millisecond live gap is below the current 341,333 microseconds of XAudio2 capacity. This successful run does not explain the earlier audio failure. The buffer-depth decision remains open until a failing diagnostic run records its maximum update gap or repeated corrected runs establish adequate live tolerance.
+
+The accounting correction passed the 15-test host matrix and both 24-test x86 matrices. A short regression now runs the controller every 250 milliseconds, requires dropped frames, and requires the presented count to equal frames returned by `TakeVideoFrame`. Presented plus dropped frames cannot exceed decoded frames, and at most one decoded frame may remain in another bounded owner. The corrected diagnostic DLL still needs a new live log that passes the strict checker.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

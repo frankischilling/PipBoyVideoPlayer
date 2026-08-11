@@ -97,6 +97,40 @@ void TestAudioCompletion(
         static_cast<unsigned long long>(snapshot.audio.underruns));
 }
 
+void TestLowCadenceFrameAccounting(
+    const pbvp::FfmpegRuntime& runtime,
+    const std::wstring& fixture_root) {
+    pbvp::PlaybackController controller(runtime, TestConfig());
+    PBVP_CHECK(controller.Open(fixture_root, L"h264-aac-44100-stereo.mp4"));
+
+    std::uint64_t delivered_frames = 0u;
+    const auto deadline = std::chrono::steady_clock::now() + 10s;
+    while (std::chrono::steady_clock::now() < deadline) {
+        PBVP_CHECK(controller.Update(true));
+        if (controller.TakeVideoFrame().has_value()) {
+            ++delivered_frames;
+        }
+        const auto state = controller.Snapshot().playback.state;
+        if (state == pbvp::PlaybackState::idle || state == pbvp::PlaybackState::error) {
+            break;
+        }
+        Sleep(250u);
+    }
+
+    const pbvp::PlaybackControllerSnapshot snapshot = controller.Snapshot();
+    PBVP_CHECK(snapshot.playback.state == pbvp::PlaybackState::idle);
+    PBVP_CHECK(snapshot.playback.error == pbvp::PlaybackError::none);
+    PBVP_CHECK(snapshot.metrics.dropped_video_frames > 0u);
+    PBVP_CHECK(snapshot.metrics.presented_video_frames == delivered_frames);
+    PBVP_CHECK(snapshot.metrics.presented_video_frames +
+                   snapshot.metrics.dropped_video_frames <=
+               snapshot.metrics.decoded_video_frames);
+    PBVP_CHECK(snapshot.metrics.decoded_video_frames -
+                   (snapshot.metrics.presented_video_frames +
+                    snapshot.metrics.dropped_video_frames) <=
+               1u);
+}
+
 void TestPauseAndSeeks(
     const pbvp::FfmpegRuntime& runtime,
     const std::wstring& fixture_root) {
@@ -369,6 +403,7 @@ int wmain(int argc, wchar_t** argv) {
     }
 
     TestAudioCompletion(runtime, argv[2]);
+    TestLowCadenceFrameAccounting(runtime, argv[2]);
     TestPauseAndSeeks(runtime, argv[2]);
     TestForcedAudioRebuffer(runtime, argv[2]);
     TestStopAndThreadOwnership(runtime, argv[2]);

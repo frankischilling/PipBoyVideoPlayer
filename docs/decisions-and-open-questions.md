@@ -784,6 +784,22 @@ Consequence: run the diagnostic in the same 10 FPS profile. Use its measured max
 
 Implementation evidence: the real XAudio2 regression recorded a 469 millisecond controller service gap. The consumed-sample clock advanced 341,333 microseconds, equal to the capacity of 16 fixture-sized buffers. The controller then refilled all 16 slots before `XAudioStream::Snapshot` checked the queue, so the underrun counter stayed at zero. The diagnostic change passed the 15-test host matrix, both 24-test x86 matrices, and the five-minute real-fixture cadence regression. That five-minute run completed 2,750 updates with zero underruns and kept its maximum update gap within the asserted 90 to 250 millisecond range. The live Fallout measurement remains open.
 
+Live evidence: a fresh Fallout launch completed five minutes at 10 FPS with zero underruns, a 299,980,000 microsecond audio clock, and a 110 millisecond maximum update gap. The preserved log has SHA-256 `F838AC515F1295EF49542C9034E91E2D2B1E678DB1D7D0DA80FCB3C06B8ECDC2`. This passing measurement is below the current 341,333 microseconds of audio capacity. It does not reproduce the prior intermittent failure, so it does not select a larger audio pool.
+
+### Keep presented and dropped frame counts exclusive
+
+Date: August 10, 2026
+
+Decision: when a new frame replaces the controller's single ready frame, move the replaced frame from the presented count to the dropped count. Add a short low-cadence regression that requires dropped frames and compares presentation metrics with frames delivered to the renderer.
+
+Reason: the live five-minute progress record reports 9,001 decoded frames, 8,991 presented frames, and 6,002 dropped frames. A frame selected into the ready slot increments `presented_video_frames`. Replacement before `TakeVideoFrame` increments `dropped_video_frames` without reversing that earlier presentation count.
+
+Rejected alternative: do not relax the strict checker to accept overlapping categories. That would make synchronization and frame-dropping reports misleading.
+
+Consequence: require presented plus dropped frames to remain at or below decoded frames, with only a bounded residual for frames still owned by queues. Repeat the live five-minute gate after the accounting regression and all automated matrices pass.
+
+Implementation evidence: the accounting correction passed the 15-test host matrix and both 24-test x86 matrices. The new 250 millisecond cadence regression requires at least one dropped frame, exact agreement between presented and delivered frames, and no more than one decoded frame outside the two presentation outcomes. The corrected live gate remains open.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.
