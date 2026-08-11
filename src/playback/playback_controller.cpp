@@ -129,7 +129,7 @@ bool PlaybackController::Update(const bool presentation_visible) noexcept {
     }
 
     const PlaybackState before_feed = state_.Snapshot().state;
-    const bool discard_video = before_feed == PlaybackState::buffering && !audio_started_;
+    const bool discard_video = before_feed == PlaybackState::buffering;
     if (!DrainVideo(discard_video)) {
         return false;
     }
