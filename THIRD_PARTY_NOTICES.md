@@ -1,10 +1,12 @@
 # Third-party notices
 
-The build uses headers from the official xNVSE 6.4.5 source release. xNVSE retains its own copyright and license. Its source is downloaded for local builds and is not included in the mod archive.
+The build uses public plugin headers from the official xNVSE 6.4.5 source release. The pinned xNVSE repository does not declare a repository-wide license. xNVSE retains all rights in its work. Its source and binaries are not included in the PBVP mod archive.
 
 UIO's public registration convention is used to inject the Pip-Boy prefab. Pip-Boy Video Player does not distribute UIO or its assets.
 
 Fallout: New Vegas names belong to their respective owners. The repository and mod archive contain no game executable, game asset, or media file.
+
+The MIT license in this repository applies only to original Pip-Boy Video Player code and documentation. It does not replace or modify the terms for xNVSE, UIO, FFmpeg, winpthreads, Fallout: New Vegas, or any user-supplied media.
 
 The Phase 2 media runtime uses FFmpeg 8.1.2 from the official source archive at `https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz`. The verified archive SHA-256 is `464BEB5E7BF0C311E68B45AE2F04E9CC2AF88851ABB4082231742A74D97B524C`. The detached signature was verified with FFmpeg release key `FCF986EA15E6E293A5644F10B4322F04D67658D8`.
 

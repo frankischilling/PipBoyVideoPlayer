@@ -57,6 +57,7 @@ NVSE\Plugins\PipBoyVideoPlayer\bin\
   swscale-9.dll
 textures\Interface\PipBoyVideoPlayer\Surface.dds
 uio\public\PipBoyVideoPlayer.txt
+LICENSE
 LICENSES\
   FFmpeg\
   winpthreads\
@@ -66,7 +67,7 @@ THIRD_PARTY_NOTICES.md
 docs\
 ```
 
-This is an MO2-ready archive, so the mod's `Data` contents are at the archive root. The matching stripped PDB belongs in the separate symbols archive because New Vegas crash loggers can produce better stacks when symbols are available. The full PDB remains private and is never packaged. A project license file is not present because the owner has not selected a license.
+This is an MO2-ready archive, so the mod's `Data` contents are at the archive root. The matching stripped PDB belongs in the separate symbols archive because New Vegas crash loggers can produce better stacks when symbols are available. The full PDB remains private and is never packaged. Both archives include the project MIT license.
 
 ## Package separation
 
@@ -100,9 +101,9 @@ The package manifest should also record:
 
 An incompatible XML bridge, FFmpeg major version, or runtime layout change requires a clear upgrade note. The plugin should refuse a mismatched private DLL set instead of loading whatever matching filename appears first.
 
-## Licensing work before implementation
+## Licensing
 
-The project license remains open. It must be chosen before accepting source contributions. The choice must cover the plugin, build files, original UI XML, and documentation without claiming ownership of Fallout assets or third-party libraries.
+Original Pip-Boy Video Player code, build files, UI XML, and documentation use the MIT License. The license does not claim ownership of Fallout assets, third-party libraries, or user media.
 
 FFmpeg is mainly LGPL, with optional GPL components and other license combinations depending on configuration. The project must review the actual build, not rely on a generic statement about FFmpeg. A release that uses LGPL FFmpeg DLLs should provide the required notices, the exact corresponding source or a compliant offer and link, build configuration, local modifications, and a way for users to replace the libraries where the license requires it.
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-rc.2 - 2026-08-11
+
+- Added a checked MO2 gameplay-profile installer that creates separate player and personal-video mods without copying source-profile saves.
+- Added an end-user installation and MP4 tutorial, and replaced the phase-status README with normal usage documentation.
+- Documented successful native Direct3D 9 fullscreen playback at 1920 by 1080 while retaining the windowed recommendation for frequent Alt+Tab use.
+- Licensed original project code and documentation under MIT and included the license in runtime and symbols packages.
+
 ## 0.1.0-rc.1 - 2026-08-11
 
 - Fixed clean-checkout FFmpeg extraction by forcing GNU tar to treat the Windows drive-colon archive path as local.
