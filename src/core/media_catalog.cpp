@@ -108,6 +108,29 @@ HANDLE BeginEnumeration(const std::wstring& pattern, WIN32_FIND_DATAW& found) no
         nullptr, 0u);
 }
 
+class FindHandle final {
+public:
+    explicit FindHandle(const HANDLE handle) noexcept
+        : handle_(handle) {
+    }
+
+    ~FindHandle() {
+        if (handle_ != INVALID_HANDLE_VALUE) {
+            FindClose(handle_);
+        }
+    }
+
+    FindHandle(const FindHandle&) = delete;
+    FindHandle& operator=(const FindHandle&) = delete;
+
+    [[nodiscard]] HANDLE Get() const noexcept {
+        return handle_;
+    }
+
+private:
+    HANDLE handle_{INVALID_HANDLE_VALUE};
+};
+
 } // namespace
 
 const char* MediaCatalogStatusName(const MediaCatalogStatus status) noexcept {
@@ -227,8 +250,8 @@ MediaCatalogResult ScanMediaCatalog(
         pattern.push_back(L'*');
 
         WIN32_FIND_DATAW found{};
-        HANDLE search = BeginEnumeration(pattern, found);
-        if (search == INVALID_HANDLE_VALUE) {
+        const FindHandle search(BeginEnumeration(pattern, found));
+        if (search.Get() == INVALID_HANDLE_VALUE) {
             result.windows_error = GetLastError();
             if (result.windows_error == ERROR_FILE_NOT_FOUND) {
                 return result;
@@ -246,7 +269,6 @@ MediaCatalogResult ScanMediaCatalog(
                 IsMp4Name(relative_name)) {
                 if (result.entries.size() == config.maximum_entries) {
                     result.truncated = true;
-                    FindClose(search);
                     break;
                 }
                 const std::uint64_t file_bytes =
@@ -260,9 +282,8 @@ MediaCatalogResult ScanMediaCatalog(
                 entry.session_id = StableSessionId(relative_name, file_bytes);
                 result.entries.push_back(std::move(entry));
             }
-            if (FindNextFileW(search, &found) == FALSE) {
+            if (FindNextFileW(search.Get(), &found) == FALSE) {
                 result.windows_error = GetLastError();
-                FindClose(search);
                 if (result.windows_error != ERROR_NO_MORE_FILES) {
                     result.entries.clear();
                     result.status = MediaCatalogStatus::enumeration_failed;

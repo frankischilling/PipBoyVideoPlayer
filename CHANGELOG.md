@@ -6,6 +6,7 @@
 - Added aspect fit and fill rendering. Fit centers the full frame with black bars. Fill uses a centered crop. Pip-Boy tint converts the frame to luminance and lets the UI apply the player's active Pip-Boy color. Full-color mode keeps the converted BGRA colors.
 - Added bounded UTF-8 INI loading for playback, rendering, catalog, input, resource, and logging settings. Keyboard bindings use unique DirectInput scan codes, and the UI shows the active bindings. Invalid values keep safe defaults. Runtime reload is limited to the idle state and a rejected reload leaves playback unchanged.
 - Added bounded direct-child MP4 catalog discovery with MO2-compatible Win32 enumeration, Unicode paths, invariant natural sorting, stable session identifiers, display clipping, reparse-point rejection, and tests for 0, 1, 10, 100, and 500 entries.
+- Scoped the Win32 catalog search handle so allocation and filename conversion failures close it before returning.
 - Added bounded lazy MP4 title metadata. Catalog rows start with filenames, and a valid title replaces the selected row for the current session without opening every file during enumeration.
 - Added a save-free Phase 5 MO2 profile with ten generated catalog entries for scrolling, natural sorting, Unicode filenames, long names, metadata titles, and replay checks.
 - Added a strict Phase 5 live-log checker for two catalog scans, two playback starts, scoped input attachment, decoded video, clean shutdown, path privacy, and metadata privacy.

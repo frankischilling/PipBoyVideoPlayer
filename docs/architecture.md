@@ -20,7 +20,7 @@ Any state may enter `Error`, which records the problem, drains owned queues, rel
 
 ### Media catalog
 
-The catalog enumerates regular `.mp4` files directly below the configured Videos directory. Recursive scanning is disabled for the first release. Each entry stores a display name, normalized relative path, file size, and a stable session identifier.
+The catalog enumerates regular `.mp4` files directly below the configured Videos directory. Recursive scanning is disabled for the first release. Each entry stores a display name, normalized relative path, file size, and a stable session identifier. The Win32 search handle has scoped ownership, so allocation and filename conversion failures close it before the scan returns an error.
 
 The catalog does not open every file during enumeration. Rows initially use the filename without its extension. Duration, codec details, and file-level title metadata are loaded on selection, which prevents a folder full of damaged media from delaying the Pip-Boy menu. A valid bounded title replaces that row for the rest of the session without reordering the open catalog.
 
