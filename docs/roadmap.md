@@ -113,7 +113,7 @@ Tasks:
 
 - enumerate MP4 files through MO2;
 - add natural sorting and Unicode display;
-- complete mouse, keyboard, and controller navigation;
+- complete mouse and keyboard navigation;
 - add presentation and volume settings;
 - add safe config reload while idle;
 - verify focus behavior with Pip-Boy UI Tweaks.
@@ -122,7 +122,7 @@ Exit criteria:
 
 - catalog limits and filename fixtures pass;
 - all actions work without global input hooks;
-- switching input methods updates prompts;
+- the visible prompts match the configured keyboard bindings;
 - personal paths stay out of normal logs.
 
 ## Phase 6: hardening and release candidate

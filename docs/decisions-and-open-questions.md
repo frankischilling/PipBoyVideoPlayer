@@ -946,6 +946,18 @@ Decision: store no media or playback state in game saves or xNVSE co-saves for t
 
 Reason: the player should be safe to add or remove and should not leave missing state in a playthrough.
 
+### First-release input support
+
+Date: August 11, 2026
+
+Finding: the project owner removed controller support from the first release. The accepted mouse and keyboard controls already cover catalog navigation, playback, seeking, presentation changes, and returning to the Data page.
+
+Decision: support mouse and keyboard input only. Remove XInput loading, controller polling, controller action mappings, controller prompt variants, input-method transition logs, and controller-specific tests. `PlaybackController` remains the name of the internal playback state machine and is unrelated to gamepad input.
+
+Rejected alternative: do not leave the controller path dormant or ship it without a live acceptance test. Untested input code would add another system DLL dependency and create a support claim that the release cannot verify.
+
+Consequence: Phase 5 no longer requires controller navigation or prompt switching. User documentation must state that controllers are unsupported. Adding controller input later requires a new scoped change with portable tests and an in-game acceptance run.
+
 ## Open questions before phase one
 
 1. Which verified engine-owned render point places the video below UIO controls without interfering with the world or other menus?
