@@ -7,6 +7,7 @@
 - Kept hidden presentation bounded through the existing decoder limits and one-frame renderer mailbox.
 - Added Win32 regressions for audio-led and silent background playback.
 - Updated usage, troubleshooting, scope, architecture, decision, risk, and release documentation for the new lifecycle behavior.
+- Passed the live close, walk, and reopen check at 1920 by 1080 fullscreen with native Direct3D 9. The log recorded 392 hidden-frame mailbox replacements and no warning, error, or upload failure.
 
 ## 0.1.0-rc.2 - 2026-08-11
 

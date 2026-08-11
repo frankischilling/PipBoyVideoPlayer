@@ -14,7 +14,8 @@ This private release candidate keeps a video playing after the Pip-Boy closes. T
 
 - All 28 host tests passed.
 - All 37 Win32 Release tests passed.
-- The installed VNV build still needs a live close, walk, and reopen check before this candidate is accepted.
+- The selected VNV gameplay profile passed the background-playback check at 1920 by 1080 fullscreen with native Direct3D 9. Audio continued after the Pip-Boy closed, and reopening it showed the same video at its current point.
+- The live log contains no warning or error. Audio and the decoder worker stopped only during orderly process shutdown.
 
 ## Known limits
 

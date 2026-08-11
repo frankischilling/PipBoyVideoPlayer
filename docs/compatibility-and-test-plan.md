@@ -733,3 +733,7 @@ The planned plugin is ESP-less and stores no playback state in saves or xNVSE co
 ## Bug report data
 
 A useful report contains the plugin log, crash log if any, VNV profile and versions, graphics path, display mode, the mouse or keyboard action that failed, and a media probe summary that omits the file itself. Users should not upload copyrighted or private videos to demonstrate a bug.
+
+## RC3 background-playback result
+
+The selected `Pip-Boy Video Player` gameplay profile passed at 1920 by 1080 fullscreen with native Direct3D 9. The user played a local H.264 and AAC MP4, closed the Pip-Boy, walked while audio continued, and reopened the Pip-Boy. The same video returned at its current point. The session log contains no warning or error. It records 392 mailbox replacements, no upload failure, and worker shutdown only when the process exited.

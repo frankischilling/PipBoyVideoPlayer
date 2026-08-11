@@ -952,7 +952,7 @@ Implementation: the playback controller no longer maps a hidden presentation to 
 
 Rejected alternatives: do not pause playback on Pip-Boy closure because that would stop the audio while the player walks. Do not keep every hidden decoded frame because that would violate the x86 memory bounds. Do not store a resume position in a save or co-save.
 
-Evidence: the Win32 controller suite covers AAC playback led by the XAudio2 sample count and silent variable-frame-rate playback led by QueryPerformanceCounter. Both remain active while presentation is hidden, advance their clocks, and return a frame after presentation becomes visible. A live VNV check is still required before the release candidate is accepted.
+Evidence: the Win32 controller suite covers AAC playback led by the XAudio2 sample count and silent variable-frame-rate playback led by QueryPerformanceCounter. Both remain active while presentation is hidden, advance their clocks, and return a frame after presentation becomes visible. The selected VNV gameplay profile also passed at 1920 by 1080 fullscreen with native Direct3D 9. The user closed the Pip-Boy, walked while audio continued, and reopened it to the same video at its current point. The log contains no warning or error and shows that audio and the decoder worker stopped only during process shutdown.
 
 Consequence: user documentation must distinguish hiding the Pip-Boy from Back or Stop. The background session remains temporary and leaves no state in game saves.
 
