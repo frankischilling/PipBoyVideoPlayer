@@ -311,6 +311,14 @@ foreach(reload_guide_text IN ITEMS "${live_test_guide_text}" "${ui_input_guide_t
     endif()
 endforeach()
 
+file(READ "${PBVP_SOURCE_DIR}/src/render/d3d_renderer.cpp" renderer_text)
+string(FIND "${renderer_text}"
+    "surface.status != UiSurfaceStatus::map_hidden &&"
+    hidden_surface_transition_offset)
+if(hidden_surface_transition_offset EQUAL -1)
+    message(FATAL_ERROR "Normal MapMenu closure must not emit an engine-texture warning")
+endif()
+
 string(FIND "${prefab_text}" "<string> PLAYING </string>" layer_probe_offset)
 if(layer_probe_offset EQUAL -1)
     message(FATAL_ERROR "UI prefab is missing the playback status text")

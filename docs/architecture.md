@@ -64,7 +64,7 @@ The CPU scaler treats the 256 by 256 backing texture and the named visible recta
 
 The plugin does not retain ownership of the UI texture across callbacks. The engine owns its lifetime and reset behavior. PBVP accepts only `D3DPOOL_MANAGED` for this surface and rejects default-pool or unknown-pool textures. It stores non-owning device and surface identities so a later callback can detect a replacement, validate it, and upload again.
 
-The renderer keeps fixed-size session counters for frame callbacks, visible frames, validated devices, video submissions, mailbox outcomes, upload attempts, successful uploads, and failures. It records the minimum, average, and maximum successful upload time. An orderly shutdown writes one summary line. The counters do not allocate memory and the render callback does not write a line for each frame.
+The renderer keeps fixed-size session counters for frame callbacks, visible frames, validated devices, video submissions, mailbox outcomes, upload attempts, successful uploads, and failures. It records the minimum, average, and maximum successful upload time. An orderly shutdown writes one summary line. A hidden MapMenu is an expected transition and does not consume the warning budget. Wrong threads, invalid UI objects, device failures, and upload failures still produce bounded error or warning records. The counters do not allocate memory and the render callback does not write a line for each frame.
 
 ### Pip-Boy presentation bridge
 

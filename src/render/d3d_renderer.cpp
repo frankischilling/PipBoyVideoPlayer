@@ -163,7 +163,8 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
         UiBridge::Instance().ResolveSurfaceOnSharedThread(ui_rect.game_thread_id);
     if (surface.status != UiSurfaceStatus::available) {
         const auto status = static_cast<std::uint32_t>(surface.status) + 1u;
-        if (last_surface_status_ != status && error_count_++ < 8u) {
+        if (surface.status != UiSurfaceStatus::map_hidden &&
+            last_surface_status_ != status && error_count_++ < 8u) {
             PBVP_LOG_WARN("Pip-Boy engine texture unavailable: %s", UiSurfaceStatusName(surface.status));
             if (surface.direct_texture != 0u || surface.shader_property != 0u ||
                 surface.shader_source_texture != 0u) {
