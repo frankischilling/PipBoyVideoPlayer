@@ -24,6 +24,7 @@
 - Fixed runtime configuration reload to match the registered xNVSE plugin name. The corrected live run displayed Fit side bars, reloaded Fill while idle, displayed the centered crop, and passed the strict log checker.
 - Centered the playback prompt inside its status strip from the strip height and the text tile's measured height. The Base profile passed the visual retest after fixed offsets left the prompt too high.
 - Stopped normal MapMenu closure from producing an engine-texture warning during the one-frame snapshot transition. Other UI surface failures retain their warning records.
+- Passed the Base, Vanilla UI Plus, Clean Vanilla HUD, and full Extended UI matrix with separate clean logs and empty save folders. Corrected the matrix checker's startup order to match the runtime's configuration-then-FFmpeg records.
 - Added guarded setup for four Phase 5 UI test profiles. The script copies only the existing save-isolated profiles, refuses targets with save data, and changes the selected profile only while MO2 and Fallout are closed.
 - Added privacy-safe input-method transition records and a strict controller log checker. The checker requires controller playback followed by a return to keyboard or mouse input.
 - Added one checker for the four live Phase 5 UI profiles. Every profile needs a separate clean log with catalog playback, a decoded upload, worker shutdown, and valid renderer accounting.

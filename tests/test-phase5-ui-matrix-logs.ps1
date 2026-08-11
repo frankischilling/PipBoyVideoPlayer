@@ -8,8 +8,8 @@ $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) ("pbvp-phase5-ui-logs-" + 
 [IO.Directory]::CreateDirectory($temporaryRoot) | Out-Null
 try {
     $good = @'
-10:00:00.000 [INFO] Private FFmpeg runtime accepted: avutil=60 avcodec=62 avformat=62 swscale=9 swresample=6
-10:00:00.010 [INFO] Configuration accepted: enabled=1 aspect=fit tint=pipboy volume=1.00 muted=0 seek_seconds=10 catalog=500 display_chars=128 source=1920x1080 queued_edge=512 file_limit=34359738368 logging=normal
+10:00:00.000 [INFO] Configuration accepted: enabled=1 aspect=fit tint=pipboy volume=1.00 muted=0 seek_seconds=10 catalog=500 display_chars=128 source=1920x1080 queued_edge=512 file_limit=34359738368 logging=normal
+10:00:00.010 [INFO] Private FFmpeg runtime accepted: avutil=60 avcodec=62 avformat=62 swscale=9 swresample=6
 10:00:01.000 [INFO] Scoped MapMenu input bridge attached after vtable validation; table=verified-stewie-menu-search-chain
 10:00:02.000 [INFO] Video catalog scan finished: status=ok entries=10 truncated=0 win32=0
 10:00:03.000 [INFO] Playback opened catalog item: session=123 bytes=49267 media=Episode 1.mp4
@@ -37,7 +37,14 @@ try {
 
     Invoke-Checker -SelectedPaths $paths
 
+    $startupPattern = '(?m)^(10:00:00\.000 \[INFO\] Configuration accepted:.*)\r?\n(10:00:00\.010 \[INFO\] Private FFmpeg runtime accepted:.*)$'
+    $reversedStartup = $good -replace $startupPattern, (
+        '$2' + [Environment]::NewLine + '$1')
+    if ($reversedStartup -ceq $good) {
+        throw 'The Phase 5 UI matrix startup-order failure fixture was not constructed.'
+    }
     $badCases = [ordered]@{
+        StartupOrder = $reversedStartup
         Warning = $good.Replace(
             '10:00:03.020 [INFO] Decoded',
             '10:00:03.015 [WARN] unexpected' + [Environment]::NewLine +

@@ -45,8 +45,8 @@ function Test-ProfileLog {
     }
 
     $patterns = [ordered]@{
-        Runtime = 'Private FFmpeg runtime accepted:'
         Configuration = 'Configuration accepted: enabled=1 .+ logging=normal'
+        Runtime = 'Private FFmpeg runtime accepted:'
         Input = 'Scoped MapMenu input bridge attached after vtable validation'
         Catalog = 'Video catalog scan finished: status=ok entries=(?<entries>\d+) truncated=0 win32=0'
         Open = 'Playback opened catalog item: session=\d+ bytes=\d+ media=[^\r\n]+'
