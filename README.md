@@ -32,7 +32,7 @@ The accepted live five-minute 10 FPS run used the same 30 FPS fixture. It decode
 
 Phase 5 adds a bounded direct-child MP4 catalog with Unicode filenames, natural sorting, eight visible rows, lazy title metadata, and scoped mouse and keyboard controls. It implements aspect fit, aspect fill, Pip-Boy tint, full color, volume and resource settings, idle-only configuration reload, and privacy-safe normal logs. The accepted live catalog run displayed ten separate entries and played selected files. Mouse activation and every shipped keyboard action worked, including both seek directions, pause, stop, and return to the Data page. Controller input is not supported.
 
-These results satisfy the Phase 4 synchronization, frame-rate independence, seek and buffering-stop automation, and memory exit criteria. Phase 5 portable checks, the live Fit and Fill comparison, idle configuration reload, and the four-profile UI matrix passed. A final mouse and keyboard smoke run is required for the build that removes controller support. DXVK, repetition tests, and the two-hour soak remain Phase 6 work.
+These results satisfy the Phase 4 synchronization, frame-rate independence, seek and buffering-stop automation, and memory exit criteria. Phase 5 portable checks, the live Fit and Fill comparison, idle configuration reload, the four-profile UI matrix, and the final mouse and keyboard smoke run passed. Controller support is outside the release scope. DXVK, repetition tests, and the two-hour soak remain Phase 6 work.
 
 ## Build
 

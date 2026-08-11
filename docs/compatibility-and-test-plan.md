@@ -600,7 +600,9 @@ The run opened several catalog entries and uploaded 77 decoded frames without an
 
 On August 11, 2026, the project owner removed controller support from the first release. The XInput loader, polling path, action table, controller prompt variants, transition records, and controller log checker were removed. The data-contract test rejects those runtime fragments if they return. All 20 Host Release tests and all 29 Win32 Release tests pass after the cleanup.
 
-Portable prompt tests compare the exact configured keyboard text for the catalog, Back control, buffering, playback, pause, and every fixed error state. They also reject missing labels and undersized output buffers. A final in-game mouse and keyboard smoke run remains required for the cleaned build.
+Portable prompt tests compare the exact configured keyboard text for the catalog, Back control, buffering, playback, pause, and every fixed error state. They also reject missing labels and undersized output buffers.
+
+The cleaned DLL passed its final in-game mouse and keyboard smoke run. The user confirmed that the catalog, playback, pause, resume, seeking, stop, and Data return controls looked and worked correctly. The log recorded three playback opens and three normal stops, keyboard callback activity, decoded uploads, joined workers, zero upload failures, and normal process shutdown. It contained no warning, error, absolute path, or metadata field. The preserved log has SHA-256 `637ED37FD174BED99A237B02B9680EED112420C058E94D8023A78C7B21C2F6FB`.
 
 The portable catalog tests assert exact relative paths and extension-free display names for Japanese text and a combining acute accent. This supplements the generated MO2 catalog profile without claiming that the game font can draw every Unicode character.
 
@@ -647,7 +649,7 @@ The Clean Vanilla HUD and full Extended profiles also passed their visual, audio
 
 The first real matrix check exposed a test-fixture error: the checker required the FFmpeg runtime record before configuration, while every plugin startup logs configuration first. The corrected checker keeps strict ordering and adds a negative fixture that reverses those records. It accepted all four distinct live logs with 11 catalog entries. Renderer accounting reported 20 upload successes for Base, 23 for Vanilla UI Plus, 95 for Clean Vanilla HUD, and 93 for Extended. All four isolated save folders remained empty.
 
-Preserve one normal log after testing catalog playback in each profile, then run `check-phase5-ui-matrix-logs.ps1`. The checker requires four distinct files. Each log must contain the private runtime, accepted configuration, scoped input bridge, a nonempty catalog, playback and stream records, a decoded upload, joined workers, renderer accounting with no upload failure, and clean process shutdown. The user still needs to confirm layout, labels, and input in each profile.
+Preserve one normal log after testing catalog playback in each profile, then run `check-phase5-ui-matrix-logs.ps1`. The checker requires four distinct files. Each log must contain the private runtime, accepted configuration, scoped input bridge, a nonempty catalog, playback and stream records, a decoded upload, joined workers, renderer accounting with no upload failure, and clean process shutdown. The user confirmed layout, labels, mouse, and keyboard input in each profile. The final cleaned-build smoke run repeated the supported input path after controller removal.
 
 ## Media fixture set
 
