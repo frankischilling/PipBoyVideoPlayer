@@ -279,7 +279,7 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
 #if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
             const ProcessAddressSpaceSnapshot address_space = MeasureProcessAddressSpace();
             PBVP_LOG_ERROR(
-                "Playback update failed: state=%s error=%s site=%s decoder=%s media_site=%s ffmpeg=%d audio=%s updates=%llu media_us=%lld decoded=%llu presented=%llu dropped=%llu submitted_chunks=%llu submitted_samples=%llu audio_queued=%u audio_played=%llu underruns=%llu decoder_video_items=%zu decoder_audio_items=%zu private=%llu working_set=%llu largest_free=%llu total_free=%llu",
+                "Playback update failed: state=%s error=%s site=%s decoder=%s media_site=%s ffmpeg=%d audio=%s updates=%llu max_update_gap_ms=%llu media_us=%lld decoded=%llu presented=%llu dropped=%llu submitted_chunks=%llu submitted_samples=%llu audio_queued=%u audio_played=%llu underruns=%llu decoder_video_items=%zu decoder_audio_items=%zu private=%llu working_set=%llu largest_free=%llu total_free=%llu",
                 pbvp::PlaybackStateName(failed.playback.state),
                 pbvp::PlaybackErrorName(failed.playback.error),
                 pbvp::PlaybackFailureSiteName(failed.failure_site),
@@ -288,6 +288,7 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
                 failed.decoder.failure.ffmpeg_error,
                 pbvp::XAudioStreamStatusName(failed.audio.status),
                 static_cast<unsigned long long>(failed.metrics.update_calls),
+                static_cast<unsigned long long>(failed.metrics.maximum_update_gap_ms),
                 static_cast<long long>(failed.metrics.last_media_time_us),
                 static_cast<unsigned long long>(failed.metrics.decoded_video_frames),
                 static_cast<unsigned long long>(failed.metrics.presented_video_frames),
@@ -350,13 +351,14 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
     if (!g_playback_smoke_reported && PlaybackActive(after.playback.state) &&
         GetTickCount64() >= g_playback_smoke_next_progress) {
         PBVP_LOG_INFO(
-            "Integrated playback long test progress: clock_us=%lld decoded=%llu presented=%llu dropped=%llu underruns=%llu private_delta=%llu",
+            "Integrated playback long test progress: clock_us=%lld decoded=%llu presented=%llu dropped=%llu underruns=%llu private_delta=%llu max_update_gap_ms=%llu",
             static_cast<long long>(after.metrics.last_media_time_us),
             static_cast<unsigned long long>(after.metrics.decoded_video_frames),
             static_cast<unsigned long long>(after.metrics.presented_video_frames),
             static_cast<unsigned long long>(after.metrics.dropped_video_frames),
             static_cast<unsigned long long>(after.audio.underruns),
-            static_cast<unsigned long long>(g_playback_smoke_peak_private_delta));
+            static_cast<unsigned long long>(g_playback_smoke_peak_private_delta),
+            static_cast<unsigned long long>(after.metrics.maximum_update_gap_ms));
         g_playback_smoke_next_progress = GetTickCount64() + 5u * 60u * 1000u;
     }
 #endif
@@ -372,6 +374,17 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
             pbvp::PlaybackStateName(g_last_playback_state),
             pbvp::PlaybackStateName(after.playback.state),
             static_cast<unsigned long long>(after.generation));
+#if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
+        if (after.playback.state == pbvp::PlaybackState::buffering) {
+            PBVP_LOG_INFO(
+                "Playback buffering diagnostic: max_update_gap_ms=%llu audio_queued=%u underruns=%llu decoder_video_items=%zu decoder_audio_items=%zu",
+                static_cast<unsigned long long>(after.metrics.maximum_update_gap_ms),
+                after.audio.queued_buffers,
+                static_cast<unsigned long long>(after.audio.underruns),
+                after.decoder_buffers.video_items,
+                after.decoder_buffers.audio_items);
+        }
+#endif
         g_last_playback_state = after.playback.state;
     }
     if (!PlaybackActive(after.playback.state) && PlaybackActive(before.playback.state)) {

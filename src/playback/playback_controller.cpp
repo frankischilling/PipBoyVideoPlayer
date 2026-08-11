@@ -91,6 +91,13 @@ bool PlaybackController::Update(const bool presentation_visible) noexcept {
     if (!IsOwnerThread()) {
         return false;
     }
+    const std::uint64_t now_ms = GetTickCount64();
+    if (last_update_tick_ms_ != 0u && now_ms >= last_update_tick_ms_) {
+        snapshot_.metrics.maximum_update_gap_ms = (std::max)(
+            snapshot_.metrics.maximum_update_gap_ms,
+            now_ms - last_update_tick_ms_);
+    }
+    last_update_tick_ms_ = now_ms;
 
     const PlaybackState current_state = state_.Snapshot().state;
     if (!presentation_visible && IsActiveState(current_state)) {
@@ -796,6 +803,7 @@ void PlaybackController::ResetSessionData() noexcept {
     staged_video_bytes_ = 0u;
     generation_ = 1u;
     observed_underruns_ = 0u;
+    last_update_tick_ms_ = 0u;
     media_configured_ = false;
     has_audio_ = false;
     audio_started_ = false;

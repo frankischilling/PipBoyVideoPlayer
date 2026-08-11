@@ -303,6 +303,51 @@ void TestOptionalLowFpsStart(
     PBVP_CHECK(snapshot.audio.underruns == 0u);
     PBVP_CHECK(delivered_frames >= 2'500u);
     PBVP_CHECK(snapshot.metrics.update_calls >= 2'700u);
+    PBVP_CHECK(snapshot.metrics.maximum_update_gap_ms >= 90u);
+    PBVP_CHECK(snapshot.metrics.maximum_update_gap_ms <= 250u);
+    controller.Stop();
+}
+
+void TestOptionalServiceGap(
+    const pbvp::FfmpegRuntime& runtime,
+    const std::wstring& fixture_root,
+    const std::wstring& fixture_name) {
+    pbvp::PlaybackController controller(runtime, TestConfig());
+    PBVP_CHECK(controller.Open(fixture_root, fixture_name));
+    std::uint64_t delivered_frames = 0u;
+    PBVP_CHECK(AdvanceUntil(
+        controller, pbvp::PlaybackState::playing,
+        std::chrono::steady_clock::now() + 5s, delivered_frames));
+
+    const auto fill_deadline = std::chrono::steady_clock::now() + 2s;
+    while (std::chrono::steady_clock::now() < fill_deadline &&
+           controller.Snapshot().audio.queued_buffers < 15u) {
+        PBVP_CHECK(controller.Update(true));
+        if (controller.TakeVideoFrame().has_value()) {
+            ++delivered_frames;
+        }
+        Sleep(10u);
+    }
+    PBVP_CHECK(controller.Snapshot().audio.queued_buffers >= 15u);
+
+    const auto before_gap = controller.Snapshot();
+    Sleep(450u);
+    PBVP_CHECK(controller.Update(true));
+    const auto snapshot = controller.Snapshot();
+    const std::int64_t clock_advance_us =
+        snapshot.metrics.last_media_time_us - before_gap.metrics.last_media_time_us;
+    std::printf(
+        "service gap: state=%s gap_ms=%llu clock_advance_us=%lld queued=%u underruns=%llu clock_us=%lld\n",
+        pbvp::PlaybackStateName(snapshot.playback.state),
+        static_cast<unsigned long long>(snapshot.metrics.maximum_update_gap_ms),
+        static_cast<long long>(clock_advance_us),
+        snapshot.audio.queued_buffers,
+        static_cast<unsigned long long>(snapshot.audio.underruns),
+        static_cast<long long>(snapshot.metrics.last_media_time_us));
+    PBVP_CHECK(snapshot.metrics.maximum_update_gap_ms >= 400u);
+    PBVP_CHECK(clock_advance_us > 250'000);
+    PBVP_CHECK(clock_advance_us < 400'000);
+    PBVP_CHECK(snapshot.audio.underruns == 0u);
     controller.Stop();
 }
 
@@ -332,6 +377,7 @@ int wmain(int argc, wchar_t** argv) {
     if (argc == 5) {
         TestOptionalLongStart(runtime, argv[3], argv[4]);
         TestOptionalLowFpsStart(runtime, argv[3], argv[4]);
+        TestOptionalServiceGap(runtime, argv[3], argv[4]);
     }
     runtime.Unload();
 

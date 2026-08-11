@@ -373,6 +373,14 @@ Six 30 FPS frames cover 200 milliseconds, while the 16-item decoded AAC queue co
 
 The production memory regression ran five times in each x86 build. Packet ordering left nine or ten scaled video frames queued when all 16 audio items filled, and every run passed exact byte accounting and the private-memory limit. The five-minute cadence regression then decoded 8,996 frames, delivered 2,748, dropped 6,247, submitted 14,406,656 samples, reached a 299,800,000 microsecond audio clock, retained 11 XAudio2 buffers, and recorded zero underruns over 2,751 updates.
 
+The same production build failed live without Alt+Tab. The first underrun followed 15.9 seconds of playback. Later playing intervals lasted 3.8 seconds, 104.4 seconds, and 3.1 seconds before `audio_stream_failed`. The final snapshot contains 1,320 updates, a 126,656,000 microsecond audio clock, 6,088,704 submitted samples, 6,079,488 played samples, nine queued XAudio2 buffers, three decoder video items, and no decoder audio item. The preserved clean-shutdown log has SHA-256 `52DAEDFEE5DE223425F7608255D5FF74CB991913601A629B8F6880A6DD0179C9`.
+
+The controller records update count but not the largest interval between updates. Visible cadence reports three-second averages, so it cannot identify a single interval long enough to drain the XAudio2 pool. A maximum update-gap metric and a native deliberate-stall regression are required before changing audio depth.
+
+The real XAudio2 regression measured a 469 millisecond gap between controller updates. The consumed-sample clock advanced only 341,333 microseconds, which matches the audio capacity of 16 fixture-sized buffers. The next controller update refilled all 16 slots before the snapshot checked queue state, so the existing underrun counter did not record the empty interval. The diagnostic build now records the maximum owner-thread update gap in progress, failure, and first-buffering logs. This is a measurement change only. Buffer depth and ownership remain unchanged until Fallout supplies the live gap.
+
+The diagnostic change passed the 15-test host matrix and both 24-test x86 matrices. Its five-minute real-fixture run decoded 8,996 frames, delivered 2,747, dropped 6,248, submitted 14,405,632 samples, reached a 299,790,000 microsecond audio clock, retained 11 XAudio2 buffers, and completed 2,750 updates without an underrun. The maximum update gap stayed within the asserted 90 to 250 millisecond range.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

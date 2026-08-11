@@ -562,6 +562,16 @@ The production decoder now allows 12 video items under the unchanged 32 MiB cap.
 
 The five-minute real-fixture cadence regression stayed in `playing` with zero underruns. It decoded 8,996 frames, delivered 2,748, dropped 6,247 late frames, submitted 14,406,656 samples, reached a 299,800,000 microsecond audio clock, retained 11 XAudio2 buffers, and completed 2,751 controller updates. The live five-minute 10 FPS gate remains open.
 
+The 12-item build then failed in Fallout without Alt+Tab. The first underrun occurred 15.9 seconds after playback began. Recovery took 152 milliseconds. The next playback intervals lasted 3.8 seconds, 104.4 seconds, and 3.1 seconds before the fourth event produced `audio_stream_failed`. Ordinary visible cadence windows stayed near 10 FPS. One window spanning buffering fell to 0.74 FPS.
+
+At failure, the controller had completed 1,320 updates and reached a 126,656,000 microsecond audio clock. It decoded 3,802 frames, submitted 6,088,704 samples, and played 6,079,488 samples. XAudio2 held nine buffers after the final refill. The last decoder usage held three video items and no audio item. Playback stopped audio, joined the worker, and shut down cleanly. The preserved log has SHA-256 `52DAEDFEE5DE223425F7608255D5FF74CB991913601A629B8F6880A6DD0179C9`.
+
+The live result is consistent with an intermittent game-thread service gap, but the current metrics do not record individual update intervals. The next diagnostic records the maximum gap between owner-thread controller updates and adds a real XAudio2 regression with a deliberate service pause. No buffer or ownership change is selected until that evidence is available.
+
+The real XAudio2 regression recorded a 469 millisecond controller service gap. During that interval, the consumed-sample clock advanced only 341,333 microseconds, which is the capacity of 16 fixture-sized buffers. The next controller update refilled all 16 slots before `XAudioStream::Snapshot` checked queue state, so the underrun counter remained zero. This proves that post-refill sampling can miss an empty interval even though the media clock records the lost service time. The same measurement in Fallout remains required before selecting the tolerance.
+
+The diagnostic change passed the 15-test host matrix and both 24-test x86 matrices. The five-minute real-fixture cadence regression remained in `playing` with zero underruns. It decoded 8,996 frames, delivered 2,747, dropped 6,248, submitted 14,405,632 samples, reached a 299,790,000 microsecond audio clock, retained 11 XAudio2 buffers, and completed 2,750 controller updates. Its maximum update gap stayed within the asserted 90 to 250 millisecond range.
+
 ## UI matrix
 
 Test these layouts independently:

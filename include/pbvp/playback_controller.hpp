@@ -62,6 +62,7 @@ struct PlaybackMetrics final {
     std::uint64_t seek_count{};
     std::uint64_t pause_count{};
     std::uint64_t resume_count{};
+    std::uint64_t maximum_update_gap_ms{};
     std::size_t peak_staged_video_bytes{};
     std::size_t peak_decoder_video_bytes{};
     std::size_t peak_decoder_audio_bytes{};
@@ -149,6 +150,7 @@ private:
     std::size_t staged_video_bytes_{};
     std::uint64_t generation_{1u};
     std::uint64_t observed_underruns_{};
+    std::uint64_t last_update_tick_ms_{};
     bool media_configured_{};
     bool has_audio_{};
     bool audio_started_{};

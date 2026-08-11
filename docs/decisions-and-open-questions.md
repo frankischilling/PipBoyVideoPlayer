@@ -768,6 +768,22 @@ Consequence: update the memory regression to prove the audio queue fills while v
 
 Implementation evidence: ten repeated x86 memory runs filled the 16-item audio queue first with nine or ten scaled video frames buffered. The production five-minute cadence run remained in `playing`, recorded zero underruns, reached a 299,800,000 microsecond audio clock, and retained 11 XAudio2 buffers over 2,751 updates. All host, normal x86, and armed x86 suites pass. The live gate remains open.
 
+Live result: the 12-item build still reached four underruns in Fallout without Alt+Tab. The first occurred after 15.9 seconds, and the failure snapshot recorded a 126,656,000 microsecond clock, 6,088,704 submitted samples, 6,079,488 played samples, nine queued XAudio2 buffers, and no decoder audio item. The preserved log has SHA-256 `52DAEDFEE5DE223425F7608255D5FF74CB991913601A629B8F6880A6DD0179C9`. This rejects decoder queue alignment as a complete live correction.
+
+### Measure game-thread service gaps before changing audio depth
+
+Date: August 10, 2026
+
+Decision: record the maximum millisecond gap between owner-thread `PlaybackController::Update` calls. Include it in diagnostic progress and failure records. Add a real XAudio2 regression with a deliberate service pause longer than the 200 millisecond prebuffer.
+
+Reason: the production queues pass five controlled minutes but fail live. The failure snapshot shows no decoded audio waiting after XAudio2 is refilled, which is consistent with a missed service interval. Average visible cadence cannot reveal one long gap.
+
+Rejected alternatives: do not raise the prebuffer, enlarge the XAudio2 pool, change decoder queues, or move audio ownership until the maximum-gap metric and stalled-service regression identify the needed tolerance.
+
+Consequence: run the diagnostic in the same 10 FPS profile. Use its measured maximum gap to select the smallest bounded correction.
+
+Implementation evidence: the real XAudio2 regression recorded a 469 millisecond controller service gap. The consumed-sample clock advanced 341,333 microseconds, equal to the capacity of 16 fixture-sized buffers. The controller then refilled all 16 slots before `XAudioStream::Snapshot` checked the queue, so the underrun counter stayed at zero. The diagnostic change passed the 15-test host matrix, both 24-test x86 matrices, and the five-minute real-fixture cadence regression. That five-minute run completed 2,750 updates with zero underruns and kept its maximum update gap within the asserted 90 to 250 millisecond range. The live Fallout measurement remains open.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.
