@@ -1,6 +1,6 @@
 # Contributing
 
-The project is under active implementation. Contributions should stay within the current roadmap phase, include relevant tests, and distinguish verified engine behavior from assumptions.
+Contributions should keep the release build working, include relevant tests, and distinguish verified engine behavior from assumptions.
 
 ## Working agreement
 
@@ -40,9 +40,9 @@ Commit messages should say what the repository contains after the commit. Keep a
 
 ## Pull request checklist
 
-- The change stays within the current roadmap phase.
+- The change has a focused scope and keeps `main` releasable.
 - Technical claims have a source or a clearly labeled verification task.
 - New dependencies have ownership, license, update, and packaging notes.
 - New hooks include an uninstall or shutdown path and a conflict test.
-- Test matrix changes have pass criteria, not only a list of environments.
+- Test matrix changes include pass criteria instead of a bare list of environments.
 - Public text has received a plain-language editorial pass.

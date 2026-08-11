@@ -34,7 +34,7 @@ This is expected. Closing the Pip-Boy or leaving the Videos page stops playback.
 
 ## Alt+Tab problems
 
-Use native Direct3D 9 in windowed mode. The windowed path passed repeated focus changes. Repeated native fullscreen Alt+Tab is not supported because the same failure occurred with PBVP disabled on the reference system. DXVK was not installed or tested and is not claimed.
+Native Direct3D 9 fullscreen playback passed at 1920 by 1080, and ordinary Alt+Tab checks worked. Windowed mode passed the measured 50-cycle focus-loss test and is the safer mode if you Alt+Tab often. A separate fullscreen stress attempt reproduced a native game or graphics-driver failure with PBVP disabled, so PBVP does not claim that frequent fullscreen focus changes are stable on every system. DXVK was not installed or tested and is not supported.
 
 ## Controller input does not work
 

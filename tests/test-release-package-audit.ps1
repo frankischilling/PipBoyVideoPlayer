@@ -16,6 +16,7 @@ $documentation = @(Get-ChildItem -LiteralPath (Join-Path $root 'docs') -Filter '
 $runtimeFiles = @(
     'CHANGELOG.md'
     'Config/PipBoyVideoPlayer.ini'
+    'LICENSE'
     'menus/prefabs/PipBoyVideoPlayer/Player.xml'
     'NVSE/Plugins/PipBoyVideoPlayer.dll'
     'README.md'
@@ -29,7 +30,7 @@ $runtimeFiles = @(
 }) + @($manifest.runtime | ForEach-Object {
     "NVSE/Plugins/PipBoyVideoPlayer/bin/$($_.file)"
 })
-$symbolsFiles = @('PipBoyVideoPlayer.pdb', 'README.md')
+$symbolsFiles = @('LICENSE', 'PipBoyVideoPlayer.pdb', 'README.md')
 $temporaryRoot = Join-Path ([IO.Path]::GetTempPath()) (
     "pbvp-package-audit-test-$([Guid]::NewGuid().ToString('N'))")
 $fixedTime = [DateTime]::SpecifyKind(

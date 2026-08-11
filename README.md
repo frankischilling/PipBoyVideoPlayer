@@ -1,54 +1,127 @@
 # Pip-Boy Video Player
 
-Pip-Boy Video Player is a native xNVSE plugin for Fallout: New Vegas. The first release is intended to decode local MP4 files and play them inside the Pip-Boy with synchronized audio.
+Pip-Boy Video Player plays local MP4 files inside the Fallout: New Vegas Pip-Boy. It is a 32-bit xNVSE plugin with native video decoding, synchronized audio, mouse controls, and keyboard controls. It does not require an ESP.
 
-The repository contains the implementation, automated tests, UIO files, build scripts, and technical documentation. It does not contain FFmpeg binaries or playable media.
+The current private release candidate is `0.1.0-rc.2`.
 
-## Project status
+## What it supports
 
-Status: Phase 6 hardening and release validation
+- FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer
+- Viva New Vegas Base and Extended
+- UIO 2.30
+- MP4 files with H.264 video and optional AAC audio
+- Sources up to 1920 by 1080
+- Variable frame rate video and right-angle rotation metadata
+- Mono, stereo, and multichannel AAC, with multichannel audio downmixed for playback
+- Aspect Fit and Fill modes
+- Full color and Pip-Boy tint modes
+- Native Direct3D 9 in fullscreen and windowed mode
 
-The current build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, and installs a UIO prefab. Once the Pip-Boy is open, it validates the live UIO image, engine texture objects, managed Direct3D texture, device, and callback thread before uploading decoded frames. Any unknown object type, texture profile, or thread arrangement disables the update instead of guessing. The plugin does not patch game functions or a Direct3D device vtable.
+The complete Pip-Boy UI and playback path passed at 1920 by 1080 fullscreen. Windowed mode passed a measured 50-cycle focus-loss test and is the safer choice if you Alt+Tab often. DXVK and controller input are not supported.
 
-The Host Release suite passes 27 of 27 tests. The Win32 Release suite passes 36 of 36 tests. Two overlay draw points were rejected because they rendered above the Pip-Boy UI. The accepted path updates an engine-owned managed texture and leaves drawing to the game. It uses no executable hook or Direct3D device vtable patch. The raised 384 by 216 panel passed all four isolated UI profiles at 1920 by 1080 during Phase 1. Keyboard and mouse input, ten Pip-Boy reopen cycles, and 50 measured focus-loss and return cycles passed in the tested native windowed configuration.
+## Requirements
 
-A synthetic recreation test froze inside the game's native reset sequence, so the test, reset hook, and MinHook dependency were removed. A PBVP-disabled control later reproduced the native fullscreen NVIDIA driver crash, so repeated fullscreen Alt+Tab is not supported. The isolated test-profile save guard passes Base and full Extended exit checks without changing normal profiles. Native windowed rows passed at 1280x720 and 30 FPS, 1280x960 and 60 FPS, 2560x1440 and 90 FPS, and 3440x1440 and 120 FPS. The two larger windows were clipped by the 1920x1080 monitor, so those results cover the visible panel and logged backbuffer rather than the full window.
+- Windows 10 or Windows 11
+- Fallout: New Vegas 1.4.0.525
+- Mod Organizer 2
+- xNVSE 6.4.5 or newer
+- UIO 2.30
+- A working Viva New Vegas Base or Extended installation
 
-Phase 1 supports native Direct3D 9 windowed mode. PBVP owns no default-pool resource and retains no Direct3D reference between callbacks. A changed device or engine surface is validated before use, but the tested windowed focus path did not produce an observable device recreation. DXVK and a safe root-management tool are not installed in the target VNV instance, so the project makes no DXVK claim and does not add a root proxy.
+## Install with Mod Organizer 2
 
-Phase 2 has pinned FFmpeg 8.1.2 and a minimal Win32 runtime. The reproducible build enables only the MOV demuxer, H.264 and AAC decoders and parsers, software scaling, and audio resampling. Two clean builds produced the same five DLL hashes. The runtime audit rejects non-i386 images, changed hashes, unexpected imports, extra DLLs, and private build paths. The plugin loads that set from its private directory with restricted absolute paths and rejects wrong versions or configurations. Custom Windows AVIO supports bounded local reads, seeks, Unicode names, and cancellation. Checked media layouts and generation-aware queues enforce dimension, item-count, and byte limits before decoded data reaches the game.
+1. Download `PipBoyVideoPlayer-0.1.0-rc.2.zip`.
+2. In Mod Organizer 2, select **Install a new mod from an archive**.
+3. Choose the downloaded ZIP and name the mod `Pip-Boy Video Player`.
+4. Enable the mod in the left pane.
+5. Confirm that UIO is enabled in the same profile.
+6. Launch Fallout: New Vegas through the xNVSE entry in Mod Organizer 2.
 
-The decoder worker opens MP4 and MOV containers, requires H.264 video, accepts optional AAC audio, converts video to BGRA, applies right-angle display rotation, and resamples audio to bounded interleaved 16-bit PCM. It keeps variable frame rate timestamps from FFmpeg's best-effort timestamp field. Forward and backward seeks clear queued output by generation before the worker flushes its codecs. Synthetic tests cover valid decoding, silent variable frame rate video, rotation, cancellation, damaged and encrypted input, unsupported codecs, audio layouts, and source limits. A live MO2 run opened a 1080p fixture that existed only in a separate media mod, decoded all expected video and audio, and measured a 62,976,000 byte private-memory increase after a stable no-decode control.
+Do not extract the FFmpeg DLLs into the game directory or the shared `NVSE\Plugins` directory. They belong in the player's private `NVSE\Plugins\PipBoyVideoPlayer\bin` directory, which is already correct in the archive.
 
-Phase 3 uses the Windows 10 and Windows 11 system XAudio2 2.9 runtime. The audio stream owns a fixed 256 KiB PCM pool, keeps callbacks limited to atomic updates, and uses the consumed sample count as the media clock. A checked QPC clock handles silent video. Automated tests cover pause, resume, mute, volume, stop and flush, forward and backward clock origins, end of stream, bounded queue pressure, default-device reconstruction, 44.1 and 48 kHz mono and stereo voices, 5.1 downmix through the decoder, and 25 complete audio lifetimes. The 100, 200, and 300 ms prebuffer cases completed with zero underruns.
+The [installation and video tutorial](docs/installation-and-use.md) includes the full MO2 setup, supported file details, and removal steps.
 
-The live Phase 3 MO2 diagnostic played a generated two-second AAC fixture through FalloutNV. The user heard the tone. XAudio2 consumed 96,967 output samples, reached the expected 2,020,125 microsecond clock, and reported zero underruns. The decoder joined before FFmpeg unload, and the source voice and callback targets were released before process shutdown. The release packager rejects this private diagnostic and any bundled XAudio2 DLL.
+## Add videos
 
-Phase 4 connects decoding, XAudio2, audio-led frame selection, the Pip-Boy texture upload, status text, and menu lifecycle handling. It keeps bounded decoder queues and one presentation frame, drops late video without changing the media clock, uses QPC for silent media, and stops playback when the Pip-Boy closes or the game changes state. Automated tests cover pause, resume, forward and backward seeks, stop during buffering, stale generations, silent playback, foreign-thread refusal, bounded 1080p memory, and orderly shutdown.
+Keep your videos in a separate MO2 mod so an update cannot overwrite them:
 
-The accepted live 30-minute run decoded 54,000 frames, uploaded 53,993, and recorded zero underruns. It finished with 28.125 milliseconds of audio-to-video error and 41,811,968 bytes of additional private memory. Upload time was 18.30 microseconds minimum, 24.64 microseconds average, and 150.40 microseconds maximum.
+1. Right-click the MO2 left pane and select **Create empty mod**.
+2. Name it `Pip-Boy Videos`.
+3. Open that mod in Explorer.
+4. Create `NVSE\Plugins\PipBoyVideoPlayer\Videos` inside it.
+5. Copy your `.mp4` files directly into the `Videos` folder.
+6. Enable `Pip-Boy Videos` and restart the game through MO2.
 
-The accepted live five-minute 10 FPS run used the same 30 FPS fixture. It decoded 9,001 frames, presented 2,998, dropped 6,002, and reached a 299,980,000 microsecond audio clock with zero underruns. Its maximum playback update gap was 110 milliseconds. Renderer shutdown accounted for all 3,343 submissions as 3,342 uploads and one cleared pending frame, with no replacement or upload failure.
+The resulting folder is:
 
-Phase 5 adds a bounded direct-child MP4 catalog with Unicode filenames, natural sorting, eight visible rows, lazy title metadata, and scoped mouse and keyboard controls. It implements aspect fit, aspect fill, Pip-Boy tint, full color, volume and resource settings, idle-only configuration reload, and privacy-safe normal logs. The accepted live catalog run displayed ten separate entries and played selected files. Mouse activation and every shipped keyboard action worked, including both seek directions, pause, stop, and return to the Data page. Controller input is not supported.
-
-These results satisfy the Phase 4 synchronization, frame-rate independence, seek and buffering-stop automation, and memory exit criteria. Phase 5 portable checks, the live Fit and Fill comparison, idle configuration reload, the four-profile UI matrix, and the final mouse and keyboard smoke run passed. Controller support is outside the release scope. The native 100-cycle repetition and 40-seek tests also passed. Deterministic native tests cover damaged, unsupported, and encrypted media. The two-hour mixed soak was not run for private candidate 0.1.0-rc.1 at the project owner's direction. DXVK is not supported.
-
-## Build
-
-The repository follows the same local layout and script conventions as RadioCaptions. Downloaded sources stay under the ignored `external` directory, generated projects stay under `build-vs` or `build-host`, staging uses `stage`, and archives use `dist`.
-
-Required tools are CMake, Visual Studio with the x86 C++ workload, PowerShell, MSYS2, and LLVM 22.1.0. The FFmpeg build uses the MSYS2 i686 GCC 15.2.0 toolchain, NASM 3.01, GNU Make 4.4.1, and pkgconf 2.5.1. Release packaging uses the pinned LLVM version for `llvm-pdbutil` and `llvm-readobj`. Run these commands from a PowerShell prompt:
-
-```powershell
-.\scripts\fetch-dependencies.ps1
-.\scripts\build-ffmpeg.ps1 -Clean
-.\scripts\configure.ps1 -Target plugin
-.\scripts\build.ps1 -Configuration Debug -Jobs 2
-.\scripts\test.ps1 -Configuration Debug
+```text
+<MO2 instance>\mods\Pip-Boy Videos\NVSE\Plugins\PipBoyVideoPlayer\Videos
 ```
 
-The dependency script downloads the official xNVSE 6.4.5 and FFmpeg 8.1.2 source archives and verifies both SHA-256 hashes before extraction. The FFmpeg script builds and audits the five private i386 runtime DLLs. The plugin build then uses a Win32 Visual Studio generator. A separate host build can run the portable tests without building the plugin:
+The catalog reads files directly inside this folder. It does not scan subfolders. Filenames may use Unicode characters, and the list uses natural sorting.
+
+## Set up the reference VNV profile
+
+If you are working from this repository, the setup helper can prepare the reference MO2 instance. It installs the checked runtime archive and creates the personal video mod. The new profile starts from the Extended configuration without copying its saves.
+
+Run this from the repository root while FalloutNV and Mod Organizer 2 are closed:
+
+```powershell
+.\scripts\setup-gameplay-profile.ps1 `
+  -InstanceRoot '<MO2 instance>' `
+  -RuntimeArchive '.\dist\PipBoyVideoPlayer-0.1.0-rc.2.zip' `
+  -SelectProfile
+```
+
+The new profile is named `Pip-Boy Video Player`. The helper disables the PBVP test fixtures in that profile and selects it. It does not change an existing VNV profile. Repeat runs preserve saves, personal videos, and edited player settings.
+
+## Use the player
+
+1. Open the Pip-Boy and select Data.
+2. Select `VIDEOS`.
+3. Choose a video with the mouse or Up and Down Arrow keys.
+4. Press Enter or left-click the selected video.
+
+| Action | Input |
+| --- | --- |
+| Select or play | Enter or left click |
+| Pause or resume | Space |
+| Stop or go back | Escape, Backspace, or right click |
+| Seek backward | Left Arrow |
+| Seek forward | Right Arrow |
+| Previous video | Up Arrow or wheel up |
+| Next video | Down Arrow or wheel down |
+| Toggle tint or full color | T |
+
+Closing the Pip-Boy or leaving the Videos page stops playback. The player does not save a resume position.
+
+## Settings
+
+`Config\PipBoyVideoPlayer.ini` controls volume, mute, seek length, Fit or Fill display, tint, catalog limits, resource limits, key bindings, and log detail.
+
+You can reload settings while the player is idle with this xNVSE console command:
+
+```text
+ReloadPluginConfig "Pip-Boy Video Player"
+```
+
+Reload works only while the player is idle.
+
+## Troubleshooting
+
+If `VIDEOS` is missing, confirm that Pip-Boy Video Player and UIO are enabled in the active profile and that the game was launched through xNVSE. If the catalog is empty, check that the video mod is enabled and each MP4 is directly inside the documented `Videos` folder.
+
+The plugin writes `PipBoyVideoPlayer.log` in the Fallout: New Vegas game directory. Review the log before sharing it because normal logging can include media basenames. It does not intentionally log absolute media paths or embedded title metadata.
+
+See [Troubleshooting](docs/troubleshooting.md) for playback error meanings and compatibility checks. Bug reports should follow the [bug report guide](docs/bug-report-guide.md).
+
+## Building
+
+The source tree uses the same local layout and script conventions as RadioCaptions. Downloaded sources stay under `external`, generated builds use `build-vs` or `build-host`, staging uses `stage`, and release archives use `dist`.
+
+The Win32 plugin build requires CMake, Visual Studio with the x86 C++ workload, PowerShell, MSYS2, and LLVM 22.1.0. The complete build and dependency instructions are in [Build, packaging, and licensing](docs/build-packaging-and-licensing.md).
+
+Portable tests can run without building the plugin:
 
 ```powershell
 .\scripts\configure.ps1 -Target host
@@ -56,84 +129,8 @@ cmake --build build-host --parallel
 ctest --test-dir build-host --output-on-failure
 ```
 
-Release packaging performs a second audit after both ZIP files are written. It requires the exact runtime and symbols inventories, consistent entry timestamps, safe entry names, bounded expansion, the approved DLL set, and no personal media, saves, logs, dumps, build objects, executables, PDB files in the runtime archive, or absolute local paths. It then installs, removes, and reinstalls the runtime archive in an isolated MO2-shaped directory. A separate save sentinel must remain unchanged.
+## License
 
-The native Phase 6 lifecycle test completes 100 open and stop cycles, followed by 20 forward and 20 backward seeks in one playback session. The accepted run retained 765,952 private bytes, kept process handles at 184 and threads at 6, and reported zero audio underruns after the seek loop. These checks exercise the decoder, XAudio2, and playback state machine outside the game. A three-session in-game smoke also passed with zero underruns and complete renderer accounting. The two-hour soak remains unverified for private candidate 0.1.0-rc.1.
+Original Pip-Boy Video Player code and documentation are licensed under the [MIT License](LICENSE). FFmpeg, winpthreads, xNVSE, UIO, Fallout: New Vegas, and their assets remain under their own terms. See [Third-party notices](THIRD_PARTY_NOTICES.md) for the packaged dependency details.
 
-`scripts\measure-phase6-process.ps1` records private bytes, working set, handles, threads, CPU time, and elapsed time for a live FalloutNV process. It waits for the game, samples until that process exits, ignores the first five minutes when it calculates the default summary, and writes the raw samples and summary as JSON. The sampler does not inject code or call game objects. Use a path under the ignored `build-host` directory for private test evidence:
-
-```powershell
-.\scripts\measure-phase6-process.ps1 `
-  -OutputPath .\build-host\phase6-soak-process.json `
-  -IntervalMilliseconds 5000 `
-  -WarmupSeconds 300
-
-.\scripts\check-phase6-process-metrics.ps1 `
-  -MetricsPath .\build-host\phase6-soak-process.json
-```
-
-The checker requires two hours of samples, a five-minute warm-up, at least 80 percent sample coverage, private-memory growth below 128 MiB, and bounded handle and thread growth. It also recalculates every summary from the raw samples before accepting the file.
-
-## Intended user experience
-
-The user installs the mod through Mod Organizer 2, creates a separate personal media mod, and places MP4 files in its `Data\NVSE\Plugins\PipBoyVideoPlayer\Videos` directory. A Videos page in the Pip-Boy lists those files. Selecting a file starts native decoding without converting the video into DDS frames first.
-
-The player currently implements:
-
-- local MP4 files with H.264 video and AAC audio for the first release;
-- play, pause, stop, and short forward or backward seeks;
-- mouse and keyboard input;
-- aspect-fit and aspect-fill presentation;
-- full-color and Pip-Boy-tinted display modes;
-- variable frame rate media;
-- audio-led synchronization with late video frame dropping;
-- clean shutdown when the menu closes, a save loads, or the game exits.
-
-The mod will not stream from websites, bypass DRM, scan arbitrary folders, or ship copyrighted video packs.
-
-## Runtime pieces
-
-The design has four runtime parts:
-
-1. An x86 xNVSE plugin owns lifecycle, menu state, worker threads, logging, and configuration.
-2. A private FFmpeg runtime opens MP4 containers, decodes audio and video, converts pixel formats, and resamples audio.
-3. A Direct3D 9 renderer uploads decoded frames into an engine-owned UIO image on the game render thread.
-4. An XAudio2 stream plays decoded PCM. Its sample cursor is the master playback clock when audio exists.
-
-The plugin remains ESP-less. xNVSE and UIO are required. JIP LN, JohnnyGuitar, and ShowOff are part of the VNV baseline but are not hard dependencies.
-
-## Documentation map
-
-- [Project scope](docs/project-scope.md)
-- [Architecture](docs/architecture.md)
-- [Playback design](docs/playback-design.md)
-- [UI, input, and files](docs/ui-input-and-files.md)
-- [Build, packaging, and licensing](docs/build-packaging-and-licensing.md)
-- [Compatibility and test plan](docs/compatibility-and-test-plan.md)
-- [Installation and use](docs/installation-and-use.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [Bug report guide](docs/bug-report-guide.md)
-- [0.1.0-rc.1 release notes](docs/release-notes-0.1.0-rc.1.md)
-- [Phase 5 live test guide](docs/phase5-live-test-guide.md)
-- [Phase 6 live test guide](docs/phase6-live-test-guide.md)
-- [Risk register](docs/risk-register.md)
-- [Roadmap](docs/roadmap.md)
-- [Decisions and open questions](docs/decisions-and-open-questions.md)
-- [Research notes](docs/research-notes.md)
-- [Contributing](CONTRIBUTING.md)
-
-## Non-negotiable constraints
-
-Fallout: New Vegas is a 32-bit process. Video queues must stay bounded, source dimensions must be checked before allocation, and all Direct3D work must stay on the render thread. The plugin must release default-pool graphics resources before a Direct3D device reset. Decoder failure must stop playback and return control to the Pip-Boy instead of taking down the game.
-
-VNV compatibility is a release gate, not a best-effort claim. Each release candidate must pass against the documented VNV profiles and UI variants before publication.
-
-The remaining compatibility and stability work can still expose a release blocker. The [risk register](docs/risk-register.md) lists the conditions that would block or redirect the design.
-
-## Naming
-
-"Pip-Boy Video Player" is a working project name. The final public name should be checked for conflicts before the first release.
-
-## License status
-
-No project license has been selected. Until a license file is added, the repository should be treated as all rights reserved. FFmpeg has separate license obligations described in [Build, packaging, and licensing](docs/build-packaging-and-licensing.md).
+The repository and release archives do not include personal media or Bethesda assets.
