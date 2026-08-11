@@ -622,6 +622,8 @@ The local live-only fixture is a synthetic 160 by 120 H.264 High video with ster
 
 The portable reload policy accepts only the idle playback state. It rejects unavailable, opening, buffering, playing, paused, stopping, and error states. This protects the state gate but does not replace an in-game idle reload with changed presentation and resource settings.
 
+The first live comparison accepted the Fit view because the 4:3 fixture showed the expected side bars. The next open still used Fit, and the completed log contained no successful reload record. Inspection found an identifier mismatch: xNVSE registers the plugin as `Pip-Boy Video Player`, while the listener compared the dispatched name with `PipBoyVideoPlayer`. That run does not count as an idle reload or Fill result. The listener now compares against its registered name, and the corrected console command is `ReloadPluginConfig "Pip-Boy Video Player"`. A new live run remains required.
+
 ## UI matrix
 
 Test these layouts independently:

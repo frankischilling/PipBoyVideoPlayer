@@ -5,6 +5,8 @@ endif()
 set(registration "${PBVP_SOURCE_DIR}/data/uio/public/PipBoyVideoPlayer.txt")
 set(prefab "${PBVP_SOURCE_DIR}/data/menus/prefabs/PipBoyVideoPlayer/Player.xml")
 set(configuration "${PBVP_SOURCE_DIR}/data/Config/PipBoyVideoPlayer.ini")
+set(live_test_guide "${PBVP_SOURCE_DIR}/docs/phase5-live-test-guide.md")
+set(ui_input_guide "${PBVP_SOURCE_DIR}/docs/ui-input-and-files.md")
 
 file(READ "${registration}" registration_text)
 string(REPLACE "\r\n" "\n" registration_text "${registration_text}")
@@ -38,6 +40,8 @@ foreach(required_name IN ITEMS
 endforeach()
 
 file(READ "${configuration}" configuration_text)
+file(READ "${live_test_guide}" live_test_guide_text)
+file(READ "${ui_input_guide}" ui_input_guide_text)
 foreach(required_setting IN ITEMS
         "Enabled=1"
         "Volume=1.0"
@@ -294,6 +298,18 @@ string(FIND "${plugin_text}" "g_videos_page_state = VideosPageState::data_page;\
 if(reload_case_offset EQUAL -1 OR NOT reload_state_leak_offset EQUAL -1)
     message(FATAL_ERROR "Rejected configuration reloads must not change the Videos page state")
 endif()
+string(FIND "${plugin_text}" "sizeof(kPluginName)" reload_name_size_offset)
+string(FIND "${plugin_text}" "std::memcmp(message->data, kPluginName" reload_name_compare_offset)
+if(reload_name_size_offset EQUAL -1 OR reload_name_compare_offset EQUAL -1)
+    message(FATAL_ERROR "Configuration reload messages must match the registered xNVSE plugin name")
+endif()
+foreach(reload_guide_text IN ITEMS "${live_test_guide_text}" "${ui_input_guide_text}")
+    string(FIND "${reload_guide_text}" "ReloadPluginConfig \"Pip-Boy Video Player\"" quoted_reload_offset)
+    string(FIND "${reload_guide_text}" "ReloadPluginConfig PipBoyVideoPlayer" stale_reload_offset)
+    if(quoted_reload_offset EQUAL -1 OR NOT stale_reload_offset EQUAL -1)
+        message(FATAL_ERROR "Reload documentation must use the quoted registered xNVSE plugin name")
+    endif()
+endforeach()
 
 string(FIND "${prefab_text}" "<string> PLAYING </string>" layer_probe_offset)
 if(layer_probe_offset EQUAL -1)

@@ -36,7 +36,7 @@ Get-FileHash -LiteralPath $aspectFixture -Algorithm SHA256
 3. Confirm that the whole 4:3 picture is visible with black bars at the left and right.
 4. Stop playback and return to the ordinary Data page so the player is idle.
 5. Change the development INI to `AspectMode=Fill`.
-6. Open the game console and run `ReloadPluginConfig PipBoyVideoPlayer`.
+6. Open the game console and run `ReloadPluginConfig "Pip-Boy Video Player"`. The quotation marks are required because the registered plugin name contains spaces.
 7. Reopen Data and `VIDEOS`, then play `Aspect Mode 4x3` again.
 8. Confirm that the picture fills the 16:9 stage and crops the top and bottom. It must not draw over the Pip-Boy frame or map buttons.
 9. Exit the game normally.

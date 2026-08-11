@@ -117,7 +117,7 @@ The shipped INI lists every supported setting. `Volume` accepts 0.0 through 1.0,
 
 Resource values may lower the compiled limits, but they cannot raise the supported 1920 by 1080 source limit, 512-pixel queued-video edge, 32 GiB file limit, or 500-entry catalog limit. Invalid values keep their compiled defaults. Unknown keys and malformed lines are ignored and summarized once in the log without printing the configuration path.
 
-`ReloadPluginConfig PipBoyVideoPlayer` applies a changed INI only while playback is idle. A successful reload returns to the ordinary Data page, where `VIDEOS` can be opened again with a fresh catalog scan. A reload request during opening, buffering, playback, pause, or an error leaves the settings, Videos page, and playback state unchanged.
+`ReloadPluginConfig "Pip-Boy Video Player"` applies a changed INI only while playback is idle. The quotation marks are required because xNVSE resolves the registered plugin name as one string. A successful reload returns to the ordinary Data page, where `VIDEOS` can be opened again with a fresh catalog scan. A reload request during opening, buffering, playback, pause, or an error leaves the settings, Videos page, and playback state unchanged.
 
 An MCM page is optional for a later release. The first version uses the INI and exposes tint switching in the player.
 

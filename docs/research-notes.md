@@ -475,6 +475,8 @@ FFmpeg documents [`AVFormatContext::metadata`](https://ffmpeg.org/doxygen/8.0/st
 
 The live Fit and Fill test uses a local synthetic 160 by 120 H.264 High fixture with stereo 48 kHz AAC. It runs for 30 seconds at 10 FPS, contains 767,230 bytes, and has SHA-256 `5FF551A7C3B482CD042391AEE810EE5D08AAA77417EA6908572F5D291B67F4DF`. The mpv-bundled generator reports version `N-124056-gc92304f8c` and has SHA-256 `988BC64EE84D468EE15D809432918907AC334C28249848DB272EA3AC79E49B45`. The approved FFmpeg 8.0.1 fixture generator was not available locally, so this file stays outside the repository and release package. It is suitable for the visual live check but is not a new canonical fixture.
 
+The first live aspect comparison showed the expected Fit side bars, but the next playback still used Fit. The log had no successful reload record. The pinned xNVSE 6.4.5 [`ReloadPluginConfig` implementation](https://github.com/xNVSE/NVSE/blob/625db7e60007fbcceab755650ed479b5c337717c/nvse/nvse/PluginManager.cpp) resolves its string argument through `GetInfoByName`, then sends the same registered name with `kMessage_ReloadConfig`. PBVP registers `Pip-Boy Video Player` but compared the incoming message with `PipBoyVideoPlayer`. xNVSE could not find the compact name, and PBVP rejected the registered name. The corrected listener uses the same `kPluginName` constant as plugin registration. The console command must quote the name: `ReloadPluginConfig "Pip-Boy Video Player"`.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

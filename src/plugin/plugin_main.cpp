@@ -1187,9 +1187,9 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
             break;
         case NVSEMessagingInterface::kMessage_ReloadConfig:
             if (message->data != nullptr && message->dataLen ==
-                    sizeof("PipBoyVideoPlayer") &&
-                std::memcmp(message->data, "PipBoyVideoPlayer",
-                            sizeof("PipBoyVideoPlayer")) == 0) {
+                    sizeof(kPluginName) &&
+                std::memcmp(message->data, kPluginName,
+                            sizeof(kPluginName)) == 0) {
                 ReloadConfiguration();
             }
             break;
