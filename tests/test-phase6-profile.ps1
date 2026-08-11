@@ -16,7 +16,8 @@ $enabledMods = @(
     'Pip-Boy Video Player - Phase 1 Save Guard',
     'Pip-Boy Video Player - Dev',
     'Pip-Boy Video Player - Catalog Test',
-    'Pip-Boy Video Player - Long Playback Test'
+    'Pip-Boy Video Player - Long Playback Test',
+    'Pip-Boy Video Player - Fault Test'
 )
 $disabledMods = @(
     'Pip-Boy Video Player - Playback Test',

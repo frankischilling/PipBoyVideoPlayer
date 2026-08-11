@@ -221,5 +221,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Symbols archive creation failed.' }
     -Version $Version `
     -RepositoryRoot $root `
     -PrivatePathMarkers $localMarkers
+& (Join-Path $PSScriptRoot 'check-phase6-install-removal.ps1') `
+    -RuntimeArchive $runtimeArchive
 Write-Host $runtimeArchive
 Write-Host $symbolsArchive

@@ -417,6 +417,23 @@ if(PBVP_BUILD_TESTS)
             -ProfileScript ${CMAKE_SOURCE_DIR}/scripts/prepare-phase6-profile.ps1)
 
     add_test(
+        NAME pbvp_phase6_fault_fixture_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase6-fault-fixtures.ps1
+            -FixtureScript ${CMAKE_SOURCE_DIR}/scripts/prepare-phase6-fault-fixtures.ps1
+            -FixtureDirectory ${CMAKE_SOURCE_DIR}/tests/fixtures)
+
+    add_test(
+        NAME pbvp_phase6_install_removal_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase6-install-removal.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase6-install-removal.ps1)
+
+    add_test(
         NAME pbvp_data_contract_test
         COMMAND ${CMAKE_COMMAND}
             -DPBVP_SOURCE_DIR=${CMAKE_SOURCE_DIR}

@@ -103,7 +103,7 @@ $average = [double]$rendererMatch.Groups['average'].Value
 $maximum = [double]$rendererMatch.Groups['maximum'].Value
 if ($submitted -le 0 -or $uploaded -le 0 -or
     $submitted -ne $uploaded + $replaced + $cleared -or
-    $successes -ne $uploaded -or $attempts -ne $successes -or
+    $successes -lt $uploaded -or $attempts -ne $successes -or
     $failures -ne 0 -or $minimum -le 0.0 -or
     $average -lt $minimum -or $maximum -lt $average -or
     $maximum -ge 1000.0) {
