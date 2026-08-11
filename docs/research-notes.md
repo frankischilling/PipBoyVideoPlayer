@@ -473,6 +473,8 @@ The focused live retest passed the complete shipped keyboard set. Up and Down ch
 
 FFmpeg documents [`AVFormatContext::metadata`](https://ffmpeg.org/doxygen/8.0/structAVFormatContext.html) as file-level metadata populated by the demuxer and owned by the format context. PBVP copies only the `title` value into a fixed 2,048-byte snapshot before the decoder releases that context. The game thread accepts it only when strict UTF-8 conversion succeeds, the title fits the configured display cap, and it contains no control characters. The generated metadata fixture verifies the real `av_dict_get` path against the pinned x86 runtime.
 
+The live Fit and Fill test uses a local synthetic 160 by 120 H.264 High fixture with stereo 48 kHz AAC. It runs for 30 seconds at 10 FPS, contains 767,230 bytes, and has SHA-256 `5FF551A7C3B482CD042391AEE810EE5D08AAA77417EA6908572F5D291B67F4DF`. The mpv-bundled generator reports version `N-124056-gc92304f8c` and has SHA-256 `988BC64EE84D468EE15D809432918907AC334C28249848DB272EA3AC79E49B45`. The approved FFmpeg 8.0.1 fixture generator was not available locally, so this file stays outside the repository and release package. It is suitable for the visual live check but is not a new canonical fixture.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.
@@ -482,6 +484,5 @@ The live Phase 2 test confirmed that custom Win32 I/O sees a file supplied only 
 ## Research still needed
 
 - DXVK behavior at the selected frame boundary if support is later claimed;
-- a reproducible minimal FFmpeg x86 build;
 - codec patent review for binary distribution;
 - permission and naming checks before a public mod page is created.

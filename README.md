@@ -92,6 +92,7 @@ The plugin remains ESP-less. xNVSE and UIO are required. JIP LN, JohnnyGuitar, a
 - [UI, input, and files](docs/ui-input-and-files.md)
 - [Build, packaging, and licensing](docs/build-packaging-and-licensing.md)
 - [Compatibility and test plan](docs/compatibility-and-test-plan.md)
+- [Phase 5 live test guide](docs/phase5-live-test-guide.md)
 - [Risk register](docs/risk-register.md)
 - [Roadmap](docs/roadmap.md)
 - [Decisions and open questions](docs/decisions-and-open-questions.md)
