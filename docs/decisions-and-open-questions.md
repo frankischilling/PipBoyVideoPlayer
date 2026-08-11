@@ -940,6 +940,22 @@ Rejected alternative: do not replace the accepted DDS with a non-square texture.
 
 Consequence: add portable Fit and Fill cases that model a square backing texture displayed at 16:9, plus a live comparison in both modes. The existing live playback result does not count as an aspect-mode acceptance test.
 
+### Background playback after Pip-Boy closure
+
+Date: August 11, 2026
+
+Request: the project owner wants a selected video to keep playing after the Pip-Boy closes so the player can walk around while listening. Reopening the Pip-Boy should show the same session at its current point.
+
+Decision: menu visibility does not control playback lifetime. Closing the Pip-Boy hides the presentation surface while the decoder worker, XAudio2 source or silent clock, and frame scheduler continue. The Videos page state remains in playback so the presentation returns when the Pip-Boy opens again. Back and Stop remain explicit terminal actions. Save load, new game, main menu, and process shutdown also end the session.
+
+Implementation: the playback controller no longer maps a hidden presentation to a terminal reason, and the main game loop no longer stops playback when MapMenu disappears. The game thread continues scheduling frames. The renderer performs no upload while the surface is hidden and keeps only its existing one-frame mailbox, replacing older pending frames as playback advances.
+
+Rejected alternatives: do not pause playback on Pip-Boy closure because that would stop the audio while the player walks. Do not keep every hidden decoded frame because that would violate the x86 memory bounds. Do not store a resume position in a save or co-save.
+
+Evidence: the Win32 controller suite covers AAC playback led by the XAudio2 sample count and silent variable-frame-rate playback led by QueryPerformanceCounter. Both remain active while presentation is hidden, advance their clocks, and return a frame after presentation becomes visible. A live VNV check is still required before the release candidate is accepted.
+
+Consequence: user documentation must distinguish hiding the Pip-Boy from Back or Stop. The background session remains temporary and leaves no state in game saves.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.

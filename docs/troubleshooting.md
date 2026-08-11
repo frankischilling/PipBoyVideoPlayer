@@ -24,13 +24,13 @@ Try the same file in a desktop media probe and confirm its video codec, audio co
 
 `VIDEO MEMORY ERROR` means a checked 32-bit allocation failed. Close other overlays or memory-heavy plugins and try a smaller source. Do not raise the resource limits beyond the shipped caps.
 
-`AUDIO PLAYBACK ERROR` means the XAudio2 stream or default audio device failed. Close the Pip-Boy, confirm that Windows still has a working default output device, and open the video again.
+`AUDIO PLAYBACK ERROR` means the XAudio2 stream or default audio device failed. Press Back or Stop, confirm that Windows still has a working default output device, and open the video again.
 
 `VIDEO DISPLAY ERROR` means the validated Pip-Boy texture path stopped accepting frames. Close the Pip-Boy and reopen it. If the error returns, keep the log and report the active UI and graphics mods.
 
-## Video disappears after closing the Pip-Boy
+## Video stops after closing the Pip-Boy
 
-This is expected. Closing the Pip-Boy or leaving the Videos page stops playback. Open `VIDEOS` and select the file again.
+The picture should disappear when the Pip-Boy closes, but audio and playback should continue. Open the Pip-Boy again and select `VIDEOS`. The same video should appear at its current point. If playback has stopped, keep `PipBoyVideoPlayer.log` and report whether you used Back or Stop, loaded a save, started a new game, or returned to the main menu.
 
 ## Alt+Tab problems
 

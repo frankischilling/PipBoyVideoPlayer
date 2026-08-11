@@ -19,7 +19,7 @@ Close Fallout: New Vegas before installing the archive or changing the active MO
 
 1. Open Mod Organizer 2.
 2. Select **Install a new mod from an archive** in the toolbar.
-3. Choose `PipBoyVideoPlayer-0.1.0-rc.2.zip`.
+3. Choose `PipBoyVideoPlayer-0.1.0-rc.3.zip`.
 4. Confirm that `NVSE`, `menus`, `textures`, `uio`, and `Config` are at the archive root.
 5. Name the mod `Pip-Boy Video Player`.
 6. Enable it in the MO2 left pane.
@@ -96,7 +96,7 @@ If a file is not compatible, convert a copy to H.264 video with AAC audio in an 
 | Next video | Down Arrow or wheel down |
 | Toggle tint or full color | T |
 
-Closing the Pip-Boy or leaving the Videos page stops the current video. Reopen `VIDEOS` and select the file again to restart it.
+Closing the Pip-Boy hides the picture, but the video keeps playing. Audio continues while you walk around. Open the Pip-Boy again to return to the active video at its current point. Use Escape, Backspace, or right click to stop playback and release the file.
 
 ## Change settings
 
@@ -117,7 +117,7 @@ Use the checked setup helper when working from this repository. Close FalloutNV 
 ```powershell
 .\scripts\setup-gameplay-profile.ps1 `
   -InstanceRoot '<MO2 instance>' `
-  -RuntimeArchive '.\dist\PipBoyVideoPlayer-0.1.0-rc.2.zip' `
+  -RuntimeArchive '.\dist\PipBoyVideoPlayer-0.1.0-rc.3.zip' `
   -SelectProfile
 ```
 

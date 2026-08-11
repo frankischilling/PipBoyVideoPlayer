@@ -2,7 +2,7 @@
 
 Pip-Boy Video Player plays local MP4 files inside the Fallout: New Vegas Pip-Boy. It is a 32-bit xNVSE plugin with native video decoding, synchronized audio, mouse controls, and keyboard controls. It does not require an ESP.
 
-The current private release candidate is `0.1.0-rc.2`.
+The current private release candidate is `0.1.0-rc.3`.
 
 ## What it supports
 
@@ -30,7 +30,7 @@ The complete Pip-Boy UI and playback path passed at 1920 by 1080 fullscreen. Win
 
 ## Install with Mod Organizer 2
 
-1. Download `PipBoyVideoPlayer-0.1.0-rc.2.zip`.
+1. Download `PipBoyVideoPlayer-0.1.0-rc.3.zip`.
 2. In Mod Organizer 2, select **Install a new mod from an archive**.
 3. Choose the downloaded ZIP and name the mod `Pip-Boy Video Player`.
 4. Enable the mod in the left pane.
@@ -69,7 +69,7 @@ Run this from the repository root while FalloutNV and Mod Organizer 2 are closed
 ```powershell
 .\scripts\setup-gameplay-profile.ps1 `
   -InstanceRoot '<MO2 instance>' `
-  -RuntimeArchive '.\dist\PipBoyVideoPlayer-0.1.0-rc.2.zip' `
+  -RuntimeArchive '.\dist\PipBoyVideoPlayer-0.1.0-rc.3.zip' `
   -SelectProfile
 ```
 
@@ -93,7 +93,7 @@ The new profile is named `Pip-Boy Video Player`. The helper disables the PBVP te
 | Next video | Down Arrow or wheel down |
 | Toggle tint or full color | T |
 
-Closing the Pip-Boy or leaving the Videos page stops playback. The player does not save a resume position.
+Closing the Pip-Boy hides the picture, but the video keeps playing. Audio continues while you walk around. Open the Pip-Boy again to return to the active video at its current point. Escape, Backspace, or right click stops playback and releases the file. The player does not save a resume position after the session ends.
 
 ## Settings
 

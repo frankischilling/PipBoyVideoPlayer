@@ -318,6 +318,18 @@ foreach(reload_guide_text IN ITEMS "${live_test_guide_text}" "${ui_input_guide_t
     endif()
 endforeach()
 
+file(READ "${PBVP_SOURCE_DIR}/src/playback/playback_controller.cpp" playback_controller_text)
+string(FIND "${plugin_text}" "if (!input.map_menu_visible &&" hidden_menu_stop_offset)
+string(FIND "${playback_controller_text}" "if (!presentation_visible" hidden_controller_stop_offset)
+string(FIND "${plugin_text}" "PlaybackTerminalReason::presentation_hidden" hidden_plugin_reason_offset)
+string(FIND "${playback_controller_text}" "PlaybackTerminalReason::presentation_hidden" hidden_controller_reason_offset)
+if(NOT hidden_menu_stop_offset EQUAL -1 OR
+   NOT hidden_controller_stop_offset EQUAL -1 OR
+   NOT hidden_plugin_reason_offset EQUAL -1 OR
+   NOT hidden_controller_reason_offset EQUAL -1)
+    message(FATAL_ERROR "Closing the Pip-Boy must not stop active playback")
+endif()
+
 file(READ "${PBVP_SOURCE_DIR}/src/render/d3d_renderer.cpp" renderer_text)
 string(FIND "${renderer_text}"
     "surface.status != UiSurfaceStatus::map_hidden &&"
