@@ -42,9 +42,9 @@ Planned FFmpeg libraries:
 
 ### Video queue
 
-The video queue contains presentation timestamps, dimensions, stride, and owned pixel storage. It is bounded to six ready frames and 32 MiB. The six-item limit absorbs short MP4 packet bursts so the interleaved decoder can reach audio packets at a 100 millisecond controller cadence. The byte cap remains authoritative for large frames.
+The video queue contains presentation timestamps, dimensions, stride, and owned pixel storage. It is bounded to 12 ready frames and 32 MiB. For the tested 720p30 profile, 12 items cover 400 milliseconds and allow the 16-item decoded audio queue to become the interleaved worker's backpressure point. The byte cap remains authoritative for large frames.
 
-When the decoder is ahead, it waits. When rendering is late, the presentation side discards frames whose timestamps are behind the audio clock and keeps the newest eligible frame. It never lets the queue grow to absorb a slow game.
+When either decoder queue is ahead, its fixed item or byte limit blocks the worker. When rendering is late, the presentation side discards frames whose timestamps are behind the clock and keeps the newest eligible frame. It never lets a queue grow to absorb a slow game.
 
 ### Audio queue and output
 

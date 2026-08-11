@@ -108,13 +108,11 @@ bool WaitForDecoding(pbvp::MediaDecoder& decoder) {
     return false;
 }
 
-bool WaitForVideoFrames(
-    pbvp::MediaDecoder& decoder,
-    const std::uint64_t frame_count) {
+bool WaitForFullAudioQueue(pbvp::MediaDecoder& decoder) {
     const auto deadline = std::chrono::steady_clock::now() + 10s;
     while (std::chrono::steady_clock::now() < deadline) {
         const pbvp::DecoderSnapshot snapshot = decoder.Snapshot();
-        if (snapshot.video_frames >= frame_count) {
+        if (decoder.BufferUsage().audio_items == 16u) {
             return true;
         }
         if (snapshot.state == pbvp::DecoderState::failed ||
@@ -364,7 +362,7 @@ void TestFullHdMemory(
     pbvp::MediaDecoder decoder(runtime);
     pbvp::MediaDecodeFailure failure{};
     PBVP_CHECK(decoder.Start(fixture_root, L"h264-aac-1080p.mp4", failure));
-    PBVP_CHECK(WaitForVideoFrames(decoder, 6u));
+    PBVP_CHECK(WaitForFullAudioQueue(decoder));
     const pbvp::DecoderSnapshot snapshot = decoder.Snapshot();
     const pbvp::DecoderBufferUsage buffers = decoder.BufferUsage();
     const ProcessUsage filled = MeasureProcessUsage();
@@ -372,10 +370,13 @@ void TestFullHdMemory(
     PBVP_CHECK(snapshot.state == pbvp::DecoderState::decoding);
     PBVP_CHECK(snapshot.info.source_width == 1920u);
     PBVP_CHECK(snapshot.info.source_height == 1080u);
-    PBVP_CHECK(buffers.video_items == 6u);
-    PBVP_CHECK(buffers.video_bytes == 6u * 512u * 288u * 4u);
+    PBVP_CHECK(buffers.video_items > 0u);
+    PBVP_CHECK(buffers.video_items <= 12u);
+    PBVP_CHECK(buffers.video_bytes ==
+               buffers.video_items * 512u * 288u * 4u);
     PBVP_CHECK(buffers.video_bytes <= 32u * mebibyte);
-    PBVP_CHECK(buffers.audio_bytes <= 4u * mebibyte);
+    PBVP_CHECK(buffers.audio_items == 16u);
+    PBVP_CHECK(buffers.audio_bytes == 16u * 4u * 1024u);
 
     const std::uint64_t working_delta = PositiveDelta(
         filled.working_set_bytes, baseline.working_set_bytes);

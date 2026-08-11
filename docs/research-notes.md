@@ -367,6 +367,12 @@ Changing the video item limit to six passed six-second runs with both audio thre
 
 The production build uses that six-item limit, and the memory regression fills all six scaled 1080p frames. All host, normal x86, and armed x86 suites pass. The final 30-second cadence run decoded 896 frames, delivered 273, dropped 622, submitted 1,440,768 samples, reached a 29,800,000 microsecond audio clock, retained five XAudio2 buffers, and recorded zero underruns over 275 updates.
 
+The six-item live build later failed without Alt+Tab. The first underrun occurred after 56.4 seconds. Recovered playback then lasted 6.2 seconds, 61.2 seconds, and 4.0 seconds before the fourth event stopped playback. At failure, the audio clock was 126,656,000 microseconds, XAudio2 had played 6,079,488 of 6,085,632 submitted samples, and the last decoder usage held one video item and no audio item. The visible cadence range was 9.99 to 10.08 FPS. The worker joined and shutdown completed. A new launch overwrote the source log before it could be copied, so the result has terminal-captured counters but no preserved hash.
+
+Six 30 FPS frames cover 200 milliseconds, while the 16-item decoded AAC queue covers about 341 milliseconds at 48 kHz. Testing 12 video items lets the audio queue fill before the video queue because 12 frames cover 400 milliseconds. That configuration completed two controlled minutes with zero underruns, a 119,840,000 microsecond clock, 5,768,192 submitted samples, 11 queued XAudio2 buffers, and 1,101 controller updates. Worker-side video dropping is not selected because it could discard a future frame before the audio clock marks it late.
+
+The production memory regression ran five times in each x86 build. Packet ordering left nine or ten scaled video frames queued when all 16 audio items filled, and every run passed exact byte accounting and the private-memory limit. The five-minute cadence regression then decoded 8,996 frames, delivered 2,748, dropped 6,247, submitted 14,406,656 samples, reached a 299,800,000 microsecond audio clock, retained 11 XAudio2 buffers, and recorded zero underruns over 2,751 updates.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

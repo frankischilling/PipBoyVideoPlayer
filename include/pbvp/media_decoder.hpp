@@ -120,7 +120,7 @@ struct DecodedAudioChunk {
 struct MediaDecoderConfig {
     DecodeLimits payload_limits{};
     MediaIoLimits io_limits{};
-    QueueLimits video_queue{6u, 32u * 1024u * 1024u};
+    QueueLimits video_queue{12u, 32u * 1024u * 1024u};
     QueueLimits audio_queue{16u, 4u * 1024u * 1024u};
     std::uint32_t output_audio_channels{2u};
     std::uint32_t output_audio_rate{48000u};

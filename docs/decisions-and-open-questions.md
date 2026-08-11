@@ -750,6 +750,24 @@ Consequence: update the decoder memory regression for six scaled frames, run all
 
 Implementation evidence: the production configuration and memory regression use six video items under the unchanged 32 MiB cap. The XAudio2 readiness regression, all 15 host tests, all 24 normal x86 tests, and all 24 armed x86 tests pass. The final 30-second real-fixture cadence run stayed in `playing` with zero underruns, reached a 29,800,000 microsecond audio clock, and retained five XAudio2 buffers over 275 updates. The live gate remains open.
 
+Live result: the six-item candidate delayed the first underrun to 56.4 seconds but still failed on the fourth event at a 126,656,000 microsecond audio clock. The terminal capture recorded 6,085,632 submitted samples, 6,079,488 played samples, six queued XAudio2 buffers, one decoder video item, and no decoder audio item. A later unintended launch overwrote the source log before preservation, so no retained hash exists. This rejects a larger waiting queue as a complete correction.
+
+### Let the decoded audio queue govern worker backpressure
+
+Date: August 10, 2026
+
+Decision: raise the default video item limit from six to 12 for the tested 720p30 profile. Keep the 32 MiB video byte cap and every audio limit unchanged. This lets the 16-item decoded audio queue become the interleaved worker's backpressure point.
+
+Reason: at 30 FPS, six video items cover 200 milliseconds. Sixteen decoded AAC chunks of 1,024 samples cover about 341 milliseconds at 48 kHz. The video queue therefore fills first. Twelve video items cover 400 milliseconds, so the bounded audio queue fills first and governs worker progress.
+
+Evidence: the 12-item configuration completed two minutes at a 100 millisecond controller cadence with zero underruns. It decoded 3,597 frames, delivered 1,098, dropped 2,498 late frames, submitted 5,768,192 samples, reached a 119,840,000 microsecond clock, retained 11 XAudio2 buffers, and completed 1,101 updates.
+
+Rejected alternatives: do not drop video on the worker before audio-led selection decides that it is late. Do not raise audio latency, enlarge either audio pool, remove the video byte cap, or add another service thread while aligned bounded backpressure passes the controlled test.
+
+Consequence: update the memory regression to prove the audio queue fills while video stays within 12 items, extend the controlled real-fixture test to five minutes, and repeat the live gate. Do not claim a frame rate beyond the tested 720p30 fixture from this evidence.
+
+Implementation evidence: ten repeated x86 memory runs filled the 16-item audio queue first with nine or ten scaled video frames buffered. The production five-minute cadence run remained in `playing`, recorded zero underruns, reached a 299,800,000 microsecond audio clock, and retained 11 XAudio2 buffers over 2,751 updates. All host, normal x86, and armed x86 suites pass. The live gate remains open.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.

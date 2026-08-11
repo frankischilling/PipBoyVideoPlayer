@@ -276,7 +276,7 @@ void TestOptionalLowFpsStart(
     pbvp::PlaybackController controller(runtime, TestConfig());
     PBVP_CHECK(controller.Open(fixture_root, fixture_name));
     std::uint64_t delivered_frames = 0u;
-    const auto deadline = std::chrono::steady_clock::now() + 30s;
+    const auto deadline = std::chrono::steady_clock::now() + 300s;
     while (std::chrono::steady_clock::now() < deadline) {
         if (!controller.Update(true)) {
             break;
@@ -301,8 +301,8 @@ void TestOptionalLowFpsStart(
         static_cast<unsigned long long>(snapshot.metrics.update_calls));
     PBVP_CHECK(snapshot.playback.state != pbvp::PlaybackState::error);
     PBVP_CHECK(snapshot.audio.underruns == 0u);
-    PBVP_CHECK(delivered_frames >= 250u);
-    PBVP_CHECK(snapshot.metrics.update_calls >= 270u);
+    PBVP_CHECK(delivered_frames >= 2'500u);
+    PBVP_CHECK(snapshot.metrics.update_calls >= 2'700u);
     controller.Stop();
 }
 

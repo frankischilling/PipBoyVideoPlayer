@@ -550,6 +550,18 @@ A six-item video queue completed six-second checks with both 300 and 200 millise
 
 The production configuration now allows six video items under the existing 32 MiB cap. The memory regression fills all six scaled 1080p frames, and the XAudio2 regression proves completed slots do not count toward readiness. All 15 host tests, all 24 normal x86 tests, and all 24 armed x86 tests pass. The final 30-second real-fixture cadence regression stayed in `playing` with zero underruns. It decoded 896 frames, delivered 273, dropped 622 late frames, submitted 1,440,768 samples, reached a 29,800,000 microsecond clock, retained five XAudio2 buffers, and completed 275 controller updates. The live five-minute 10 FPS gate remains open.
 
+The six-item live candidate still failed at 10 FPS without Alt+Tab. The first underrun occurred 56.4 seconds after playback began. Recovery took 67 milliseconds. Later underruns followed 6.2 seconds and 61.2 seconds of playback, and the fourth event produced `audio_stream_failed` after another 4.0 seconds. Visible cadence stayed between 9.99 and 10.08 FPS.
+
+The terminal capture at failure recorded 1,355 controller updates, a 126,656,000 microsecond audio clock, 3,802 decoded frames, 6,085,632 submitted samples, 6,079,488 played samples, six queued XAudio2 buffers, four underruns, one decoder video item, and no decoder audio item. Playback stopped audio, joined the decoder worker, and shut down cleanly. A subsequent unintended game launch overwrote the source log before preservation, so this run has no retained log hash.
+
+At 30 FPS, six video items cover 200 milliseconds, while 16 decoded AAC chunks of 1,024 samples cover about 341 milliseconds at 48 kHz. The video queue therefore blocks the interleaved worker before the audio queue becomes its backpressure point. Twelve video items cover 400 milliseconds for the tested fixture, which lets the bounded audio queue fill first.
+
+The 12-item configuration completed a two-minute real-fixture run with 100 millisecond controller updates and zero underruns. It stayed in `playing`, decoded 3,597 frames, delivered 1,098, dropped 2,498 late frames, submitted 5,768,192 samples, reached a 119,840,000 microsecond audio clock, retained 11 XAudio2 buffers, and completed 1,101 controller updates. The next production candidate uses 12 video items under the unchanged 32 MiB byte cap. The controlled test must reach five minutes before another live run.
+
+The production decoder now allows 12 video items under the unchanged 32 MiB cap. In ten repeated x86 memory runs, the 16-item audio queue filled first with nine or ten scaled video frames buffered. Exact byte accounting and the 128 MiB private-memory limit passed each time. All 15 host tests, all 24 normal x86 tests, and all 24 armed x86 tests pass.
+
+The five-minute real-fixture cadence regression stayed in `playing` with zero underruns. It decoded 8,996 frames, delivered 2,748, dropped 6,247 late frames, submitted 14,406,656 samples, reached a 299,800,000 microsecond audio clock, retained 11 XAudio2 buffers, and completed 2,751 controller updates. The live five-minute 10 FPS gate remains open.
+
 ## UI matrix
 
 Test these layouts independently:
