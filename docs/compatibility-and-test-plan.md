@@ -602,6 +602,8 @@ Portable tests cover D-pad selection, A activation, B closure, X pause and resum
 
 Portable prompt tests compare the exact keyboard and controller text for the catalog, Back control, buffering, playback, pause, and every fixed error state. They also reject missing keyboard labels and undersized output buffers. These tests prove prompt selection and formatting, but a live run must still show that keyboard, mouse, and controller activity switch the visible prompt at the correct time.
 
+The portable catalog tests assert exact relative paths and extension-free display names for Japanese text and a combining acute accent. This supplements the generated MO2 catalog profile without claiming that the game font can draw every Unicode character.
+
 ## Phase 5 aspect scaling audit
 
 Code inspection found that Fit and Fill used only the square 256 by 256 engine texture, even though Gamebryo displays that texture in the 384 by 216 video rectangle. Portable tests now model both dimensions. They verify that a 16:9 source fills the backing texture for a 16:9 presentation, a 4:3 Fit source receives side bars, a 4:3 Fill source crops vertically, and invalid presentation geometry is rejected. A live Fit and Fill comparison remains required.

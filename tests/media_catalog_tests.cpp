@@ -112,13 +112,25 @@ void CheckNamesAndNaturalOrder() {
     PBVP_CHECK(result.entries.size() == 6u);
 
     std::vector<std::wstring> episodes;
+    bool found_japanese = false;
+    bool found_combining = false;
     for (const auto& entry : result.entries) {
         PBVP_CHECK(entry.relative_name.find(L'\\') == std::wstring::npos);
         PBVP_CHECK(entry.session_id != 0u);
         if (entry.display_name.rfind(L"Episode", 0u) == 0u) {
             episodes.push_back(entry.display_name);
         }
+        if (entry.relative_name == L"\u65E5\u672C\u8A9E.mp4") {
+            PBVP_CHECK(entry.display_name == L"\u65E5\u672C\u8A9E");
+            found_japanese = true;
+        }
+        if (entry.relative_name == L"Cafe\u0301.mp4") {
+            PBVP_CHECK(entry.display_name == L"Cafe\u0301");
+            found_combining = true;
+        }
     }
+    PBVP_CHECK(found_japanese);
+    PBVP_CHECK(found_combining);
     PBVP_CHECK(episodes.size() == 3u);
     if (episodes.size() == 3u) {
         PBVP_CHECK(episodes[0] == L"Episode 1");

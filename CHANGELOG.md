@@ -16,6 +16,7 @@
 - Corrected Fit and Fill scaling to use the named Pip-Boy presentation rectangle instead of the square engine texture's aspect ratio.
 - Added portable coverage for the idle-only configuration reload gate across every playback state.
 - Moved bounded catalog and playback prompt formatting into the portable core and added exact keyboard and controller text tests.
+- Added path and display-name round-trip checks for Japanese and combining-character catalog filenames.
 - Corrected the menu cursor source to use `InterfaceManager::cursorX` and `cursorY` instead of the cursor tile's visual traits.
 - Corrected PBVP button hit testing to use the game's locus-adjusted tile position routines instead of adding parent coordinates.
 - Connected the decoder, XAudio2 sample clock, video scheduler, renderer mailbox, Pip-Boy status text, and game lifecycle into a bounded playback controller.
