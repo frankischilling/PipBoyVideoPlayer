@@ -542,3 +542,9 @@ The existing Win32 decoder tests open the same generated source set through the 
 The package workflow extracts the completed runtime archive into an isolated MO2-shaped directory, verifies its required installation roots, removes it, and installs it again. A save sentinel outside the mod directory keeps the same SHA-256 through both operations. Negative fixtures reject an ESP and a traversal entry. This check proves the archive's install boundary and absence of save or plugin files. It does not claim that Mod Organizer 2 itself was automated.
 
 The project owner waived the two-hour mixed soak for private candidate 0.1.0-rc.1 on August 11, 2026. The soak was not run and is not counted as passed. The 30-minute synchronization test, five-minute low-FPS test, native 100-cycle test, 40-seek test, short live hardening smoke, and earlier focus-cycle tests remain separate evidence with their original scope.
+
+## Phase 6 clean-checkout reproduction
+
+The first clean clone verified commit `b2762faae5ca083a28bd745838bceefaa198da99` and downloaded both pinned source archives. xNVSE extracted correctly. GNU tar rejected the drive-qualified FFmpeg archive path because it interpreted the colon as remote-host syntax. This stopped the build before any dependency compiled.
+
+The extraction command now uses GNU tar's `--force-local` option. The manifest test requires that option so a later script change cannot restore the ambiguous drive-colon behavior. The failed clone is not release evidence. A new clone must complete the full dependency build, plugin build, tests, package audit, and archive hash check.

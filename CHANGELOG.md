@@ -2,6 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
+- Fixed clean-checkout FFmpeg extraction by forcing GNU tar to treat the Windows drive-colon archive path as local.
 - Added deterministic Phase 6 fault fixtures for an empty file, random bytes, truncation, unsupported video, unsupported audio, and encrypted media, with an automated installer and inventory check.
 - Added an isolated archive install, removal, and reinstallation check. A save sentinel must retain its exact hash across both operations.
 - Accepted a three-session live hardening smoke with 79 decoded-frame uploads, zero underruns, no playback error, and normal shutdown.
