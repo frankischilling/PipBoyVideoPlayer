@@ -24,6 +24,7 @@ add_library(pbvp_core STATIC
     src/core/controller_input.cpp
     src/core/frame_cadence.cpp
     src/core/input_edge.cpp
+    src/core/input_prompts.cpp
     src/core/media_catalog.cpp
     src/core/media_limits.cpp
     src/core/menu_keyboard.cpp
@@ -364,6 +365,7 @@ if(PBVP_BUILD_TESTS)
         tests/controller_input_tests.cpp
         tests/frame_cadence_tests.cpp
         tests/input_edge_tests.cpp
+        tests/input_prompts_tests.cpp
         tests/media_catalog_tests.cpp
         tests/media_limits_tests.cpp
         tests/menu_keyboard_tests.cpp

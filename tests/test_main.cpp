@@ -8,6 +8,7 @@ void RunCheckedMathTests();
 void RunConfigurationTests();
 void RunControllerInputTests();
 void RunInputEdgeTests();
+void RunInputPromptTests();
 void RunMediaLimitTests();
 void RunMediaCatalogTests();
 void RunMenuVtableValidationTests();
@@ -26,6 +27,7 @@ int main() {
     RunConfigurationTests();
     RunControllerInputTests();
     RunInputEdgeTests();
+    RunInputPromptTests();
     RunMediaLimitTests();
     RunMediaCatalogTests();
     RunMenuKeyboardTests();

@@ -243,6 +243,8 @@ foreach(required_input_fragment IN ITEMS
         "Scoped MapMenu keyboard actions active"
         "CommandForMenuCharacter"
         "ControllerCommandsForButtonEdges"
+        "FormatCatalogPrompt"
+        "FormatPlaybackPrompt"
         "kMenuKeyBackspace"
         "using MenuHandleKeyboardInput = bool(__thiscall*)(void*, std::uint32_t)"
         "ReadInputState"

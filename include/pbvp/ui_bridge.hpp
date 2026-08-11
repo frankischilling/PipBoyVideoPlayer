@@ -8,6 +8,7 @@
 
 #include "pbvp/playback_state.hpp"
 #include "pbvp/configuration.hpp"
+#include "pbvp/input_prompts.hpp"
 #include "pbvp/rect_math.hpp"
 
 namespace pbvp {
@@ -24,11 +25,6 @@ enum class UiInputAction : std::uint32_t {
     seek_backward = 1u << 7u,
     seek_forward = 1u << 8u,
     toggle_presentation = 1u << 9u,
-};
-
-enum class UiInputMethod : std::uint32_t {
-    keyboard_mouse,
-    controller,
 };
 
 constexpr std::uint32_t kUiCatalogRowShift = 16u;

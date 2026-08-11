@@ -600,6 +600,8 @@ The run opened several catalog entries and uploaded 77 decoded frames without an
 
 Portable tests cover D-pad selection, A activation, B closure, X pause and resume, Y presentation changes, and both seek bumpers. They also cover simultaneous button edges, held-button suppression, and unmapped buttons. These checks validate the deterministic action table but do not replace a live controller and prompt-switching run.
 
+Portable prompt tests compare the exact keyboard and controller text for the catalog, Back control, buffering, playback, pause, and every fixed error state. They also reject missing keyboard labels and undersized output buffers. These tests prove prompt selection and formatting, but a live run must still show that keyboard, mouse, and controller activity switch the visible prompt at the correct time.
+
 ## Phase 5 aspect scaling audit
 
 Code inspection found that Fit and Fill used only the square 256 by 256 engine texture, even though Gamebryo displays that texture in the 384 by 216 video rectangle. Portable tests now model both dimensions. They verify that a 16:9 source fills the backing texture for a 16:9 presentation, a 4:3 Fit source receives side bars, a 4:3 Fill source crops vertically, and invalid presentation geometry is rejected. A live Fit and Fill comparison remains required.

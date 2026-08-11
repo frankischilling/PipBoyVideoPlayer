@@ -1086,94 +1086,45 @@ KeyLabel KeyLabelForScanCode(const std::uint32_t scan_code) noexcept {
 }
 
 const char* CatalogPromptText(const UiInputMethod input_method) noexcept {
-    if (input_method == UiInputMethod::controller) {
-        return "A PLAY  D-PAD SELECT";
-    }
     const KeyLabel activate = KeyLabelForScanCode(g_input_settings.select_or_play);
     const KeyLabel previous = KeyLabelForScanCode(g_input_settings.previous_item);
     const KeyLabel next = KeyLabelForScanCode(g_input_settings.next_item);
-    _snprintf_s(
-        g_catalog_prompt.data(), g_catalog_prompt.size(), _TRUNCATE,
-        "%s PLAY  %s/%s SELECT",
-        activate.text.data(), previous.text.data(), next.text.data());
-    return g_catalog_prompt.data();
+    const UiPromptLabels labels{
+        .select_or_play = activate.text.data(),
+        .previous_item = previous.text.data(),
+        .next_item = next.text.data(),
+    };
+    return FormatCatalogPrompt(input_method, labels, g_catalog_prompt)
+        ? g_catalog_prompt.data()
+        : "CONTROLS UNAVAILABLE";
 }
 
 const char* CatalogBackPromptText(const UiInputMethod input_method) noexcept {
-    if (input_method == UiInputMethod::controller) {
-        return "B BACK";
-    }
     const KeyLabel back = KeyLabelForScanCode(g_input_settings.back_or_stop);
-    _snprintf_s(
-        g_catalog_back_prompt.data(), g_catalog_back_prompt.size(), _TRUNCATE,
-        "%s BACK", back.text.data());
-    return g_catalog_back_prompt.data();
+    const UiPromptLabels labels{.back_or_stop = back.text.data()};
+    return FormatCatalogBackPrompt(input_method, labels, g_catalog_back_prompt)
+        ? g_catalog_back_prompt.data()
+        : "BACK";
 }
 
 const char* PlaybackStatusText(
     const PlaybackStateSnapshot& playback,
     const UiInputMethod input_method) noexcept {
-    const bool controller = input_method == UiInputMethod::controller;
     const KeyLabel pause = KeyLabelForScanCode(g_input_settings.pause_resume);
     const KeyLabel back = KeyLabelForScanCode(g_input_settings.back_or_stop);
     const KeyLabel seek_backward = KeyLabelForScanCode(g_input_settings.seek_backward);
     const KeyLabel seek_forward = KeyLabelForScanCode(g_input_settings.seek_forward);
     const KeyLabel toggle = KeyLabelForScanCode(g_input_settings.toggle_color);
-    switch (playback.state) {
-        case PlaybackState::unavailable: return "PLAYER UNAVAILABLE";
-        case PlaybackState::idle: return "VIDEOS";
-        case PlaybackState::opening: return "OPENING VIDEO";
-        case PlaybackState::buffering:
-            if (playback.pause_after_buffering) {
-                _snprintf_s(
-                    g_playback_prompt.data(), g_playback_prompt.size(), _TRUNCATE,
-                    "BUFFERING PAUSED  %s RESUME  %s STOP",
-                    controller ? "X" : pause.text.data(),
-                    controller ? "B" : back.text.data());
-                return g_playback_prompt.data();
-            }
-            _snprintf_s(
-                g_playback_prompt.data(), g_playback_prompt.size(), _TRUNCATE,
-                "BUFFERING  %s STOP", controller ? "B" : back.text.data());
-            return g_playback_prompt.data();
-        case PlaybackState::playing:
-            _snprintf_s(
-                g_playback_prompt.data(), g_playback_prompt.size(), _TRUNCATE,
-                "PLAYING  %s PAUSE  %s STOP  %s/%s SEEK  %s COLOR",
-                controller ? "X" : pause.text.data(),
-                controller ? "B" : back.text.data(),
-                controller ? "LB" : seek_backward.text.data(),
-                controller ? "RB" : seek_forward.text.data(),
-                controller ? "Y" : toggle.text.data());
-            return g_playback_prompt.data();
-        case PlaybackState::paused:
-            _snprintf_s(
-                g_playback_prompt.data(), g_playback_prompt.size(), _TRUNCATE,
-                "PAUSED  %s RESUME  %s STOP  %s/%s SEEK  %s COLOR",
-                controller ? "X" : pause.text.data(),
-                controller ? "B" : back.text.data(),
-                controller ? "LB" : seek_backward.text.data(),
-                controller ? "RB" : seek_forward.text.data(),
-                controller ? "Y" : toggle.text.data());
-            return g_playback_prompt.data();
-        case PlaybackState::stopping: return "STOPPING";
-        case PlaybackState::error:
-            switch (playback.error) {
-                case PlaybackError::media_open_failed: return "VIDEO COULD NOT BE OPENED";
-                case PlaybackError::decoder_failed: return "VIDEO DECODE ERROR";
-                case PlaybackError::decoder_memory_failed: return "VIDEO MEMORY ERROR";
-                case PlaybackError::audio_initialization_failed:
-                case PlaybackError::audio_device_failed:
-                case PlaybackError::audio_stream_failed:
-                    return "AUDIO PLAYBACK ERROR";
-                case PlaybackError::clock_unavailable: return "PLAYBACK CLOCK ERROR";
-                case PlaybackError::render_failed: return "VIDEO DISPLAY ERROR";
-                case PlaybackError::invalid_state:
-                case PlaybackError::none:
-                    return "PLAYBACK ERROR";
-            }
-    }
-    return "PLAYBACK ERROR";
+    const UiPromptLabels labels{
+        .pause_resume = pause.text.data(),
+        .back_or_stop = back.text.data(),
+        .seek_backward = seek_backward.text.data(),
+        .seek_forward = seek_forward.text.data(),
+        .toggle_color = toggle.text.data(),
+    };
+    return FormatPlaybackPrompt(playback, input_method, labels, g_playback_prompt)
+        ? g_playback_prompt.data()
+        : "PLAYBACK ERROR";
 }
 
 const char* ResolveStatusName(const ResolveStatus status) noexcept {
