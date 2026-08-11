@@ -27,6 +27,7 @@ $documentation = @(Get-ChildItem -LiteralPath (Join-Path $root 'docs') -Filter '
 $expectedRuntime = @(
     'CHANGELOG.md'
     'Config/PipBoyVideoPlayer.ini'
+    'LICENSE'
     'menus/prefabs/PipBoyVideoPlayer/Player.xml'
     'NVSE/Plugins/PipBoyVideoPlayer.dll'
     'README.md'
@@ -41,7 +42,7 @@ $expectedRuntime = @(
     "NVSE/Plugins/PipBoyVideoPlayer/bin/$($_.file)"
 })
 $expectedRuntime = @($expectedRuntime | Sort-Object -CaseSensitive -Unique)
-$expectedSymbols = @('PipBoyVideoPlayer.pdb', 'README.md') | Sort-Object -CaseSensitive
+$expectedSymbols = @('LICENSE', 'PipBoyVideoPlayer.pdb', 'README.md') | Sort-Object -CaseSensitive
 $forbiddenExtensions = @(
     '.mp4', '.mov', '.m4v', '.mkv', '.webm', '.avi',
     '.sav', '.nvse', '.log', '.dmp', '.tmp', '.bak', '.obj', '.lib', '.exe'

@@ -112,7 +112,7 @@ $privateRuntimeDirectory = Join-Path $pluginDirectory 'PipBoyVideoPlayer\bin'
 foreach ($runtime in $ffmpegManifest.runtime) {
     Copy-Item -LiteralPath (Join-Path $ffmpegRuntime $runtime.file) -Destination $privateRuntimeDirectory
 }
-foreach ($document in @('README.md', 'CHANGELOG.md', 'THIRD_PARTY_NOTICES.md')) {
+foreach ($document in @('README.md', 'CHANGELOG.md', 'THIRD_PARTY_NOTICES.md', 'LICENSE')) {
     Copy-Item -LiteralPath (Join-Path $root $document) -Destination $stage
 }
 Copy-Item -LiteralPath (Join-Path $root 'docs') -Destination $stage -Recurse
@@ -142,6 +142,7 @@ $symbolsPdb = Join-Path $symbols 'PipBoyVideoPlayer.pdb'
     -OutputPdb $symbolsPdb `
     -BinaryPath $binary
 Copy-Item -LiteralPath (Join-Path $root 'README.md') -Destination $symbols
+Copy-Item -LiteralPath (Join-Path $root 'LICENSE') -Destination $symbols
 
 function Assert-NoLocalPathMarker {
     param(
