@@ -1137,11 +1137,7 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
                     static_cast<void>(
                         pbvp::UiBridge::Instance().SetLayerEnabled(false));
                 }
-                if (!input.map_menu_visible &&
-                    g_videos_page_state != VideosPageState::data_page) {
-                    StopPlayback(pbvp::PlaybackTerminalReason::presentation_hidden);
-                    g_videos_page_state = VideosPageState::data_page;
-                } else if (g_settings.enabled && input.menu_hook_available) {
+                if (g_settings.enabled && input.menu_hook_available) {
                     ProcessVideosInput(input);
                 }
                 static_cast<void>(pbvp::UiBridge::Instance().SetVideosMode(

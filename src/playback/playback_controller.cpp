@@ -34,7 +34,6 @@ const char* PlaybackTerminalReasonName(
         case PlaybackTerminalReason::none: return "none";
         case PlaybackTerminalReason::completed: return "completed";
         case PlaybackTerminalReason::stopped: return "stopped";
-        case PlaybackTerminalReason::presentation_hidden: return "presentation_hidden";
         case PlaybackTerminalReason::lifecycle_transition: return "lifecycle_transition";
         case PlaybackTerminalReason::failed: return "failed";
         case PlaybackTerminalReason::shutdown: return "shutdown";
@@ -100,7 +99,7 @@ bool PlaybackController::Open(
     return true;
 }
 
-bool PlaybackController::Update(const bool presentation_visible) noexcept {
+bool PlaybackController::Update(const bool /*presentation_visible*/) noexcept {
     ++snapshot_.metrics.update_calls;
     if (!IsOwnerThread()) {
         return false;
@@ -114,10 +113,6 @@ bool PlaybackController::Update(const bool presentation_visible) noexcept {
     last_update_tick_ms_ = now_ms;
 
     const PlaybackState current_state = state_.Snapshot().state;
-    if (!presentation_visible && IsActiveState(current_state)) {
-        Stop(PlaybackTerminalReason::presentation_hidden);
-        return true;
-    }
     if (!IsActiveState(current_state)) {
         snapshot_.playback = state_.Snapshot();
         return current_state == PlaybackState::idle || current_state == PlaybackState::error;

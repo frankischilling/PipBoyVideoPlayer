@@ -552,3 +552,11 @@ The extraction command now uses GNU tar's `--force-local` option. The manifest t
 A new clone then downloaded and verified both sources, rebuilt the five i686 FFmpeg DLLs, compiled the portable and Win32 targets, passed all 27 portable and 36 Win32 Release tests, cleaned the public PDB, and created both archives. The runtime archive passed its exact 33-file audit. The symbols archive contained only the matching cleaned PDB and README. The isolated install, removal, reinstallation, and save-sentinel check also passed.
 
 The packaged plugin and the live-tested plugin have identical `.text`, `.data`, `.fptable`, `.rsrc`, and `.reloc` section hashes. Their `.rdata` sections differ because the clean linker invocation wrote a new timestamp and PDB identifier. Both CodeView records name only `PipBoyVideoPlayer.pdb`, and the package audit found no checkout path. The identical code and data sections let the earlier live playback result apply to the clean binary while the new public symbols remain paired with that clean build.
+
+### Background playback acceptance
+
+Date: August 11, 2026
+
+The selected VNV gameplay profile passed the background-playback check at 1920 by 1080 fullscreen with native Direct3D 9. The user started a local H.264 and AAC MP4, closed the Pip-Boy, and walked around while audio continued. Opening the Pip-Boy again showed the same video at its current point.
+
+The session log contains no warnings or errors. It records 1,181 submitted video frames, 789 uploads, 392 mailbox replacements, no mailbox clear, and no upload failure. Audio and the decoder worker stopped only during orderly process shutdown. The preserved log has SHA-256 `424518AE340FC4EEF1933D70ACB332A901D5EEC9B7DA5137F0A9F5BFFFF8412B`.

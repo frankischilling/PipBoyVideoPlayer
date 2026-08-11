@@ -59,12 +59,13 @@ Pause stops the XAudio2 source voice without flushing queued samples and freezes
 
 Resume restarts the voice and reestablishes the clock origin. A long pause must not cause the first visible frame to be treated as late.
 
-Opening another menu above the Pip-Boy, losing focus, or starting a save load uses a policy setting:
+Presentation visibility is separate from playback lifetime:
 
-- Pip-Boy navigation away from Videos stops playback.
-- A temporary modal menu pauses playback.
-- Save load, new game, main menu, or exit stops playback and closes the file.
-- Device loss pauses presentation. Audio pauses once the loss is confirmed so it cannot run far ahead of the screen.
+- Closing the Pip-Boy or covering it with another menu hides the picture while audio, decoding, and the media clock continue.
+- Opening the Pip-Boy again returns to the active video at its current point.
+- Back or Stop ends playback and closes the file.
+- Save load, new game, main menu, or exit ends playback and closes the file.
+- A hidden or temporarily unavailable surface receives no Direct3D upload. The one-frame mailbox keeps the newest scheduled frame for presentation recovery.
 
 ## Seeking
 

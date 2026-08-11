@@ -31,7 +31,6 @@ enum class PlaybackTerminalReason : std::uint32_t {
     none,
     completed,
     stopped,
-    presentation_hidden,
     lifecycle_transition,
     failed,
     shutdown,

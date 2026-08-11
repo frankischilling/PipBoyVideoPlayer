@@ -72,7 +72,7 @@ Mouse buttons use unique MapMenu IDs. Nested button visuals are not mouse target
 
 The list owns focus while idle. Starting playback moves focus to the playback stage and remembers the selected catalog entry. Stop returns to that entry. Focus stays with the playback stage until playback stops. Back from the catalog returns to the Data page.
 
-Closing the Pip-Boy always stops playback. Switching to another Pip-Boy page also stops it.
+Closing the Pip-Boy hides the picture without ending playback. Audio and the media clock continue while the player walks around. Reopening the Pip-Boy returns to the playback stage at the current point. Back from playback stops the session and returns to the selected catalog entry.
 
 The player must not interfere with ordinary Pip-Boy hotkeys, item use, radio controls, map controls, or search features from Pip-Boy UI Tweaks.
 

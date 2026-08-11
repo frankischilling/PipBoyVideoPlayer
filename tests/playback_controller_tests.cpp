@@ -36,9 +36,6 @@ void TestTerminalReasonNames() {
     PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
         pbvp::PlaybackTerminalReason::stopped)) == "stopped");
     PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
-        pbvp::PlaybackTerminalReason::presentation_hidden)) ==
-        "presentation_hidden");
-    PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
         pbvp::PlaybackTerminalReason::lifecycle_transition)) ==
         "lifecycle_transition");
     PBVP_CHECK(std::string(pbvp::PlaybackTerminalReasonName(
@@ -341,7 +338,7 @@ void TestForcedAudioRebuffer(
     controller.Stop();
 }
 
-void TestStopAndThreadOwnership(
+void TestBackgroundPlaybackAndThreadOwnership(
     const pbvp::FfmpegRuntime& runtime,
     const std::wstring& fixture_root) {
     {
@@ -361,11 +358,68 @@ void TestStopAndThreadOwnership(
     {
         pbvp::PlaybackController controller(runtime, TestConfig());
         PBVP_CHECK(controller.Open(fixture_root, L"h264-aac-44100-stereo.mp4"));
-        PBVP_CHECK(controller.Update(false));
-        const auto snapshot = controller.Snapshot();
-        PBVP_CHECK(snapshot.playback.state == pbvp::PlaybackState::idle);
-        PBVP_CHECK(snapshot.terminal_reason ==
-                   pbvp::PlaybackTerminalReason::presentation_hidden);
+        std::uint64_t delivered_frames = 0u;
+        PBVP_CHECK(AdvanceUntil(
+            controller, pbvp::PlaybackState::playing,
+            std::chrono::steady_clock::now() + 5s, delivered_frames));
+        const auto before_hidden = controller.Snapshot();
+
+        const auto hidden_deadline = std::chrono::steady_clock::now() + 250ms;
+        while (std::chrono::steady_clock::now() < hidden_deadline) {
+            PBVP_CHECK(controller.Update(false));
+            static_cast<void>(controller.TakeVideoFrame());
+            const auto state = controller.Snapshot().playback.state;
+            PBVP_CHECK(state != pbvp::PlaybackState::idle);
+            PBVP_CHECK(state != pbvp::PlaybackState::error);
+            Sleep(5u);
+        }
+
+        const auto after_hidden = controller.Snapshot();
+        PBVP_CHECK(after_hidden.terminal_reason == pbvp::PlaybackTerminalReason::none);
+        PBVP_CHECK(after_hidden.metrics.last_media_time_us >
+                   before_hidden.metrics.last_media_time_us + 100'000);
+
+        bool visible_frame_ready = false;
+        const auto visible_deadline = std::chrono::steady_clock::now() + 2s;
+        while (std::chrono::steady_clock::now() < visible_deadline) {
+            PBVP_CHECK(controller.Update(true));
+            if (controller.TakeVideoFrame().has_value()) {
+                visible_frame_ready = true;
+                break;
+            }
+            Sleep(1u);
+        }
+        PBVP_CHECK(visible_frame_ready);
+        controller.Stop();
+        const auto stopped = controller.Snapshot();
+        PBVP_CHECK(stopped.playback.state == pbvp::PlaybackState::idle);
+        PBVP_CHECK(stopped.terminal_reason == pbvp::PlaybackTerminalReason::stopped);
+    }
+    {
+        pbvp::PlaybackController controller(runtime, TestConfig());
+        PBVP_CHECK(controller.Open(fixture_root, L"h264-vfr-silent.mp4"));
+        std::uint64_t delivered_frames = 0u;
+        PBVP_CHECK(AdvanceUntil(
+            controller, pbvp::PlaybackState::playing,
+            std::chrono::steady_clock::now() + 5s, delivered_frames));
+        const auto before_hidden = controller.Snapshot();
+
+        const auto hidden_deadline = std::chrono::steady_clock::now() + 150ms;
+        while (std::chrono::steady_clock::now() < hidden_deadline) {
+            PBVP_CHECK(controller.Update(false));
+            static_cast<void>(controller.TakeVideoFrame());
+            const auto state = controller.Snapshot().playback.state;
+            PBVP_CHECK(state != pbvp::PlaybackState::idle);
+            PBVP_CHECK(state != pbvp::PlaybackState::error);
+            Sleep(5u);
+        }
+
+        const auto after_hidden = controller.Snapshot();
+        PBVP_CHECK(!after_hidden.has_audio);
+        PBVP_CHECK(after_hidden.terminal_reason == pbvp::PlaybackTerminalReason::none);
+        PBVP_CHECK(after_hidden.metrics.last_media_time_us >
+                   before_hidden.metrics.last_media_time_us + 50'000);
+        controller.Stop();
     }
 }
 
@@ -543,7 +597,7 @@ int wmain(int argc, wchar_t** argv) {
     TestPauseAndSeeks(runtime, argv[2]);
     TestRepeatedOpenStopAndSeeks(runtime, argv[2]);
     TestForcedAudioRebuffer(runtime, argv[2]);
-    TestStopAndThreadOwnership(runtime, argv[2]);
+    TestBackgroundPlaybackAndThreadOwnership(runtime, argv[2]);
     TestHighResolutionCompletion(runtime, argv[2]);
     TestSilentCompletion(runtime, argv[2]);
     if (argc == 5) {

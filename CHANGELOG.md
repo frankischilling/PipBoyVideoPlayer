@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-rc.3 - 2026-08-11
+
+- Kept playback active after the Pip-Boy closes. Audio, decoding, and the media clock continue while the player walks around, and reopening Videos returns to the current point.
+- Retained explicit stop behavior for Back, Stop, save load, new game, main menu, and shutdown.
+- Kept hidden presentation bounded through the existing decoder limits and one-frame renderer mailbox.
+- Added Win32 regressions for audio-led and silent background playback.
+- Updated usage, troubleshooting, scope, architecture, decision, risk, and release documentation for the new lifecycle behavior.
+- Passed the live close, walk, and reopen check at 1920 by 1080 fullscreen with native Direct3D 9. The log recorded 392 hidden-frame mailbox replacements and no warning, error, or upload failure.
+
 ## 0.1.0-rc.2 - 2026-08-11
 
 - Added a checked MO2 gameplay-profile installer that creates separate player and personal-video mods without copying source-profile saves.

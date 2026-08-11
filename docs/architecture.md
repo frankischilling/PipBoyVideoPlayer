@@ -46,6 +46,8 @@ The video queue contains presentation timestamps, dimensions, stride, and owned 
 
 When either decoder queue is ahead, its fixed item or byte limit blocks the worker. When rendering is late, the presentation side discards frames whose timestamps are behind the clock and keeps the newest eligible frame. It never lets a queue grow to absorb a slow game.
 
+Pip-Boy visibility does not control playback lifetime. Closing the menu leaves the decoder worker, audio source, and media clock active. The game thread continues selecting frames against that clock. The renderer keeps a single pending frame and replaces it as newer frames become eligible, so a hidden presentation surface cannot create an unbounded backlog. Reopening the Pip-Boy uploads the current scheduled frame. Explicit Back or Stop input and game lifecycle transitions still close the media session.
+
 ### Audio queue and output
 
 The decode worker resamples audio to a fixed PCM format selected during stream setup. An audio feeder maintains a small XAudio2 buffer queue from a fixed pool. Completed buffers return to that pool through voice callbacks. Each callback performs only atomic state or counter updates. It does not allocate, log, decode, acquire a PBVP mutex, call game code, or perform blocking work.

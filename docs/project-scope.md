@@ -17,7 +17,7 @@ The first release is deliberately narrow:
 - constant and variable frame rate timestamps;
 - one video and one audio stream at a time;
 - software decoding through FFmpeg;
-- playback while the Pip-Boy video page is visible;
+- playback that continues after the Pip-Boy closes, with video presentation restored when it opens again;
 - play, pause, restart, stop, seek backward 10 seconds, and seek forward 10 seconds;
 - full-color or Pip-Boy-tinted output;
 - aspect fit by default, with aspect fill as an option;
@@ -31,7 +31,7 @@ Other codecs may work through FFmpeg, but they are not supported until they have
 
 - web URLs, YouTube, network shares, and live streams;
 - DRM-protected media;
-- playlists, shuffle, or background playback outside the Pip-Boy;
+- playlists or shuffle;
 - video projected onto world-space terminals or television meshes;
 - subtitles and closed captions;
 - HDR output and HDR-to-SDR tone mapping;
@@ -47,7 +47,7 @@ Other codecs may work through FFmpeg, but they are not supported until they have
 
 ## User story
 
-The user creates a personal MO2 mod named something like `Pip-Boy Videos`. Inside it, the user creates `NVSE\Plugins\PipBoyVideoPlayer\Videos` and copies MP4 files there. After launching New Vegas through MO2, the Pip-Boy has a Videos entry. The entry lists media names without extensions. The user selects a video, watches it, pauses or seeks when needed, then leaves the page. Leaving the page stops playback and releases the open file.
+The user creates a personal MO2 mod named something like `Pip-Boy Videos`. Inside it, the user creates `NVSE\Plugins\PipBoyVideoPlayer\Videos` and copies MP4 files there. After launching New Vegas through MO2, the Pip-Boy has a Videos entry. The entry lists media names without extensions. The user selects a video, watches it, pauses or seeks when needed, then closes the Pip-Boy and walks around while playback continues. Opening Videos again shows the active video at its current point. Back or Stop ends playback and releases the open file.
 
 The video list refreshes when the Videos page opens. Files added while a video is playing appear the next time the page is opened. The plugin does not watch the entire filesystem.
 
