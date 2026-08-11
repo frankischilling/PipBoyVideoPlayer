@@ -724,6 +724,8 @@ The process sampler records elapsed time, private bytes, working set, handles, t
 
 The release candidate runs a two-hour mixed test: repeated short clips, one 30-minute clip, seeks, pauses, Pip-Boy closures, cell changes between sessions, and regular Alt+Tab cycles. Memory and handle graphs must level off after warm-up. Any crash, deadlock, stuck audio, failed reset, or continuing growth blocks release.
 
+Status for private candidate 0.1.0-rc.1: not run. The project owner waived this gate on August 11, 2026. No soak result is inferred from the shorter live sessions or native repetition tests. The candidate remains a private prerelease with this limitation recorded.
+
 ## Save safety
 
 The planned plugin is ESP-less and stores no playback state in saves or xNVSE co-saves. Test a save before installation, with the mod installed, and after removal. The save should load in each case without missing-form warnings or persistent menu state.

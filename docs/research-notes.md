@@ -503,7 +503,7 @@ The live Phase 2 test confirmed that custom Win32 I/O sees a file supplied only 
 
 ## Phase 6 package audit
 
-The first hardening change audits the written ZIP files instead of relying only on the staging tree. The runtime archive must contain the exact 28-file inventory derived from the repository documentation and pinned FFmpeg manifest. The symbols archive must contain only the matching cleaned PDB and README. The checker also requires safe unique entry names, consistent timestamps, bounded expansion, and no private absolute path.
+The first hardening change audits the written ZIP files instead of relying only on the staging tree. The candidate runtime archive contains the exact 33-file inventory derived from the repository documentation and pinned FFmpeg manifest. The symbols archive contains only the matching cleaned PDB and README. The checker also requires safe unique entry names, consistent timestamps, bounded expansion, and no private absolute path.
 
 The negative fixtures reject an extra DLL, an MP4 file, a local user path, a missing README, and a traversal entry. Host Release passes 21 of 21 tests, Win32 Release passes 30 of 30 tests, and the integrated package command accepted both real archives.
 
@@ -529,4 +529,16 @@ The normal plugin now records one terminal summary for each playback sequence. T
 
 The strict checker accepts only sequential playback numbers with matching catalog opens. Every accepted session must decode and present video, submit audio, report no playback error or underrun, and stay inside the existing queue limits. It also checks renderer accounting and shutdown order. Negative fixtures cover a warning, private path, missing or duplicate session, empty presentation, underrun, missing seek direction, queue overflow, upload failure, and reordered teardown.
 
-The Phase 6 profile script copies the accepted Extended test profile without saves. It enables the development mod, generated catalog, long fixture, and save guard while disabling earlier armed diagnostics. Its automated test verifies selection, mod isolation, unrelated file preservation, exact enablement, and refusal to touch an existing save. Host Release now contains 25 tests and Win32 Release contains 34 tests.
+The Phase 6 profile script copies the accepted Extended test profile without saves. It enables the development mod, generated catalog, long fixture, fault fixtures, and save guard while disabling earlier armed diagnostics. Its automated test verifies selection, mod isolation, unrelated file preservation, exact enablement, and refusal to touch an existing save. With the install and removal check included, Host Release contains 27 tests and Win32 Release contains 36 tests.
+
+The first live session-summary smoke run completed three playback sequences with zero underruns or errors. It accounted for 79 playback submissions as 79 uploads and recorded four additional successful startup test uploads. The initial repetition checker incorrectly required total upload successes to equal playback uploads, even though the renderer has always kept those counters in separate domains. The corrected rule requires every playback submission to end as uploaded, replaced, or cleared; total successful attempts may be higher but may not be lower than playback uploads. A negative fixture rejects missing playback upload coverage.
+
+## Phase 6 fault fixtures and soak waiver
+
+The hardening fixture generator creates seven direct-child MP4 entries in a separate MO2 mod. It copies one valid H.264 and AAC control plus the canonical unsupported-codec and encrypted fixtures. It also writes deterministic empty, random-byte, and 1,024-byte truncated cases. Verification checks every source hash, output size, byte pattern, exact filename, and directory inventory. The script refuses to replace an unexpected file and will not change the live instance while FalloutNV or its Mod Organizer process is running.
+
+The existing Win32 decoder tests open the same generated source set through the private FFmpeg runtime. They require structured failures for empty input, random bytes, truncation, unsupported video, unsupported audio, and encrypted media. The valid control decodes video and audio before and after the failure tests in the wider suite.
+
+The package workflow extracts the completed runtime archive into an isolated MO2-shaped directory, verifies its required installation roots, removes it, and installs it again. A save sentinel outside the mod directory keeps the same SHA-256 through both operations. Negative fixtures reject an ESP and a traversal entry. This check proves the archive's install boundary and absence of save or plugin files. It does not claim that Mod Organizer 2 itself was automated.
+
+The project owner waived the two-hour mixed soak for private candidate 0.1.0-rc.1 on August 11, 2026. The soak was not run and is not counted as passed. The 30-minute synchronization test, five-minute low-FPS test, native 100-cycle test, 40-seek test, short live hardening smoke, and earlier focus-cycle tests remain separate evidence with their original scope.

@@ -2,6 +2,10 @@
 
 ## 0.1.0 - Unreleased
 
+- Added deterministic Phase 6 fault fixtures for an empty file, random bytes, truncation, unsupported video, unsupported audio, and encrypted media, with an automated installer and inventory check.
+- Added an isolated archive install, removal, and reinstallation check. A save sentinel must retain its exact hash across both operations.
+- Accepted a three-session live hardening smoke with 79 decoded-frame uploads, zero underruns, no playback error, and normal shutdown.
+- Recorded that the project owner waived the two-hour mixed soak for this private candidate. It was not run and is not claimed as passed.
 - Added one privacy-safe summary for each playback session. It records terminal state, decoded and presented frames, audio samples, underruns, seek direction counts, buffering, update gaps, and bounded queue peaks.
 - Added a strict live repetition checker for 100 numbered playback sessions and 20 seeks in each direction.
 - Added a save-free Phase 6 MO2 profile that enables the catalog and 30-minute generated fixtures without changing an existing VNV profile.
