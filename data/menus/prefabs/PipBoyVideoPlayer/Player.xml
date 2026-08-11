@@ -208,7 +208,12 @@
             <alpha> 255 </alpha>
             <depth> 12 </depth>
             <x> <copy src="sibling(PBVP_LayerProbeBackground)" trait="x" /> <add> 10 </add> </x>
-            <y> <copy src="sibling(PBVP_LayerProbeBackground)" trait="y" /> <add> 1 </add> </y>
+            <y>
+                <copy src="sibling(PBVP_LayerProbeBackground)" trait="height" />
+                <sub src="me" trait="height" />
+                <div> 2 </div>
+                <add src="sibling(PBVP_LayerProbeBackground)" trait="y" />
+            </y>
             <zoom> 38 </zoom>
             <systemcolor> 1 </systemcolor>
             <brightness> 255 </brightness>

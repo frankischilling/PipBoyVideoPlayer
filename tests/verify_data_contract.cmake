@@ -142,10 +142,10 @@ if(lower_left_inset_offset EQUAL -1)
 endif()
 
 string(FIND "${prefab_text}"
-    "<copy src=\"sibling(PBVP_LayerProbeBackground)\" trait=\"y\" />"
+    "<copy src=\"sibling(PBVP_LayerProbeBackground)\" trait=\"height\" />\n                <sub src=\"me\" trait=\"height\" />\n                <div> 2 </div>\n                <add src=\"sibling(PBVP_LayerProbeBackground)\" trait=\"y\" />"
     probe_text_anchor_offset)
 if(probe_text_anchor_offset EQUAL -1)
-    message(FATAL_ERROR "UI status text must stay anchored to its background")
+    message(FATAL_ERROR "UI status text must stay centered within its anchored background")
 endif()
 
 string(FIND "${prefab_text}" "Interface\\PipBoyVideoPlayer\\Surface.dds" surface_path_offset)

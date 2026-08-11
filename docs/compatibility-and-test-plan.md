@@ -643,6 +643,8 @@ Test catalog sizes of zero, one, ten, one hundred, and five hundred files. Long 
 
 `prepare-phase5-ui-profiles.ps1` creates separate Base, Vanilla UI Plus, Vanilla UI Plus with Clean Vanilla HUD, and full Extended profiles from the accepted Phase 1 isolation profiles. It enables the development plugin, generated catalog, and save guard while disabling the other PBVP fixture mods. It refuses profiles that contain saves and does not select a profile while MO2 or Fallout is running.
 
+The Base profile displayed separate catalog rows, played generated video and audio, kept the Pip-Boy frame and map controls usable, and accepted mouse and keyboard input. Its first playback prompt sat too high in the 38-unit status strip. Fixed insets of 1 and 6 logical units both failed the visual check. The final layout centers the prompt from the strip height and the text tile's measured height. The user accepted that placement. The clean log recorded a decoded upload, zero upload failures, worker shutdown, and process shutdown. The save folder remained empty. The preserved log has SHA-256 `BA42B5F5B70CF3039B5117C2836B81D40204324BFAF0ADBD8FD2DF61F7B7A2A8`.
+
 Preserve one normal log after testing catalog playback in each profile, then run `check-phase5-ui-matrix-logs.ps1`. The checker requires four distinct files. Each log must contain the private runtime, accepted configuration, scoped input bridge, a nonempty catalog, playback and stream records, a decoded upload, joined workers, renderer accounting with no upload failure, and clean process shutdown. The user still needs to confirm layout, labels, and input in each profile.
 
 ## Media fixture set
