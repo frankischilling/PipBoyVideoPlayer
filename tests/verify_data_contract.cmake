@@ -182,6 +182,7 @@ file(READ "${PBVP_SOURCE_DIR}/src/plugin/plugin_main.cpp" plugin_text)
 foreach(required_configuration_path IN ITEMS
         "LoadConfiguration"
         "ReloadConfiguration"
+        "ConfigurationReloadAllowed"
         "SetLayerEnabled")
     string(FIND "${plugin_text}" "${required_configuration_path}" configuration_path_offset)
     if(configuration_path_offset EQUAL -1)

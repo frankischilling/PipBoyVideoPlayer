@@ -412,6 +412,10 @@ bool InputSettingsValid(const InputSettings& settings) noexcept {
     return true;
 }
 
+bool ConfigurationReloadAllowed(const PlaybackState state) noexcept {
+    return state == PlaybackState::idle;
+}
+
 ConfigurationResult LoadConfiguration(
     const std::wstring& configuration_path) noexcept {
     ConfigurationResult result{};

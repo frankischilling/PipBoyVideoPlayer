@@ -248,8 +248,8 @@ void LogConfigurationResult(const pbvp::ConfigurationResult& result) noexcept {
 }
 
 void ReloadConfiguration() noexcept {
-    if (g_playback_controller == nullptr ||
-        g_playback_controller->Snapshot().playback.state != pbvp::PlaybackState::idle) {
+    if (g_playback_controller == nullptr || !pbvp::ConfigurationReloadAllowed(
+            g_playback_controller->Snapshot().playback.state)) {
         PBVP_LOG_WARN("Configuration reload rejected because playback is not idle");
         return;
     }

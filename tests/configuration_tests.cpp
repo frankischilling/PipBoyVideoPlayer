@@ -182,10 +182,22 @@ void CheckFileFailures() {
     PBVP_CHECK(result.status == pbvp::ConfigurationStatus::file_too_large);
 }
 
+void CheckReloadGate() {
+    PBVP_CHECK(pbvp::ConfigurationReloadAllowed(pbvp::PlaybackState::idle));
+    PBVP_CHECK(!pbvp::ConfigurationReloadAllowed(pbvp::PlaybackState::unavailable));
+    PBVP_CHECK(!pbvp::ConfigurationReloadAllowed(pbvp::PlaybackState::opening));
+    PBVP_CHECK(!pbvp::ConfigurationReloadAllowed(pbvp::PlaybackState::buffering));
+    PBVP_CHECK(!pbvp::ConfigurationReloadAllowed(pbvp::PlaybackState::playing));
+    PBVP_CHECK(!pbvp::ConfigurationReloadAllowed(pbvp::PlaybackState::paused));
+    PBVP_CHECK(!pbvp::ConfigurationReloadAllowed(pbvp::PlaybackState::stopping));
+    PBVP_CHECK(!pbvp::ConfigurationReloadAllowed(pbvp::PlaybackState::error));
+}
+
 } // namespace
 
 void RunConfigurationTests() {
     CheckDefaultsAndValidSettings();
     CheckFallbacksAndCounters();
     CheckFileFailures();
+    CheckReloadGate();
 }

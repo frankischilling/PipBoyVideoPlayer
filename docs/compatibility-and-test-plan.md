@@ -604,6 +604,10 @@ Portable tests cover D-pad selection, A activation, B closure, X pause and resum
 
 Code inspection found that Fit and Fill used only the square 256 by 256 engine texture, even though Gamebryo displays that texture in the 384 by 216 video rectangle. Portable tests now model both dimensions. They verify that a 16:9 source fills the backing texture for a 16:9 presentation, a 4:3 Fit source receives side bars, a 4:3 Fill source crops vertically, and invalid presentation geometry is rejected. A live Fit and Fill comparison remains required.
 
+## Phase 5 configuration reload gate
+
+The portable reload policy accepts only the idle playback state. It rejects unavailable, opening, buffering, playing, paused, stopping, and error states. This protects the state gate but does not replace an in-game idle reload with changed presentation and resource settings.
+
 ## UI matrix
 
 Test these layouts independently:

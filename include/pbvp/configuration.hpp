@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pbvp/media_catalog.hpp"
+#include "pbvp/playback_state.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -86,6 +87,7 @@ struct ConfigurationResult final {
 [[nodiscard]] const char* TintModeName(TintMode mode) noexcept;
 [[nodiscard]] const char* LoggingDetailName(LoggingDetail detail) noexcept;
 [[nodiscard]] bool InputSettingsValid(const InputSettings& settings) noexcept;
+[[nodiscard]] bool ConfigurationReloadAllowed(PlaybackState state) noexcept;
 [[nodiscard]] ConfigurationResult LoadConfiguration(
     const std::wstring& configuration_path) noexcept;
 
