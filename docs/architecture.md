@@ -4,7 +4,7 @@
 
 The project is one x86 xNVSE plugin plus data files installed under `Data`. It does not use a `d3d9.dll` proxy and does not require an ESP. The plugin locates the game renderer after xNVSE load. UIO provides an engine-owned `TileImage` for the video surface so Gamebryo controls its clipping and layer order. The plugin updates that image's reviewed Direct3D texture chain from the render thread and does not issue a separate screen-space draw.
 
-The implementation must target FalloutNV 1.4.0.525 and reject unknown executables. It should use verified relocations or signatures rather than naked absolute addresses. Steam, GOG, and patched Epic executables need separate verification records if their code layouts differ.
+The implementation targets FalloutNV 1.4.0.525 and rejects unknown executables. Reviewed engine addresses and object layouts are tied to that runtime. Steam, GOG, and patched Epic executables need separate verification records if their code layouts differ.
 
 ## Components
 
@@ -30,7 +30,7 @@ One worker thread owns FFmpeg format and codec contexts. It opens the selected f
 
 The worker never calls Direct3D. It never edits menu tiles. Seeking is serialized through a command queue so codec flushes and demuxer repositioning happen on the same thread that owns the FFmpeg objects.
 
-Planned FFmpeg libraries:
+The private FFmpeg runtime contains:
 
 - `libavformat` for MP4 demuxing and file I/O;
 - `libavcodec` for audio and video decoding;
@@ -64,7 +64,7 @@ The CPU scaler treats the 256 by 256 backing texture and the named visible recta
 
 The plugin does not retain ownership of the UI texture across callbacks. The engine owns its lifetime and reset behavior. PBVP accepts only `D3DPOOL_MANAGED` for this surface and rejects default-pool or unknown-pool textures. It stores non-owning device and surface identities so a later callback can detect a replacement, validate it, and upload again.
 
-The renderer keeps fixed-size session counters for frame callbacks, visible frames, validated devices, upload attempts, successful uploads, and failures. It records the minimum, average, and maximum successful checkerboard upload time. An orderly shutdown writes one summary line. The counters do not allocate memory and the render callback does not write a line for each frame.
+The renderer keeps fixed-size session counters for frame callbacks, visible frames, validated devices, video submissions, mailbox outcomes, upload attempts, successful uploads, and failures. It records the minimum, average, and maximum successful upload time. An orderly shutdown writes one summary line. The counters do not allocate memory and the render callback does not write a line for each frame.
 
 ### Pip-Boy presentation bridge
 
@@ -82,13 +82,13 @@ xNVSE's filtered DirectInput state remains the mouse source and a secondary keyb
 
 Click actions first use the unique numeric ID assigned to each PBVP hotrect. If MapMenu reports a nested text or image tile instead, the bridge inspects at most eight ancestors and accepts only fixed PBVP button names. Vanilla UI Plus can report its later radio-list target or produce no callback where a PBVP control draws above it. The validated MapMenu callback handles the first case by checking exact visible PBVP hotrect bounds against `InterfaceManager::cursorX` and `cursorY`, the game's menu-space cursor fields at x86 offsets `0x38` and `0x40`. Button origins come from the verified runtime 1.4.0.525 `Tile::GetLocusAdjustedPosX` and `GetLocusAdjustedPosY` routines, so the comparison includes parent and locus transforms. For the entry with no callback, the game thread reads one filtered xNVSE left-button edge while the MapMenu, PBVP layer, and open button are active. It queues the open action only when the cursor is inside `PBVP_OpenButton`. The edge detector waits for a release before arming. Catalog and playback mouse input stays in the MapMenu callback while Videos owns focus. PBVP does not sum tile positions, read cursor tile traits, use a Windows mouse hook, or match visible labels.
 
-The bridge must prove three things before decoder work begins:
+Phase 1 proved three presentation properties before decoder work began:
 
 1. Tile coordinates can be converted to the correct backbuffer rectangle at 4:3, 16:9, 16:10, and ultrawide resolutions.
-2. The chosen render hook puts video above the Pip-Boy background and below player controls and labels.
+2. The engine-owned presentation point puts video above the Pip-Boy background and below player controls and labels.
 3. The game and other plugins retain their Direct3D state after the hook returns.
 
-If those statements cannot be proven, the project needs a different presentation method before proceeding.
+The accepted path uses the engine-owned texture and xNVSE frame-present callback. Any future runtime or renderer path must pass the same checks before it can be supported.
 
 ## Thread ownership
 
@@ -121,7 +121,7 @@ The Phase 1 diagnostic also uses QueryPerformanceCounter at this boundary to mea
 
 PBVP installs no executable detour and does not modify a Direct3D device vtable. MinHook is not a dependency. The xNVSE frame-present notification is the only render callback boundary, so another plugin cannot occupy a PBVP render hook target. The scoped MapMenu input bridge preserves compatible changes to unrelated entries and recognizes one audited Stewie Menu Search keyboard chain. Every other occupied input entry is rejected. Unknown runtime versions are still rejected by `NVSEPlugin_Query`, and every engine object and texture profile is validated before use.
 
-The active VNV Extended test has validated the live texture chain, matching callback thread IDs, managed texture pool, and intended layer order. Portable tests reject unsupported texture sizes, formats, and memory pools. The selected boundary still needs a natural display-transition test, the remaining native Direct3D matrix, and a separate DXVK result before any DXVK support claim.
+The active VNV tests validated the live texture chain, matching callback thread IDs, managed texture pool, intended layer order, native windowed resolution matrix, and repeated focus changes. Portable tests reject unsupported texture sizes, formats, and memory pools. Phase 6 still needs repeated game-initiated display transitions. A separate DXVK result is required before any DXVK support claim.
 
 PBVP does not request or force renderer recreation. The retired private request path froze after entering the native recreation call, so its build flag, request writer, observer, and installer were removed. Any remaining lifecycle test must begin with a display transition initiated by the game. Direct calls to the engine helper, the renderer owner, or `IDirect3DDevice9::Reset` are outside the supported design.
 

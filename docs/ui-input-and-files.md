@@ -2,12 +2,9 @@
 
 ## Pip-Boy entry
 
-The preferred layout adds `VIDEOS` to the Data section instead of adding a fourth top-level Pip-Boy tab. A Data entry is less likely to collide with replacers that assume the Stats, Items, and Data tabs are fixed.
+The implemented layout adds `VIDEOS` to the Data section instead of adding a fourth top-level Pip-Boy tab. A Data entry is less likely to collide with replacers that assume the Stats, Items, and Data tabs are fixed.
 
-Selecting `VIDEOS` opens a scrollable catalog. Starting a video replaces the
-catalog with a playback stage that fills the usable Pip-Boy glass. The physical
-Pip-Boy frame remains visible. Title, time, state, and control prompts appear as
-a small overlay while paused or after input, then clear from the picture.
+Selecting `VIDEOS` opens an eight-row scrolling catalog. Starting a video replaces the catalog with a playback stage that fills the usable Pip-Boy glass. The physical Pip-Boy frame remains visible. Title, time, state, and control prompts stay in small overlays at the top and bottom of the picture.
 
 This playback layout follows the useful visual cue from Pip-Flicks 3000: the
 picture belongs on the Pip-Boy display, not in a small permanent side panel.
@@ -15,7 +12,7 @@ Pip-Flicks remains a design and compatibility reference rather than a runtime
 dependency. Pip-Boy Video Player keeps its ESP-less UIO entry and native media
 pipeline.
 
-The exact injection target must be verified against vanilla UI, Vanilla UI Plus, Clean Vanilla HUD, and Pip-Boy UI Tweaks. UIO registration owns the prefab insertion. The package must not overwrite a full menu XML file.
+Phase 1 verified the injection target and panel geometry against vanilla UI, Vanilla UI Plus, Clean Vanilla HUD, and Pip-Boy UI Tweaks. Phase 5 must repeat those profiles with the catalog and playback controls active. UIO registration owns the prefab insertion. The package does not overwrite a full menu XML file.
 
 ## Layout contract
 
@@ -40,9 +37,9 @@ crop the source, but it must never draw over the physical Pip-Boy frame. UI
 variants and handheld replacers may supply different named bounds through their
 prefabs.
 
-The title, state, and control overlay starts at the lower-left inset of the playback stage. Its position is derived from the named video rectangle so it follows UI scaling and replacement layouts. The overlay fades when playback is stable. It exists only while the Videos page owns focus, so it cannot cover Radio, Map, Quests, or Notes content.
+The title and time appear along the top of the playback stage. State and control text use the lower inset. Both overlays are children of the named video rectangle, so they follow UI scaling and replacement layouts. They exist only while the Videos page owns focus and cannot cover Radio, Map, Quests, or Notes content.
 
-The Phase 1 diagnostic stage uses a 384 by 216 rectangle with a 12-unit lower-left inset inside the active Pip-Boy content rectangle. The rectangle establishes the local coordinate origin for its image and status elements. This size and location are provisional. Phase 5 must test the final playback-stage size and page-specific visibility against every supported UI profile before treating the diagnostic geometry as a release contract.
+The current playback stage uses a 384 by 216 rectangle raised above the Local Map and World Map buttons. The rectangle establishes the local coordinate origin for its image and status elements. The position passed the Phase 1 UI profiles and the full Extended Phase 5 catalog run. The other three Phase 5 profiles remain release gates.
 
 ## Controls
 
@@ -69,18 +66,13 @@ Keyboard settings under `[Input]` are DirectInput scan codes, not Windows virtua
 
 Catalog and playback prompts use the active keyboard bindings. Pressing a controller button switches them to controller labels. Pressing a keyboard key, clicking, scrolling, or moving the mouse switches them back.
 
-Controller prompts must come from the active input method. Mouse movement should switch to mouse prompts, and a controller action should switch back.
-
 Mouse buttons use unique MapMenu IDs. Nested button visuals are not mouse targets. If the engine still reports one of those children, PBVP walks no more than eight parent links and accepts only exact button names from its own prefab. Vanilla UI Plus can report the radio-list target or produce no callback where the injected entry is visible. The scoped MapMenu callback handles an overlapping target by checking exact PBVP bounds against the game's `InterfaceManager::cursorX` and `cursorY` fields. It obtains the button origin from the game's locus-adjusted tile routines instead of adding parent positions. If no callback occurs, the game thread checks one filtered xNVSE left-button edge for `PBVP_OpenButton` only. Catalog and playback mouse input still requires Videos focus. PBVP does not read cursor tile traits, use a Windows mouse hook, map visible text, or accept another mod's tile name.
 
 ## Focus and menu behavior
 
-The list owns focus while idle. Starting playback moves focus to the playback
-stage and remembers the selected catalog entry. Stop returns to that entry.
-Controls fade when they are not needed, but focus stays with the playback stage
-until playback stops. Back from the catalog returns to the Data page.
+The list owns focus while idle. Starting playback moves focus to the playback stage and remembers the selected catalog entry. Stop returns to that entry. Focus stays with the playback stage until playback stops. Back from the catalog returns to the Data page.
 
-Closing the Pip-Boy always stops playback. Switching to another Pip-Boy page also stops it. Modal confirmation dialogs pause playback and restore focus when dismissed.
+Closing the Pip-Boy always stops playback. Switching to another Pip-Boy page also stops it.
 
 The player must not interfere with ordinary Pip-Boy hotkeys, item use, radio controls, map controls, or search features from Pip-Boy UI Tweaks.
 
@@ -103,7 +95,7 @@ Pip-Boy Videos\
 
 The release package should include the empty Videos directory or a short text instruction, but no media.
 
-MO2's user-space virtual filesystem overlays mod directories for processes launched through MO2. File discovery and custom FFmpeg I/O still need an integration test because not every library reaches files through the same Windows calls.
+MO2's user-space virtual filesystem overlays mod directories for processes launched through MO2. A Phase 2 integration run opened and decoded a fixture that existed only in an enabled media mod. Phase 5 also enumerated and played files from a separate generated catalog mod.
 
 ## Filenames and metadata
 
@@ -115,7 +107,7 @@ Filename tests must include spaces, apostrophes, non-Latin text, combining chara
 
 ## Configuration
 
-The planned configuration file is:
+The configuration file is:
 
 `Data\Config\PipBoyVideoPlayer.ini`
 
@@ -127,9 +119,7 @@ Resource values may lower the compiled limits, but they cannot raise the support
 
 `ReloadPluginConfig PipBoyVideoPlayer` applies a changed INI only while playback is idle. A successful reload returns to the ordinary Data page, where `VIDEOS` can be opened again with a fresh catalog scan. A reload request during opening, buffering, playback, pause, or an error leaves the settings, Videos page, and playback state unchanged.
 
-An MCM page is optional for a later release. The first version may keep settings in the INI and expose only common presentation toggles in the player.
-
-Unknown settings are ignored with one warning. Invalid limits fall back to safe compiled bounds. A config reload is allowed only while the player is idle.
+An MCM page is optional for a later release. The first version uses the INI and exposes tint switching in the player.
 
 ## Logs and privacy
 
