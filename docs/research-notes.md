@@ -415,6 +415,8 @@ The same source defines the 15-entry [`Menu`](https://github.com/xNVSE/NVSE/blob
 
 [Microsoft's DirectInput keyboard guidance](https://learn.microsoft.com/en-us/previous-versions/windows/desktop/ee418271%28v%3Dvs.85%29) identifies physical keys by scan code instead of Windows virtual-key number. [`GetKeyNameTextA`](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getkeynametexta) reads the scan code from bits 16 through 23 and the extended-key flag from bit 24. PBVP uses those fields to turn each configured DirectInput code into the label shown by the UI. If Windows cannot name a valid code, the prompt uses `KEY` followed by its number.
 
+FFmpeg documents [`AVFormatContext::metadata`](https://ffmpeg.org/doxygen/8.0/structAVFormatContext.html) as file-level metadata populated by the demuxer and owned by the format context. PBVP copies only the `title` value into a fixed 2,048-byte snapshot before the decoder releases that context. The game thread accepts it only when strict UTF-8 conversion succeeds, the title fits the configured display cap, and it contains no control characters. The generated metadata fixture verifies the real `av_dict_get` path against the pinned x86 runtime.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

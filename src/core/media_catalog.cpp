@@ -139,6 +139,53 @@ bool NaturalCatalogLess(
     return left.session_id < right.session_id;
 }
 
+bool ApplyCatalogMetadataTitle(
+    MediaCatalogEntry& entry,
+    const std::string_view title_utf8,
+    const MediaCatalogConfig& config) noexcept {
+    if (title_utf8.empty() || title_utf8.size() > kMaximumMediaTitleUtf8Bytes ||
+        config.maximum_display_characters == 0u ||
+        config.maximum_display_characters > kMaximumCatalogDisplayCharacters ||
+        title_utf8.size() > static_cast<std::size_t>((std::numeric_limits<int>::max)())) {
+        return false;
+    }
+    try {
+        const int required = MultiByteToWideChar(
+            CP_UTF8, MB_ERR_INVALID_CHARS,
+            title_utf8.data(), static_cast<int>(title_utf8.size()), nullptr, 0);
+        if (required <= 0 ||
+            static_cast<std::size_t>(required) > config.maximum_display_characters) {
+            return false;
+        }
+        std::wstring converted(static_cast<std::size_t>(required), L'\0');
+        if (MultiByteToWideChar(
+                CP_UTF8, MB_ERR_INVALID_CHARS,
+                title_utf8.data(), static_cast<int>(title_utf8.size()),
+                converted.data(), required) != required) {
+            return false;
+        }
+        const auto first = std::find_if_not(
+            converted.begin(), converted.end(),
+            [](const wchar_t value) { return std::iswspace(value) != 0; });
+        const auto last = std::find_if_not(
+            converted.rbegin(), converted.rend(),
+            [](const wchar_t value) { return std::iswspace(value) != 0; }).base();
+        if (first >= last) {
+            return false;
+        }
+        std::wstring trimmed(first, last);
+        for (const wchar_t value : trimmed) {
+            if (value < 0x20 || value == 0x7F) {
+                return false;
+            }
+        }
+        entry.display_name = std::move(trimmed);
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
 MediaCatalogResult ScanMediaCatalog(
     const std::wstring& media_root,
     const MediaCatalogConfig& config) noexcept {

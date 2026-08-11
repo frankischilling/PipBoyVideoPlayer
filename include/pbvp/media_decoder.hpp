@@ -7,6 +7,7 @@
 #include "pbvp/win32_virtual_allocator.hpp"
 
 #include <atomic>
+#include <array>
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
@@ -96,6 +97,8 @@ struct MediaInfo {
     std::uint32_t source_audio_rate{};
     std::uint32_t output_audio_channels{};
     std::uint32_t output_audio_rate{};
+    std::array<char, kMaximumMediaTitleUtf8Bytes + 1u> title_utf8{};
+    std::uint32_t title_utf8_bytes{};
 };
 
 struct DecodedVideoFrame {

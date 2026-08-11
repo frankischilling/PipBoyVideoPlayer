@@ -56,6 +56,7 @@ pbvp::MediaCatalogResult g_media_catalog{};
 pbvp::MediaCatalogSelection g_catalog_selection{pbvp::kUiCatalogVisibleRows};
 pbvp::UiInputMethod g_last_input_method{pbvp::UiInputMethod::keyboard_mouse};
 std::wstring g_current_display_title;
+bool g_current_title_metadata_checked{};
 std::int64_t g_last_display_second{-1ll};
 std::int64_t g_last_display_duration_second{-1ll};
 #if defined(PBVP_ENABLE_PLAYBACK_SMOKE_TEST) || defined(PBVP_ENABLE_PLAYBACK_LONG_TEST)
@@ -442,6 +443,7 @@ void OpenSelectedCatalogEntry() noexcept {
     const pbvp::MediaCatalogEntry& entry =
         g_media_catalog.entries[g_catalog_selection.SelectedIndex()];
     g_current_display_title = entry.display_name;
+    g_current_title_metadata_checked = false;
     g_last_display_second = -1ll;
     g_last_display_duration_second = -1ll;
     if (g_playback_controller->Open(g_media_root, entry.relative_name)) {
@@ -660,6 +662,24 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
     }
 
     const pbvp::PlaybackControllerSnapshot after = g_playback_controller->Snapshot();
+#if !defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
+    if (!g_current_title_metadata_checked && after.decoder.info.source_width != 0u) {
+        g_current_title_metadata_checked = true;
+        const std::size_t title_bytes = after.decoder.info.title_utf8_bytes;
+        if (title_bytes <= pbvp::kMaximumMediaTitleUtf8Bytes &&
+            g_catalog_selection.SelectedIndex() < g_media_catalog.entries.size() &&
+            pbvp::ApplyCatalogMetadataTitle(
+                g_media_catalog.entries[g_catalog_selection.SelectedIndex()],
+                std::string_view(
+                    after.decoder.info.title_utf8.data(), title_bytes),
+                g_settings.catalog)) {
+            g_current_display_title = g_media_catalog.entries[
+                g_catalog_selection.SelectedIndex()].display_name;
+            g_last_display_second = -1ll;
+            g_last_display_duration_second = -1ll;
+        }
+    }
+#endif
 #if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
     if (g_playback_smoke_attempted && !g_playback_smoke_reported) {
         const std::uint64_t private_bytes = ProcessPrivateBytes();

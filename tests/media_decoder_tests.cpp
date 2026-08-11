@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <limits>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -317,6 +318,7 @@ void TestBaseDecode(
     PBVP_CHECK(output.snapshot.info.has_audio);
     PBVP_CHECK(output.snapshot.info.source_audio_channels == 2u);
     PBVP_CHECK(output.snapshot.info.source_audio_rate == 44100u);
+    PBVP_CHECK(output.snapshot.info.title_utf8_bytes == 0u);
     PBVP_CHECK(output.video_pts.size() == 20u);
     PBVP_CHECK(output.first_video_width == 160u);
     PBVP_CHECK(output.first_video_height == 90u);
@@ -325,6 +327,23 @@ void TestBaseDecode(
     PBVP_CHECK(output.audio_samples >= 95000u && output.audio_samples <= 97000u);
     CheckAllGeneration(output.video_generations, 1u);
     CheckAllGeneration(output.audio_generations, 1u);
+}
+
+void TestTitleMetadata(
+    const pbvp::FfmpegRuntime& runtime,
+    const std::wstring& fixture_root) {
+    pbvp::MediaDecoder decoder(runtime);
+    pbvp::MediaDecodeFailure failure{};
+    PBVP_CHECK(decoder.Start(
+        fixture_root, L"h264-title-metadata.mp4", failure));
+    CollectedOutput output = CollectUntilTerminal(decoder);
+    decoder.Stop();
+    PBVP_CHECK(output.snapshot.state == pbvp::DecoderState::end_of_stream);
+    constexpr std::string_view expected = "PBVP Metadata Title";
+    PBVP_CHECK(output.snapshot.info.title_utf8_bytes == expected.size());
+    PBVP_CHECK(std::string_view(
+        output.snapshot.info.title_utf8.data(),
+        output.snapshot.info.title_utf8_bytes) == expected);
 }
 
 void TestAudioLayouts(
@@ -622,6 +641,7 @@ int wmain(int argc, wchar_t** argv) {
     TestFullHdMemory(runtime, argv[2]);
     TestFullHdDecodePerformance(runtime, argv[2]);
     TestBaseDecode(runtime, argv[2]);
+    TestTitleMetadata(runtime, argv[2]);
     TestAudioLayouts(runtime, argv[2]);
     TestRotation(runtime, argv[2]);
     TestVariableFrameRate(runtime, argv[2]);

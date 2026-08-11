@@ -134,6 +134,27 @@ void CheckNamesAndNaturalOrder() {
             PBVP_CHECK(repeated.entries[index].session_id == result.entries[index].session_id);
         }
     }
+
+    pbvp::MediaCatalogEntry metadata_entry{};
+    metadata_entry.display_name = L"Filename";
+    PBVP_CHECK(pbvp::ApplyCatalogMetadataTitle(
+        metadata_entry, "Courier \xE2\x80\x93 Test", {}));
+    PBVP_CHECK(metadata_entry.display_name == L"Courier \x2013 Test");
+    PBVP_CHECK(pbvp::ApplyCatalogMetadataTitle(
+        metadata_entry, "  Trimmed title  ", {}));
+    PBVP_CHECK(metadata_entry.display_name == L"Trimmed title");
+    PBVP_CHECK(!pbvp::ApplyCatalogMetadataTitle(
+        metadata_entry, std::string_view("\xC3\x28", 2u), {}));
+    PBVP_CHECK(!pbvp::ApplyCatalogMetadataTitle(
+        metadata_entry, "Line\nBreak", {}));
+    PBVP_CHECK(!pbvp::ApplyCatalogMetadataTitle(
+        metadata_entry, "   ", {}));
+    PBVP_CHECK(!pbvp::ApplyCatalogMetadataTitle(
+        metadata_entry, std::string(2049u, 'A'), {}));
+    pbvp::MediaCatalogConfig short_title{};
+    short_title.maximum_display_characters = 4u;
+    PBVP_CHECK(!pbvp::ApplyCatalogMetadataTitle(
+        metadata_entry, "Title", short_title));
 }
 
 void CheckDisplayAndInputLimits() {

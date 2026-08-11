@@ -1,8 +1,11 @@
 #pragma once
 
+#include "pbvp/media_limits.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace pbvp {
@@ -69,6 +72,10 @@ private:
 [[nodiscard]] bool NaturalCatalogLess(
     const MediaCatalogEntry& left,
     const MediaCatalogEntry& right) noexcept;
+[[nodiscard]] bool ApplyCatalogMetadataTitle(
+    MediaCatalogEntry& entry,
+    std::string_view title_utf8,
+    const MediaCatalogConfig& config = {}) noexcept;
 [[nodiscard]] MediaCatalogResult ScanMediaCatalog(
     const std::wstring& media_root,
     const MediaCatalogConfig& config = {}) noexcept;

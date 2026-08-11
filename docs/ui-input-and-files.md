@@ -103,7 +103,7 @@ MO2's user-space virtual filesystem overlays mod directories for processes launc
 
 ## Filenames and metadata
 
-The catalog uses Unicode Windows paths internally. Display names come from MP4 title metadata when it is valid UTF-8 and within the string cap. Otherwise, the filename without its extension is used.
+The catalog uses Unicode Windows paths internally and shows the filename without its extension as soon as the page opens. Selecting a file lets the decoder inspect its file-level title. Valid UTF-8 metadata within the string cap replaces that row for the current session. Missing, malformed, oversized, blank, or control-character metadata leaves the filename in place.
 
 Sorting is case-insensitive and natural, so `Episode 2` appears before `Episode 10`. Duplicate display names remain distinct. The UI may add a short disambiguator, but it never exposes a full absolute path.
 

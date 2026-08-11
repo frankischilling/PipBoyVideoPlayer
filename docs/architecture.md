@@ -22,7 +22,7 @@ Any state may enter `Error`, which records the problem, drains owned queues, rel
 
 The catalog enumerates regular `.mp4` files directly below the configured Videos directory. Recursive scanning is disabled for the first release. Each entry stores a display name, normalized relative path, file size, and a stable session identifier.
 
-The catalog does not open every file during enumeration. Duration and codec details are loaded on selection, which prevents a folder full of damaged media from delaying the Pip-Boy menu.
+The catalog does not open every file during enumeration. Rows initially use the filename without its extension. Duration, codec details, and file-level title metadata are loaded on selection, which prevents a folder full of damaged media from delaying the Pip-Boy menu. A valid bounded title replaces that row for the rest of the session without reordering the open catalog.
 
 ### Demux and decode worker
 

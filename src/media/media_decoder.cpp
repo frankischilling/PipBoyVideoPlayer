@@ -561,6 +561,17 @@ bool MediaDecoder::OpenMedia() {
         info.output_audio_channels = config_.output_audio_channels;
         info.output_audio_rate = config_.output_audio_rate;
     }
+    const AVDictionaryEntry* title = api.av_dict_get(
+        format_->metadata, "title", nullptr, 0);
+    if (title != nullptr && title->value != nullptr) {
+        const std::size_t title_bytes = strnlen_s(
+            title->value, kMaximumMediaTitleUtf8Bytes + 1u);
+        if (title_bytes > 0u && title_bytes <= kMaximumMediaTitleUtf8Bytes) {
+            std::memcpy(info.title_utf8.data(), title->value, title_bytes);
+            info.title_utf8[title_bytes] = '\0';
+            info.title_utf8_bytes = static_cast<std::uint32_t>(title_bytes);
+        }
+    }
     video_discard_before_us_ = 0;
     audio_discard_before_us_ = 0;
     SetInfo(info);
