@@ -460,6 +460,94 @@ Decision: use XAudio2's played-sample cursor as the master clock when audio is p
 
 Reason: synchronizing video to consumed audio prevents a slow game frame rate from causing cumulative drift.
 
+### Bounded integrated playback and presentation
+
+Date: August 10, 2026
+
+Decision: keep FFmpeg contexts on one decoder worker, XAudio2 and playback state on the game-thread owner, and Direct3D access on the frame-present thread. Move only one owned BGRA frame through a bounded renderer mailbox. Select the newest frame eligible for the audio clock and drop older eligible frames. Use one frame of presentation lead without advancing the media clock.
+
+Evidence: the automated scheduler completed a simulated 30-minute 30 FPS stream at a 10 FPS game cadence without cumulative drift. Native tests cover pause, resume, forward and backward seeks, stop during buffering, stale generation rejection, silent-video timing, hidden presentation, foreign-thread refusal, and orderly shutdown. The first live integrated run decoded 20 frames, presented 18, dropped two at startup, played all 96,967 audio samples with zero underruns, and uploaded every submitted frame. The maximum measured upload was 59.40 microseconds.
+
+The first 720p long-test attempt exposed an accounting defect rather than an ownership change. The controller subtracted a frame's BGRA size after moving it to the presentation slot, so the moved-from vector contributed zero and the bounded staging counter only increased. The corrected code records the size before moving the frame. A complete 1080p regression and a five-second run against the 30-minute fixture passed with the failure site clear.
+
+Rejected alternatives: do not use game frames as the media clock, retain a full decoded video queue on the renderer, call Direct3D while holding the mailbox lock, let a stale seek generation reach the texture, or retain engine Direct3D references between callbacks.
+
+Consequence: low game frame rates reduce video smoothness through bounded frame dropping instead of slowing audio or growing queues. The live 30-minute drift target and the full low-FPS in-game matrix remain release tests.
+
+### Measure the long-file allocation failure before changing layout
+
+Date: August 10, 2026
+
+Decision: retain the 1920 by 1080 source limit and current queue sizes until a measured failure identifies the allocation boundary. Do not claim that the file is malformed, lower the supported source resolution, fragment the MP4, or change decoder output dimensions based on the generic allocation result.
+
+Evidence: the second live attempt used the corrected staging-accounting build and failed before the first presentation. The decoder reported `allocation_failed`, and XAudio2 was still uninitialized. The standalone x86 decoder completed the identical file after the accounting fix. The old record cannot distinguish process address-space fragmentation from allocation inside long-file indexing or the first decoded frame.
+
+Rejected alternatives: do not reduce source limits, queue sizes, decoder threads, or test duration as speculative fixes. Do not treat a C++ allocation exception as a codec or container rejection.
+
+Consequence: one short diagnostic run must record the new allocation site and address-space snapshot. If the failure is the full-resolution BGRA buffer and contiguous space is constrained, revise the decoder to scale into a bounded presentation intermediate while keeping the 720p and 1080p input checks. If container opening fails, investigate MP4 indexing without changing the frame pipeline.
+
+### Bound decoded output before queue insertion
+
+Date: August 10, 2026
+
+Decision: keep validating source dimensions against the 1920 by 1080 input cap, but scale decoded BGRA output to fit within a 512 by 512 intermediate before rotation and queue insertion. Do not upscale smaller sources. Preserve original source and display dimensions in media metadata. This entry supersedes the previous instruction to retain source-sized decoded frames.
+
+Reason: the engine-owned presentation texture is 256 by 256. The full-resolution BGRA queue consumes memory that the renderer discards when it prepares that texture. A 16:9 source becomes 512 by 288, or 589,824 bytes per queued frame. Three frames use 1,769,472 bytes instead of 24,883,200 bytes for three 1080p frames. Rotation keeps the same pixel count and swaps the scaled dimensions.
+
+Evidence: the allocation diagnostic identified `video_pixel_buffer` on the third long-playback attempt. The 1280 by 720 fixture opened and reached buffering, but its first 3,686,400-byte BGRA vector allocation failed. Process private memory was 1,590,300,672 bytes, the largest free region was 1,536,557,056 bytes, and total free virtual memory was 1,609,023,488 bytes. The source-sized C++ frame allocation is unreliable in the loaded VNV process despite ample contiguous address space and successful standalone decoding.
+
+Rejected alternatives: do not lower the accepted source resolution, shorten the test file, fragment the MP4, or place an unbounded allocation in another thread. Do not decode directly to 256 by 256 because the current renderer still needs room for later aspect-mode and tint processing.
+
+Consequence: update the decoder, high-resolution memory test, performance measurements, and documentation. The 30-minute in-game test must restart from the beginning after a short live run proves that the first frame and audio stream both start.
+
+Implementation evidence: the x86 decoder now produces 512 by 288 frames for a 1080p source. Three queued frames occupy 1,769,472 bytes. The complete 1080p regression passed, and the real long fixture stayed in playback for a five-second native run with no error or failure site. The in-game startup check remains open.
+
+### Allocate video payloads outside the game heap
+
+Date: August 10, 2026
+
+Decision: allocate video pixel vectors with a Windows `VirtualAlloc` allocator and release them with `VirtualFree`. Keep the existing vector interface, move-only frame handoff, frame counts, and byte limits. Audio sample vectors remain on their current allocator because the live audio path did not fail.
+
+Reason: video payloads are large, short-lived blocks that cross the decoder, game-thread scheduler, and render mailbox. A virtual-memory allocator gives each payload its own committed region and does not depend on the game process's C++ heap state. The allocator still throws a contained allocation error if Windows refuses the request.
+
+Evidence: the first bounded-output live run played for about four seconds, then a 589,824-byte video pixel allocation failed. Process private memory was 1,542,602,752 bytes, the largest free region was 1,547,436,032 bytes, and total free virtual memory was 1,606,086,656 bytes. Reducing the payload by 84 percent did not make repeated C++ heap allocation reliable.
+
+Rejected alternatives: do not reduce the source or intermediate resolution again, increase queue limits, hide the error, or move allocation to the render thread. Do not use FFmpeg's allocator because queued frames can outlive decoder contexts and must not depend on FFmpeg library lifetime.
+
+Consequence: add a typed allocator with checked byte arithmetic, use it only for `DecodedVideoFrame` pixel storage, test repeated allocation and move ownership, and repeat the short live startup test before restarting the 30-minute run.
+
+Implementation evidence: the allocator stress test completed 512 allocation, move, and release cycles for 589,824-byte payloads and retained less than 8 MiB after the loop. The 1080p queue and complete decode passed, and the real long fixture completed a five-second native startup run with no error or failure site. The live build then displayed continuous video for about 56 seconds with 1,659 successful uploads and no playback or allocation error. This passes the short live startup check. The complete 30-minute run remains open.
+
+### Apply the synchronization tolerance on both sides of the media end
+
+Date: August 10, 2026
+
+Decision: the strict long-playback checker accepts the final audio clock within 50 milliseconds on either side of the exact 1,800-second duration. It also retains the separate requirement that the absolute audio-to-video difference is at most 50 milliseconds.
+
+Reason: the acceptance target measures absolute synchronization error. Requiring the audio clock to reach or exceed the video end adds a one-sided condition that the specification does not require.
+
+Evidence: the first complete live run ended with a 1,799,971,875-microsecond audio clock and a 1,800,000,000-microsecond video end. Their 28,125-microsecond difference satisfies the target. The run decoded all 54,000 frames, submitted 86,400,000 audio samples, and reported zero underruns. The old checker rejected only the audio clock's lower bound.
+
+Rejected alternatives: do not round the runtime clock, change the playback metrics, treat a valid early offset as zero, or widen the 50-millisecond target.
+
+Consequence: align the checker's lower and upper duration bounds with the 50-millisecond target, add boundary regression cases, and rerun it against the untouched live log before accepting the result.
+
+Implementation evidence: the checker now accepts the measured 28.125-millisecond early offset. Regression cases reject clocks one microsecond outside both 50-millisecond duration boundaries and reject a 50,001-microsecond synchronization error. The untouched live log passed every synchronization, memory, upload, privacy, and teardown check.
+
+### Drain bounded video while rebuilding the audio buffer
+
+Date: August 10, 2026
+
+Decision: use the existing bounded video-discard path whenever playback is buffering, including recovery after an audio underrun. Keep the oldest staged frame until the audio buffer is ready, then let audio-led selection discard stale frames against the current sample clock.
+
+Reason: the decoder worker reads interleaved video and audio from one media timeline. A full video staging path can block that worker before it produces the 200 milliseconds of audio required to leave buffering. Initial buffering already avoids this dependency by discarding excess video. Rebuffering must do the same even though the XAudio2 voice has started.
+
+Evidence: the first live 10 FPS run reached playing, returned to buffering after 499 milliseconds, and remained there until normal shutdown. The render callback stayed between 10.00 and 10.06 FPS, but only four video frames reached the texture. The controller's discard predicate excludes the rebuffer case when `audio_started_` is true.
+
+Rejected alternatives: do not grow either queue, decode on the render thread, submit XAudio2 buffers from its callback, move game objects to a worker, lower the supported media frame rate, or replace the consumed-sample clock with game-frame timing.
+
+Consequence: change only the buffering discard predicate, add an integrated forced-underrun recovery regression, and repeat the five-minute 10 FPS live case. Preserve all existing queue limits and thread ownership.
+
 ### System XAudio2 2.9 runtime
 
 Date: August 10, 2026
@@ -577,6 +665,158 @@ The truncated fixture exposed a demuxer edge case. FFmpeg dropped the final part
 Rejected alternatives: do not share FFmpeg contexts across threads, expose FFmpeg-owned frame buffers to the renderer, retain output from an old seek generation, or treat every demuxer end-of-file result as proof of a complete track.
 
 Consequence: the owner must join this worker before unloading FFmpeg. The live diagnostic follows that order, and packaging rejects any DLL that retains the diagnostic marker.
+
+### Playback status uses the pinned xNVSE tile setter
+
+Date: August 10, 2026
+
+Decision: update the injected `PBVP_LayerProbe` string from the game thread with the `Tile::SetStringValue` member documented by the pinned xNVSE 6.4.5 source. The bridge first resolves the named tile and verifies its owned string trait. It caches the tile identity, state, and error so it does not repeat the same write every frame.
+
+Reason: Phase 4 needs visible opening, buffering, paused, and failure states. Replacing menu XML is out of scope, and workers cannot touch game objects. The existing injected status strip is already at the reviewed depth and position. Fixed messages also keep local paths and media metadata out of the UI.
+
+### Low-FPS recovery remains open
+
+Date: August 10, 2026
+
+Decision: keep Phase 4 open after the second 10 FPS run. Add controller update count, submitted audio, played samples, queued XAudio2 buffers, and decoder queue depth to the next failure record before changing queue sizes or callback ownership.
+
+Reason: rebuffering returned to playback three times, but the next underrun reached the configured limit and produced `audio_stream_failed`. The visible callback rate was 9.97 FPS. State changes alone cannot identify whether the empty audio path came from controller service cadence, the interleaved decoder, or queue capacity.
+
+Rejected alternatives: do not hide the failure by raising the underrun limit. Do not enlarge queues or move playback between xNVSE callbacks without the missing counters.
+
+Consequence: the 10 FPS row remains failed. The next in-game run is a short diagnostic, not an acceptance retest.
+
+### Pause XAudio2 during underrun recovery
+
+Date: August 10, 2026
+
+Decision: pause the started source voice when a detected underrun enters rebuffering. Continue bounded decode and submission while the voice is paused, then resume only after the existing 200 millisecond prebuffer is ready. If the user requests pause during recovery, keep the voice paused when buffering completes. Keep all queue limits and callback ownership unchanged.
+
+Reason: `BeginRebuffer` changes the playback state but does not stop the source voice. Newly submitted samples are consumed while the controller is trying to rebuild the prebuffer.
+
+Evidence: the short diagnostic recorded 32 controller updates, an audio clock of 2,816,000 microseconds, 86 decoded video frames, 140,288 submitted samples, and 135,168 played samples before the fourth underrun. XAudio2 still had five buffers queued after the final refill. The decoder retained two video items and two audio items, so neither decoder queue was full. The preserved log has SHA-256 `7E8721DF3B317093411CBEDAA780FA3C9ACAE4E1CFD5A9E07C0BABBBC409B2D5`.
+
+Rejected alternatives: do not raise the underrun limit, grow either queue, move playback between xNVSE callbacks, or replace the consumed-sample clock.
+
+Consequence: add an integrated recovery regression that verifies the source voice is paused during rebuffering and resumed after the fixed threshold. Repeat the five-minute 10 FPS live case after the native suites pass.
+
+Implementation evidence: the native controller regression forces rebuffering after the XAudio2 voice has started. It verifies the voice pauses in `buffering`, resumes when automatic recovery returns to `playing`, and stays paused when the user requests pause during recovery. All 15 host tests, all 24 normal x86 tests, and all 24 armed x86 tests pass with the existing prebuffer and queue limits.
+
+### Free due video before the audio feed
+
+Date: August 10, 2026
+
+Decision: for `playing` and `paused`, perform audio-led video selection before draining new video and feeding audio. Initial buffering and underrun recovery still build the fixed audio prebuffer before their first selection. Keep the consumed-sample clock, queue limits, and thread ownership unchanged.
+
+Reason: the playing update currently feeds audio before it removes clock-eligible video. At 10 FPS, a full video queue can hold the interleaved decoder until selection runs. Audio produced after that point cannot be submitted until the next game-loop update.
+
+Evidence: the paused recovery build returned to `playing` in one 100 millisecond update, but it continued to underrun every 400 to 501 milliseconds and failed on the fourth event. The failure record contains 24 controller updates, a 1,749,333 microsecond audio clock, 54 decoded frames, 89,088 submitted samples, 83,968 played samples, five queued XAudio2 buffers, and two items in each decoder queue. Visible cadence stayed between 10.00 and 10.07 FPS. The preserved log has SHA-256 `A6095AFDA5BB6D1DEF7FFC7C80F4D8579A42467F66DA529FF8642E3E9DADADD9`.
+
+Rejected alternatives: do not increase the audio prebuffer, grow a queue, raise the underrun limit, or change callback ownership before testing the existing service-order dependency.
+
+Consequence: preserve paused recovery, reorder the playing and paused update path, rerun the native suites, and stop the next live run at the first underrun.
+
+Implementation evidence: `PlaybackController::Update` now runs audio-led selection before `DrainVideo` and `FeedAudio` when the state is `playing` or `paused`. Selection still runs after `StartBufferedPlayback` when the controller enters playback from initial buffering or underrun recovery. All 15 host tests, all 24 normal x86 tests, and all 24 armed x86 tests pass. The live 10 FPS check remains open.
+
+Live result: the candidate still failed at a steady 10 FPS without Alt+Tab. The first underrun occurred after 2.6 seconds, and the fourth produced `audio_stream_failed` after 4.1 seconds. The failure record contains 44 updates, 113 decoded frames, 183,296 submitted samples, 178,176 played samples, five queued XAudio2 buffers, and two items in each recorded decoder queue. The preserved log has SHA-256 `4546A674D91B3CFD7F1E2F12F64D2CA861A90BD59DCC5F4FBDA5F949A919F813`. This rejects service order as a complete correction.
+
+### Reclaim completed audio slots before readiness
+
+Date: August 10, 2026
+
+Decision: `XAudioStream::ReadSnapshot` must reclaim completed slots before it calculates `ready_to_start`. Add a native ordering regression, then run the real long fixture at a 100 millisecond controller cadence before changing the initial prebuffer.
+
+Reason: the current snapshot calls `ReadyToStart` before `ReclaimCompleted`. Finished samples can therefore satisfy the 200 millisecond threshold even though the same snapshot reports only the live buffers that remain after reclamation.
+
+Rejected alternatives: do not raise the prebuffer or queue limits until readiness uses the current live slot count and the controlled 100 millisecond test measures the first underrun separately.
+
+Consequence: recovery must never resume from stale sample accounting. The cause of the first live underrun remains open.
+
+Implementation evidence: the readiness regression drains a 200 millisecond non-final stream, pauses after every submitted buffer completes, and requires zero live buffers, zero queued bytes, and `ready_to_start` false. The corrected order passes.
+
+### Allow six bounded video items for packet bursts
+
+Date: August 10, 2026
+
+Decision: raise the default decoder video item limit from three to six. Keep the 32 MiB video byte cap, 200 millisecond audio prebuffer, 16-slot XAudio2 pool, consumed-sample clock, and current thread ownership.
+
+Reason: the native 100 millisecond cadence test reproduced one underrun with three video items. A 300 millisecond audio prebuffer did not correct the supply rate. Six video items passed with both audio thresholds and then completed 30 seconds with zero underruns. The extra item capacity absorbs short MP4 packet bursts so the interleaved FFmpeg worker can reach audio packets between controller updates.
+
+Evidence: the 30-second run decoded 897 frames, delivered 273, dropped 623 late frames, submitted 1,440,768 samples, reached a 29,830,000 microsecond audio clock, retained four XAudio2 buffers, and recorded zero underruns over 276 updates.
+
+Rejected alternatives: do not increase audio latency, grow the XAudio2 pool, remove the video byte cap, or move audio ownership to another thread while the bounded item change satisfies the controlled cadence test.
+
+Consequence: update the decoder memory regression for six scaled frames, run all native suites, and repeat the live five-minute 10 FPS gate. The controlled result is not a live pass.
+
+Implementation evidence: the production configuration and memory regression use six video items under the unchanged 32 MiB cap. The XAudio2 readiness regression, all 15 host tests, all 24 normal x86 tests, and all 24 armed x86 tests pass. The final 30-second real-fixture cadence run stayed in `playing` with zero underruns, reached a 29,800,000 microsecond audio clock, and retained five XAudio2 buffers over 275 updates. The live gate remains open.
+
+Live result: the six-item candidate delayed the first underrun to 56.4 seconds but still failed on the fourth event at a 126,656,000 microsecond audio clock. The terminal capture recorded 6,085,632 submitted samples, 6,079,488 played samples, six queued XAudio2 buffers, one decoder video item, and no decoder audio item. A later unintended launch overwrote the source log before preservation, so no retained hash exists. This rejects a larger waiting queue as a complete correction.
+
+### Let the decoded audio queue govern worker backpressure
+
+Date: August 10, 2026
+
+Decision: raise the default video item limit from six to 12 for the tested 720p30 profile. Keep the 32 MiB video byte cap and every audio limit unchanged. This lets the 16-item decoded audio queue become the interleaved worker's backpressure point.
+
+Reason: at 30 FPS, six video items cover 200 milliseconds. Sixteen decoded AAC chunks of 1,024 samples cover about 341 milliseconds at 48 kHz. The video queue therefore fills first. Twelve video items cover 400 milliseconds, so the bounded audio queue fills first and governs worker progress.
+
+Evidence: the 12-item configuration completed two minutes at a 100 millisecond controller cadence with zero underruns. It decoded 3,597 frames, delivered 1,098, dropped 2,498 late frames, submitted 5,768,192 samples, reached a 119,840,000 microsecond clock, retained 11 XAudio2 buffers, and completed 1,101 updates.
+
+Rejected alternatives: do not drop video on the worker before audio-led selection decides that it is late. Do not raise audio latency, enlarge either audio pool, remove the video byte cap, or add another service thread while aligned bounded backpressure passes the controlled test.
+
+Consequence: update the memory regression to prove the audio queue fills while video stays within 12 items, extend the controlled real-fixture test to five minutes, and repeat the live gate. Do not claim a frame rate beyond the tested 720p30 fixture from this evidence.
+
+Implementation evidence: ten repeated x86 memory runs filled the 16-item audio queue first with nine or ten scaled video frames buffered. The production five-minute cadence run remained in `playing`, recorded zero underruns, reached a 299,800,000 microsecond audio clock, and retained 11 XAudio2 buffers over 2,751 updates. All host, normal x86, and armed x86 suites pass. The live gate remains open.
+
+Live result: the 12-item build still reached four underruns in Fallout without Alt+Tab. The first occurred after 15.9 seconds, and the failure snapshot recorded a 126,656,000 microsecond clock, 6,088,704 submitted samples, 6,079,488 played samples, nine queued XAudio2 buffers, and no decoder audio item. The preserved log has SHA-256 `52DAEDFEE5DE223425F7608255D5FF74CB991913601A629B8F6880A6DD0179C9`. This rejects decoder queue alignment as a complete live correction.
+
+### Measure game-thread service gaps before changing audio depth
+
+Date: August 10, 2026
+
+Decision: record the maximum millisecond gap between owner-thread `PlaybackController::Update` calls. Include it in diagnostic progress and failure records. Add a real XAudio2 regression with a deliberate service pause longer than the 200 millisecond prebuffer.
+
+Reason: the production queues pass five controlled minutes but fail live. The failure snapshot shows no decoded audio waiting after XAudio2 is refilled, which is consistent with a missed service interval. Average visible cadence cannot reveal one long gap.
+
+Rejected alternatives: do not raise the prebuffer, enlarge the XAudio2 pool, change decoder queues, or move audio ownership until the maximum-gap metric and stalled-service regression identify the needed tolerance.
+
+Consequence: run the diagnostic in the same 10 FPS profile. Use its measured maximum gap to select the smallest bounded correction.
+
+Implementation evidence: the real XAudio2 regression recorded a 469 millisecond controller service gap. The consumed-sample clock advanced 341,333 microseconds, equal to the capacity of 16 fixture-sized buffers. The controller then refilled all 16 slots before `XAudioStream::Snapshot` checked the queue, so the underrun counter stayed at zero. The diagnostic change passed the 15-test host matrix, both 24-test x86 matrices, and the five-minute real-fixture cadence regression. That five-minute run completed 2,750 updates with zero underruns and kept its maximum update gap within the asserted 90 to 250 millisecond range. The live Fallout measurement remains open.
+
+Live evidence: a fresh Fallout launch completed five minutes at 10 FPS with zero underruns, a 299,980,000 microsecond audio clock, and a 110 millisecond maximum update gap. The preserved log has SHA-256 `F838AC515F1295EF49542C9034E91E2D2B1E678DB1D7D0DA80FCB3C06B8ECDC2`. This passing measurement is below the current 341,333 microseconds of audio capacity. It does not reproduce the prior intermittent failure, so it does not select a larger audio pool.
+
+### Keep presented and dropped frame counts exclusive
+
+Date: August 10, 2026
+
+Decision: when a new frame replaces the controller's single ready frame, move the replaced frame from the presented count to the dropped count. Add a short low-cadence regression that requires dropped frames and compares presentation metrics with frames delivered to the renderer.
+
+Reason: the live five-minute progress record reports 9,001 decoded frames, 8,991 presented frames, and 6,002 dropped frames. A frame selected into the ready slot increments `presented_video_frames`. Replacement before `TakeVideoFrame` increments `dropped_video_frames` without reversing that earlier presentation count.
+
+Rejected alternative: do not relax the strict checker to accept overlapping categories. That would make synchronization and frame-dropping reports misleading.
+
+Consequence: require presented plus dropped frames to remain at or below decoded frames, with only a bounded residual for frames still owned by queues. Repeat the live five-minute gate after the accounting regression and all automated matrices pass.
+
+Implementation evidence: the accounting correction passed the 15-test host matrix and both 24-test x86 matrices. The new 250 millisecond cadence regression requires at least one dropped frame, exact agreement between presented and delivered frames, and no more than one decoded frame outside the two presentation outcomes. The corrected live gate remains open.
+
+Live evidence: the corrected run reported 9,001 decoded frames, 2,998 presented frames, and 6,002 dropped frames at five minutes. The strict checker accepted that accounting and reached the renderer summary. The preserved log has SHA-256 `95008D38037440049B44EC7EA009C4F363F4695EE779CFBA4314BA79DD56B9FA`.
+
+### Count frames cleared from the renderer mailbox
+
+Date: August 10, 2026
+
+Decision: add `cleared_mailbox_frames` to the renderer snapshot and session summary. Increment it when `ClearVideoFrame` owns and releases a pending frame. Require uploaded, replaced, and cleared outcomes to equal submitted frames in the low-FPS checker.
+
+Reason: the corrected live shutdown reported 3,470 submitted frames, 3,469 uploaded frames, no replacement, and no upload failure. `RequestShutdown` clears one pending payload before the summary, so the current counters leave that safely released frame unclassified.
+
+Rejected alternatives: do not relax the checker to ignore missing ownership. Do not force a Direct3D upload while FalloutNV is exiting.
+
+Consequence: allow no mailbox replacements and at most one cleared frame in the five-minute shutdown test. Reject upload failure, more than one clear, or any submission without exactly one terminal renderer outcome.
+
+Implementation evidence: the cleared-mailbox change passed the 15-test host matrix and both 24-test x86 matrices. Checker regressions cover complete upload, one shutdown clear, upload loss, mailbox replacement, excess clears, and an unaccounted submission. The new build still needs an untouched live log.
+
+Live evidence: the untouched log from commit `ce91fa2` passed the strict checker. It recorded a 299,980,000 microsecond audio clock, zero underruns, 2,998 presented frames, 6,002 dropped frames, and a 110 millisecond maximum update gap. Shutdown classified all 3,343 submissions as 3,342 uploads and one clear. The preserved log has SHA-256 `FCFD2D7F2D9E75F029BC0934F62DCD0876EB5678B9169164B3DE481BDE8AEB1D`.
 
 ### No save persistence
 

@@ -5,14 +5,15 @@ param(
         'PBVP Phase 1 Base',
         'PBVP Phase 1 VUI Plus',
         'PBVP Phase 1 Extended',
-        'PBVP Phase 1 Extended No Pip-Boy Tweaks')][string]$ProfileName,
+        'PBVP Phase 1 Extended No Pip-Boy Tweaks',
+        'PBVP Phase 4 Long Playback')][string]$ProfileName,
     [string]$RtssProfilePath,
     [Parameter(Mandatory, ParameterSetName = 'Apply')][int]$Width,
     [Parameter(Mandatory, ParameterSetName = 'Apply')][int]$Height,
     [Parameter(Mandatory, ParameterSetName = 'Apply')]
     [ValidateSet('Fullscreen', 'Windowed')][string]$DisplayMode,
     [Parameter(ParameterSetName = 'Apply')]
-    [ValidateSet(30, 60, 90, 120)][int]$FpsCap = 60,
+    [ValidateSet(10, 30, 60, 90, 120)][int]$FpsCap = 60,
     [Parameter(Mandatory, ParameterSetName = 'Apply')]
     [ValidateSet('On', 'Off')][string]$VSync,
     [Parameter(Mandatory, ParameterSetName = 'Restore')][switch]$Restore,

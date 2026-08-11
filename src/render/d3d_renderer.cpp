@@ -1,22 +1,25 @@
 #include "pbvp/d3d_renderer.hpp"
 
+#include "pbvp/checked_math.hpp"
 #include "pbvp/log.hpp"
 #include "pbvp/texture_contract.hpp"
 #include "pbvp/ui_bridge.hpp"
+#include "pbvp/video_scaler.hpp"
 
 #include <Windows.h>
 #include <d3d9.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <utility>
 
 namespace pbvp {
 namespace {
 
 constexpr std::uintptr_t kRendererSingletonPointer = 0x011C73B4u;
 constexpr std::size_t kRendererDeviceOffset = 0x288u;
-constexpr UINT kTextureWidth = 256u;
-constexpr UINT kTextureHeight = 256u;
 constexpr std::uint32_t kMaximumCadenceSamples = 8u;
 
 IDirect3DDevice9* DeviceFromRenderer(void* renderer) noexcept {
@@ -54,6 +57,46 @@ D3dRenderer& D3dRenderer::Instance() noexcept {
     return renderer;
 }
 
+bool D3dRenderer::SubmitVideoFrame(DecodedVideoFrame frame) noexcept {
+    std::size_t row_bytes = 0u;
+    std::size_t required_bytes = 0u;
+    std::size_t preceding_rows = 0u;
+    if (frame.width == 0u || frame.height == 0u || frame.stride == 0u ||
+        !CheckedMultiplySize(static_cast<std::size_t>(frame.width), 4u, row_bytes) ||
+        frame.stride < row_bytes ||
+        !CheckedMultiplySize(
+            static_cast<std::size_t>(frame.height - 1u),
+            static_cast<std::size_t>(frame.stride), preceding_rows) ||
+        !CheckedAddSize(preceding_rows, row_bytes, required_bytes) ||
+        frame.bgra.size() < required_bytes || frame.generation == 0u || frame.pts_us < 0) {
+        return false;
+    }
+    try {
+        std::scoped_lock lock(mailbox_mutex_);
+        if (pending_frame_.has_value()) {
+            ++mailbox_replacement_count_;
+        }
+        pending_frame_ = std::move(frame);
+        ++submitted_video_frame_count_;
+        clear_requested_.store(false, std::memory_order_release);
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+void D3dRenderer::ClearVideoFrame() noexcept {
+    try {
+        std::scoped_lock lock(mailbox_mutex_);
+        if (pending_frame_.has_value()) {
+            ++mailbox_clear_count_;
+        }
+        pending_frame_.reset();
+    } catch (...) {
+    }
+    clear_requested_.store(true, std::memory_order_release);
+}
+
 void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
     if (shutdown_requested_) {
         ReleaseResources();
@@ -63,6 +106,12 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
     if (!frame_callback_logged_) {
         PBVP_LOG_INFO("xNVSE frame-present texture upload boundary active");
         frame_callback_logged_ = true;
+    }
+    if (clear_requested_.exchange(false, std::memory_order_acq_rel)) {
+        presentation_pixels_valid_ = false;
+        video_pixels_ready_ = false;
+        last_surface_ = 0u;
+        upload_retry_pending_ = true;
     }
     if (!ui_rect.visible) {
         cadence_tracker_.Reset();
@@ -87,6 +136,15 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
     }
     RecordVisibleCadence();
 
+    bool new_video_pixels = false;
+    std::optional<DecodedVideoFrame> pending = TakePendingFrame();
+    if (pending.has_value()) {
+        new_video_pixels = PrepareVideoPixels(*pending);
+        if (!new_video_pixels && error_count_++ < 8u) {
+            PBVP_LOG_WARN("Decoded video frame failed the bounded 256x256 scaling contract");
+        }
+    }
+
     const UiSurfaceSnapshot surface =
         UiBridge::Instance().ResolveSurfaceOnSharedThread(ui_rect.game_thread_id);
     if (surface.status != UiSurfaceStatus::available) {
@@ -107,6 +165,7 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
         }
         last_surface_status_ = status;
         last_surface_ = 0u;
+        upload_retry_pending_ = true;
         return;
     }
     last_surface_status_ = 0u;
@@ -116,22 +175,38 @@ void D3dRenderer::OnFrame(const UiRectSnapshot& ui_rect) noexcept {
         if (error_count_++ < 8u) {
             PBVP_LOG_WARN("Texture upload skipped after device validation failure");
         }
+        upload_retry_pending_ = true;
         return;
     }
-    if (surface.d3d_texture == last_surface_) {
+    const bool surface_changed = surface.d3d_texture != last_surface_;
+    if (!surface_changed && !new_video_pixels && !upload_retry_pending_) {
         return;
     }
+    if (!presentation_pixels_valid_) {
+        PrepareCheckerboard();
+    }
+
     ++upload_attempt_count_;
-    if (!UploadCheckerboard(device, surface.d3d_texture)) {
+    if (!UploadPixels(device, surface.d3d_texture)) {
         ++upload_failure_count_;
+        upload_retry_pending_ = true;
         if (error_count_++ < 8u) {
-            PBVP_LOG_WARN("Generated checkerboard upload to the engine image failed");
+            PBVP_LOG_WARN("Presentation pixels could not be uploaded to the engine image");
         }
         return;
     }
     ++upload_success_count_;
+    if (video_pixels_ready_) {
+        ++uploaded_video_frame_count_;
+        if (!video_upload_logged_) {
+            PBVP_LOG_INFO("Decoded BGRA video reached PBVP_VideoSurface");
+            video_upload_logged_ = true;
+        }
+    } else if (surface_changed) {
+        PBVP_LOG_INFO("Generated checkerboard uploaded to PBVP_VideoSurface");
+    }
     last_surface_ = surface.d3d_texture;
-    PBVP_LOG_INFO("Generated checkerboard uploaded to PBVP_VideoSurface");
+    upload_retry_pending_ = false;
 }
 
 void D3dRenderer::RecordVisibleCadence() noexcept {
@@ -161,12 +236,8 @@ void D3dRenderer::RecordVisibleCadence() noexcept {
         cadence_minimum_fps_ = sample.frames_per_second;
         cadence_maximum_fps_ = sample.frames_per_second;
     } else {
-        if (sample.frames_per_second < cadence_minimum_fps_) {
-            cadence_minimum_fps_ = sample.frames_per_second;
-        }
-        if (sample.frames_per_second > cadence_maximum_fps_) {
-            cadence_maximum_fps_ = sample.frames_per_second;
-        }
+        cadence_minimum_fps_ = (std::min)(cadence_minimum_fps_, sample.frames_per_second);
+        cadence_maximum_fps_ = (std::max)(cadence_maximum_fps_, sample.frames_per_second);
     }
     cadence_total_fps_ += sample.frames_per_second;
     ++cadence_sample_count_;
@@ -177,8 +248,38 @@ void D3dRenderer::RecordVisibleCadence() noexcept {
 
 void D3dRenderer::RequestShutdown() noexcept {
     shutdown_requested_ = true;
+    ClearVideoFrame();
+    presentation_pixels_valid_ = false;
+    video_pixels_ready_ = false;
     ReleaseResources();
     LogSessionSummary();
+}
+
+D3dRendererSnapshot D3dRenderer::Snapshot() const noexcept {
+    D3dRendererSnapshot result{};
+    result.frame_callbacks = frame_callback_count_;
+    result.visible_frames = visible_frame_count_;
+    result.submitted_video_frames = submitted_video_frame_count_;
+    result.replaced_mailbox_frames = mailbox_replacement_count_;
+    result.cleared_mailbox_frames = mailbox_clear_count_;
+    result.uploaded_video_frames = uploaded_video_frame_count_;
+    result.upload_attempts = upload_attempt_count_;
+    result.upload_successes = upload_success_count_;
+    result.upload_failures = upload_failure_count_;
+    result.last_video_generation = last_video_generation_;
+    result.last_video_pts_us = last_video_pts_us_;
+    result.upload_minimum_us = upload_minimum_microseconds_;
+    result.upload_average_us = upload_timing_count_ > 0u
+        ? upload_total_microseconds_ / static_cast<double>(upload_timing_count_)
+        : 0.0;
+    result.upload_maximum_us = upload_maximum_microseconds_;
+    result.video_pixels_ready = video_pixels_ready_;
+    try {
+        std::scoped_lock lock(mailbox_mutex_);
+        result.mailbox_occupied = pending_frame_.has_value();
+    } catch (...) {
+    }
+    return result;
 }
 
 IDirect3DDevice9* D3dRenderer::FindDevice() noexcept {
@@ -210,10 +311,54 @@ bool D3dRenderer::ValidateDevice(IDirect3DDevice9* device) noexcept {
     device_ = device;
     ++device_validation_count_;
     LogDeviceProfile(device);
+    upload_retry_pending_ = true;
     return true;
 }
 
-bool D3dRenderer::UploadCheckerboard(
+std::optional<DecodedVideoFrame> D3dRenderer::TakePendingFrame() noexcept {
+    try {
+        std::scoped_lock lock(mailbox_mutex_);
+        if (!pending_frame_.has_value()) {
+            return std::nullopt;
+        }
+        std::optional<DecodedVideoFrame> result{std::move(pending_frame_)};
+        pending_frame_.reset();
+        return result;
+    } catch (...) {
+        return std::nullopt;
+    }
+}
+
+bool D3dRenderer::PrepareVideoPixels(const DecodedVideoFrame& frame) noexcept {
+    const VideoScaleResult scaled = ScaleBgraToFit(
+        frame.bgra, frame.width, frame.height, frame.stride,
+        presentation_pixels_, kTextureWidth, kTextureHeight, kTextureWidth * 4u);
+    if (scaled.status != VideoScaleStatus::ok) {
+        return false;
+    }
+    presentation_pixels_valid_ = true;
+    video_pixels_ready_ = true;
+    upload_retry_pending_ = true;
+    last_video_generation_ = frame.generation;
+    last_video_pts_us_ = frame.pts_us;
+    return true;
+}
+
+void D3dRenderer::PrepareCheckerboard() noexcept {
+    for (std::uint32_t y = 0u; y < kTextureHeight; ++y) {
+        auto* row = presentation_pixels_.data() +
+            static_cast<std::size_t>(y) * kTextureWidth * 4u;
+        for (std::uint32_t x = 0u; x < kTextureWidth; ++x) {
+            const bool light = ((x / 32u) + (y / 32u)) % 2u == 0u;
+            const std::uint32_t pixel = light ? 0xFF42F56Cu : 0xFF102818u;
+            std::memcpy(row + static_cast<std::size_t>(x) * 4u, &pixel, sizeof(pixel));
+        }
+    }
+    presentation_pixels_valid_ = true;
+    video_pixels_ready_ = false;
+}
+
+bool D3dRenderer::UploadPixels(
     IDirect3DDevice9* device,
     const std::uintptr_t surface) noexcept {
     IDirect3DTexture9* texture = AcquireTexture(surface);
@@ -241,15 +386,11 @@ bool D3dRenderer::UploadCheckerboard(
         PBVP_LOG_ERROR("PBVP_VideoSurface level description is unavailable");
         return false;
     }
-    PBVP_LOG_INFO(
-        "PBVP_VideoSurface profile: size=%ux%u format=%u pool=%u usage=0x%08X",
-        description.Width, description.Height, static_cast<unsigned>(description.Format),
-        static_cast<unsigned>(description.Pool), static_cast<unsigned>(description.Usage));
     const TexturePixelFormat pixel_format =
         description.Format == D3DFMT_A8R8G8B8
             ? TexturePixelFormat::argb8
             : (description.Format == D3DFMT_X8R8G8B8 ? TexturePixelFormat::xrgb8
-                                                      : TexturePixelFormat::unsupported);
+                                                       : TexturePixelFormat::unsupported);
     const TextureMemoryPool memory_pool =
         description.Pool == D3DPOOL_MANAGED ? TextureMemoryPool::managed
                                              : TextureMemoryPool::unsupported;
@@ -274,14 +415,12 @@ bool D3dRenderer::UploadCheckerboard(
         return false;
     }
 
-    auto* row = static_cast<std::uint8_t*>(locked.pBits);
-    for (UINT y = 0; y < kTextureHeight; ++y) {
-        auto* pixels = reinterpret_cast<std::uint32_t*>(row);
-        for (UINT x = 0; x < kTextureWidth; ++x) {
-            const bool light = ((x / 32u) + (y / 32u)) % 2u == 0u;
-            pixels[x] = light ? 0xFF42F56Cu : 0xFF102818u;
-        }
-        row += locked.Pitch;
+    auto* destination = static_cast<std::uint8_t*>(locked.pBits);
+    const auto* source = presentation_pixels_.data();
+    for (std::uint32_t y = 0u; y < kTextureHeight; ++y) {
+        std::memcpy(destination, source, static_cast<std::size_t>(kTextureWidth) * 4u);
+        destination += locked.Pitch;
+        source += static_cast<std::size_t>(kTextureWidth) * 4u;
     }
     const HRESULT unlock_result = texture->UnlockRect(0u);
     texture->Release();
@@ -296,9 +435,8 @@ bool D3dRenderer::UploadCheckerboard(
     LARGE_INTEGER frequency{};
     if (QueryPerformanceFrequency(&frequency) && frequency.QuadPart > 0) {
         const double microseconds = static_cast<double>(finished.QuadPart - started.QuadPart) *
-                                    1000000.0 / static_cast<double>(frequency.QuadPart);
+                                    1'000'000.0 / static_cast<double>(frequency.QuadPart);
         RecordUploadDuration(microseconds);
-        PBVP_LOG_INFO("Engine texture checkerboard upload took %.2f microseconds", microseconds);
     }
     return true;
 }
@@ -311,12 +449,8 @@ void D3dRenderer::RecordUploadDuration(const double microseconds) noexcept {
         upload_minimum_microseconds_ = microseconds;
         upload_maximum_microseconds_ = microseconds;
     } else {
-        if (microseconds < upload_minimum_microseconds_) {
-            upload_minimum_microseconds_ = microseconds;
-        }
-        if (microseconds > upload_maximum_microseconds_) {
-            upload_maximum_microseconds_ = microseconds;
-        }
+        upload_minimum_microseconds_ = (std::min)(upload_minimum_microseconds_, microseconds);
+        upload_maximum_microseconds_ = (std::max)(upload_maximum_microseconds_, microseconds);
     }
     upload_total_microseconds_ += microseconds;
     ++upload_timing_count_;
@@ -361,23 +495,25 @@ void D3dRenderer::LogSessionSummary() noexcept {
     }
     summary_logged_ = true;
     const double average = upload_timing_count_ > 0u
-                               ? upload_total_microseconds_ /
-                                     static_cast<double>(upload_timing_count_)
-                               : 0.0;
+        ? upload_total_microseconds_ / static_cast<double>(upload_timing_count_)
+        : 0.0;
     PBVP_LOG_INFO(
-        "Phase 1 renderer summary: callbacks=%llu visible=%llu devices=%u upload-successes=%llu upload-attempts=%llu upload-failures=%llu upload-us=%.2f/%.2f/%.2f",
+        "Renderer summary: callbacks=%llu visible=%llu devices=%u video-submitted=%llu video-uploaded=%llu mailbox-replaced=%llu mailbox-cleared=%llu upload-successes=%llu upload-attempts=%llu upload-failures=%llu upload-us=%.2f/%.2f/%.2f",
         static_cast<unsigned long long>(frame_callback_count_),
         static_cast<unsigned long long>(visible_frame_count_), device_validation_count_,
+        static_cast<unsigned long long>(submitted_video_frame_count_),
+        static_cast<unsigned long long>(uploaded_video_frame_count_),
+        static_cast<unsigned long long>(mailbox_replacement_count_),
+        static_cast<unsigned long long>(mailbox_clear_count_),
         static_cast<unsigned long long>(upload_success_count_),
         static_cast<unsigned long long>(upload_attempt_count_),
-        static_cast<unsigned long long>(upload_failure_count_), upload_minimum_microseconds_,
-        average, upload_maximum_microseconds_);
+        static_cast<unsigned long long>(upload_failure_count_),
+        upload_minimum_microseconds_, average, upload_maximum_microseconds_);
     const double cadence_average = cadence_sample_count_ > 0u
-                                       ? cadence_total_fps_ /
-                                             static_cast<double>(cadence_sample_count_)
-                                       : 0.0;
+        ? cadence_total_fps_ / static_cast<double>(cadence_sample_count_)
+        : 0.0;
     PBVP_LOG_INFO(
-        "Phase 1 cadence summary: samples=%u fps=%.2f/%.2f/%.2f",
+        "Visible cadence summary: samples=%u fps=%.2f/%.2f/%.2f",
         cadence_sample_count_, cadence_minimum_fps_, cadence_average,
         cadence_maximum_fps_);
 }
@@ -387,6 +523,7 @@ void D3dRenderer::ReleaseResources() noexcept {
     device_ = nullptr;
     last_surface_ = 0u;
     last_surface_status_ = 0u;
+    upload_retry_pending_ = true;
 }
 
 } // namespace pbvp

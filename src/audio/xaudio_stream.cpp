@@ -326,6 +326,10 @@ struct XAudioStream::Impl final {
     }
 
     XAudioStreamSnapshot ReadSnapshot() noexcept {
+        if (initialized && source_voice != nullptr) {
+            ReclaimCompleted();
+        }
+
         XAudioStreamSnapshot snapshot{};
         snapshot.status = last_status;
         snapshot.error_code = last_error;
@@ -347,7 +351,6 @@ struct XAudioStream::Impl final {
             return snapshot;
         }
 
-        ReclaimCompleted();
         XAUDIO2_VOICE_STATE state{};
         source_voice->GetState(&state, 0u);
         snapshot.queued_buffers = state.BuffersQueued;

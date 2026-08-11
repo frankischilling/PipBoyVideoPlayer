@@ -4,6 +4,7 @@
 #include "pbvp/ffmpeg_runtime.hpp"
 #include "pbvp/media_limits.hpp"
 #include "pbvp/win32_avio.hpp"
+#include "pbvp/win32_virtual_allocator.hpp"
 
 #include <atomic>
 #include <condition_variable>
@@ -15,6 +16,9 @@
 #include <vector>
 
 namespace pbvp {
+
+using VideoPixelBuffer =
+    std::vector<std::uint8_t, Win32VirtualAllocator<std::uint8_t>>;
 
 enum class MediaDecodeStatus : std::uint32_t {
     ok,
@@ -51,10 +55,24 @@ enum class MediaDecodeStatus : std::uint32_t {
 
 const char* MediaDecodeStatusName(MediaDecodeStatus status) noexcept;
 
+enum class MediaDecodeFailureSite : std::uint32_t {
+    none,
+    media_open,
+    video_pixel_buffer,
+    video_rotation_buffer,
+    video_queue,
+    audio_sample_buffer,
+    audio_queue,
+    resampler_flush_buffer,
+};
+
+const char* MediaDecodeFailureSiteName(MediaDecodeFailureSite site) noexcept;
+
 struct MediaDecodeFailure {
     MediaDecodeStatus status{MediaDecodeStatus::ok};
     int ffmpeg_error{};
     MediaIoFailure io{};
+    MediaDecodeFailureSite site{MediaDecodeFailureSite::none};
 };
 
 enum class DecoderState : std::uint32_t {
@@ -81,7 +99,7 @@ struct MediaInfo {
 };
 
 struct DecodedVideoFrame {
-    std::vector<std::uint8_t> bgra{};
+    VideoPixelBuffer bgra{};
     std::uint32_t width{};
     std::uint32_t height{};
     std::uint32_t stride{};
@@ -102,10 +120,11 @@ struct DecodedAudioChunk {
 struct MediaDecoderConfig {
     DecodeLimits payload_limits{};
     MediaIoLimits io_limits{};
-    QueueLimits video_queue{3u, 32u * 1024u * 1024u};
+    QueueLimits video_queue{12u, 32u * 1024u * 1024u};
     QueueLimits audio_queue{16u, 4u * 1024u * 1024u};
     std::uint32_t output_audio_channels{2u};
     std::uint32_t output_audio_rate{48000u};
+    std::uint32_t output_video_edge_limit{512u};
     std::uint32_t maximum_streams{16u};
     std::uint32_t decoder_threads{2u};
     std::int64_t probe_bytes{8ll * 1024ll * 1024ll};
@@ -185,7 +204,10 @@ private:
     void ReleaseMedia() noexcept;
     void SetState(DecoderState state) noexcept;
     void SetInfo(const MediaInfo& info) noexcept;
-    void Fail(MediaDecodeStatus status, int ffmpeg_error = 0) noexcept;
+    void Fail(
+        MediaDecodeStatus status,
+        int ffmpeg_error = 0,
+        MediaDecodeFailureSite site = MediaDecodeFailureSite::none) noexcept;
     void FailIo(const MediaIoFailure& failure) noexcept;
 
     const FfmpegRuntime& runtime_;
@@ -231,6 +253,7 @@ private:
     bool audio_next_pts_valid_{};
     std::uint32_t rotation_degrees_{};
     bool format_opened_{};
+    MediaDecodeFailureSite allocation_site_{MediaDecodeFailureSite::none};
 };
 
 } // namespace pbvp

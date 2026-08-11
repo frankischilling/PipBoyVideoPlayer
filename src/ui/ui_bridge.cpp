@@ -20,6 +20,7 @@ constexpr std::uintptr_t kTileImageVtable = 0x0106F01Cu;
 constexpr std::uintptr_t kTileShaderPropertyVtable = 0x010B9D28u;
 constexpr std::uintptr_t kNiSourceTextureVtable = 0x0109B9ECu;
 constexpr std::uintptr_t kNiDx9SourceTextureDataVtable = 0x010ED37Cu;
+constexpr std::uintptr_t kTileSetStringValueAddress = 0x00A01350u;
 constexpr std::uint32_t kMenuTypeMin = 0x3E9u;
 constexpr std::uint32_t kMapMenuType = 0x3FFu;
 constexpr std::uint32_t kValueX = ::Tile::kTileValue_x;
@@ -27,6 +28,7 @@ constexpr std::uint32_t kValueY = ::Tile::kTileValue_y;
 constexpr std::uint32_t kValueVisible = ::Tile::kTileValue_visible;
 constexpr std::uint32_t kValueHeight = ::Tile::kTileValue_height;
 constexpr std::uint32_t kValueWidth = ::Tile::kTileValue_width;
+constexpr std::uint32_t kValueString = ::Tile::kTileValue_string;
 constexpr std::size_t kMaxTileValues = 4096;
 constexpr std::size_t kMaxTilesVisited = 512;
 constexpr std::size_t kMaxParentDepth = 64;
@@ -181,6 +183,35 @@ Tile* FindDescendant(Tile* root, const char* name) noexcept {
         }
     }
     return nullptr;
+}
+
+const char* PlaybackStatusText(const PlaybackStateSnapshot& playback) noexcept {
+    switch (playback.state) {
+        case PlaybackState::unavailable: return "PLAYER UNAVAILABLE";
+        case PlaybackState::idle: return "VIDEOS";
+        case PlaybackState::opening: return "OPENING VIDEO";
+        case PlaybackState::buffering:
+            return playback.pause_after_buffering ? "BUFFERING PAUSED" : "BUFFERING";
+        case PlaybackState::playing: return "PLAYING";
+        case PlaybackState::paused: return "PAUSED";
+        case PlaybackState::stopping: return "STOPPING";
+        case PlaybackState::error:
+            switch (playback.error) {
+                case PlaybackError::media_open_failed: return "VIDEO COULD NOT BE OPENED";
+                case PlaybackError::decoder_failed: return "VIDEO DECODE ERROR";
+                case PlaybackError::decoder_memory_failed: return "VIDEO MEMORY ERROR";
+                case PlaybackError::audio_initialization_failed:
+                case PlaybackError::audio_device_failed:
+                case PlaybackError::audio_stream_failed:
+                    return "AUDIO PLAYBACK ERROR";
+                case PlaybackError::clock_unavailable: return "PLAYBACK CLOCK ERROR";
+                case PlaybackError::render_failed: return "VIDEO DISPLAY ERROR";
+                case PlaybackError::invalid_state:
+                case PlaybackError::none:
+                    return "PLAYBACK ERROR";
+            }
+    }
+    return "PLAYBACK ERROR";
 }
 
 const char* ResolveStatusName(const ResolveStatus status) noexcept {
@@ -363,6 +394,52 @@ void UiBridge::UpdateOnGameThread() noexcept {
     Publish(snapshot);
 }
 
+bool UiBridge::SetPlaybackStatus(
+    const PlaybackStateSnapshot& playback) noexcept {
+    const std::uint32_t expected_thread = game_thread_id_.load(std::memory_order_acquire);
+    if (expected_thread == 0u || GetCurrentThreadId() != expected_thread) {
+        return false;
+    }
+    __try {
+        const auto* visible = reinterpret_cast<const std::uint8_t*>(kMenuVisibilityArray);
+        if (visible[kMapMenuType] == 0u) {
+            return false;
+        }
+        auto*** menu_array_pointer = reinterpret_cast<Tile***>(kTileMenuArrayPointer);
+        if (menu_array_pointer == nullptr || *menu_array_pointer == nullptr) {
+            return false;
+        }
+        Tile* menu_root = (*menu_array_pointer)[kMapMenuType - kMenuTypeMin];
+        Tile* status_tile = FindDescendant(menu_root, "PBVP_LayerProbe");
+        if (status_tile == nullptr) {
+            return false;
+        }
+        TileValue* string_value = FindValue(status_tile, kValueString);
+        if (string_value == nullptr || string_value->parent != status_tile) {
+            return false;
+        }
+        const std::uintptr_t status_address = reinterpret_cast<std::uintptr_t>(status_tile);
+        if (last_status_tile_ == status_address &&
+            last_status_state_ == playback.state &&
+            last_status_error_ == playback.error) {
+            return true;
+        }
+
+        using SetStringValue = void(__thiscall*)(
+            void*, std::uint32_t, const char*, bool);
+        const auto set_string = reinterpret_cast<SetStringValue>(
+            kTileSetStringValueAddress);
+        set_string(status_tile, kValueString, PlaybackStatusText(playback), true);
+        last_status_tile_ = status_address;
+        last_status_state_ = playback.state;
+        last_status_error_ = playback.error;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        last_status_tile_ = 0u;
+        return false;
+    }
+}
+
 UiSurfaceSnapshot UiBridge::ResolveSurfaceOnSharedThread(
     const std::uint32_t game_thread_id) const noexcept {
     UiSurfaceSnapshot output{};
@@ -492,6 +569,9 @@ void UiBridge::Clear() noexcept {
     found_logged_ = false;
     map_visible_logged_ = false;
     last_failure_ = 0u;
+    last_status_tile_ = 0u;
+    last_status_state_ = PlaybackState::unavailable;
+    last_status_error_ = PlaybackError::none;
 }
 
 void UiBridge::Publish(const UiRectSnapshot& snapshot) noexcept {

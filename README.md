@@ -6,11 +6,11 @@ The repository contains the implementation, automated tests, UIO files, build sc
 
 ## Project status
 
-Status: Phase 3 audio and clock
+Status: Phase 4 integrated playback accepted
 
 The current diagnostic build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, and installs a UIO prefab. Once the Pip-Boy is open, it validates the live UIO image, engine texture objects, managed Direct3D texture, device, and callback thread before uploading a generated checkerboard. Any unknown object type, texture profile, or thread arrangement disables the update instead of guessing. The plugin does not patch game functions or a Direct3D device vtable.
 
-All 11 host tests and all 19 Win32 Release tests pass. Two overlay draw points were rejected because they rendered above the Pip-Boy UI. The accepted path updates an engine-owned managed texture and leaves drawing to the game. It uses no executable hook or Direct3D device vtable patch. The raised 384x216 panel passed all four isolated UI profiles at 1920x1080. Keyboard and mouse input, ten Pip-Boy reopen cycles, and 50 measured focus-loss and return cycles passed in the tested native windowed configuration.
+All 15 host tests pass. The normal and armed Win32 Release matrices each pass all 24 tests. Two overlay draw points were rejected because they rendered above the Pip-Boy UI. The accepted path updates an engine-owned managed texture and leaves drawing to the game. It uses no executable hook or Direct3D device vtable patch. The raised 384 by 216 panel passed all four isolated UI profiles at 1920 by 1080. Keyboard and mouse input, ten Pip-Boy reopen cycles, and 50 measured focus-loss and return cycles passed in the tested native windowed configuration.
 
 A synthetic recreation test froze inside the game's native reset sequence, so the test, reset hook, and MinHook dependency were removed. A PBVP-disabled control later reproduced the native fullscreen NVIDIA driver crash, so repeated fullscreen Alt+Tab is not supported. The isolated test-profile save guard passes Base and full Extended exit checks without changing normal profiles. Native windowed rows passed at 1280x720 and 30 FPS, 1280x960 and 60 FPS, 2560x1440 and 90 FPS, and 3440x1440 and 120 FPS. The two larger windows were clipped by the 1920x1080 monitor, so those results cover the visible panel and logged backbuffer rather than the full window.
 
@@ -23,6 +23,14 @@ The decoder worker opens MP4 and MOV containers, requires H.264 video, accepts o
 Phase 3 uses the Windows 10 and Windows 11 system XAudio2 2.9 runtime. The audio stream owns a fixed 256 KiB PCM pool, keeps callbacks limited to atomic updates, and uses the consumed sample count as the media clock. A checked QPC clock handles silent video. Automated tests cover pause, resume, mute, volume, stop and flush, forward and backward clock origins, end of stream, bounded queue pressure, default-device reconstruction, 44.1 and 48 kHz mono and stereo voices, 5.1 downmix through the decoder, and 25 complete audio lifetimes. The 100, 200, and 300 ms prebuffer cases completed with zero underruns.
 
 The live Phase 3 MO2 diagnostic played a generated two-second AAC fixture through FalloutNV. The user heard the tone. XAudio2 consumed 96,967 output samples, reached the expected 2,020,125 microsecond clock, and reported zero underruns. The decoder joined before FFmpeg unload, and the source voice and callback targets were released before process shutdown. The release packager rejects this private diagnostic and any bundled XAudio2 DLL.
+
+Phase 4 connects decoding, XAudio2, audio-led frame selection, the Pip-Boy texture upload, status text, and menu lifecycle handling. It keeps bounded decoder queues and one presentation frame, drops late video without changing the media clock, uses QPC for silent media, and stops playback when the Pip-Boy closes or the game changes state. Automated tests cover pause, resume, forward and backward seeks, stop during buffering, stale generations, silent playback, foreign-thread refusal, bounded 1080p memory, and orderly shutdown.
+
+The accepted live 30-minute run decoded 54,000 frames, uploaded 53,993, and recorded zero underruns. It finished with 28.125 milliseconds of audio-to-video error and 41,811,968 bytes of additional private memory. Upload time was 18.30 microseconds minimum, 24.64 microseconds average, and 150.40 microseconds maximum.
+
+The accepted live five-minute 10 FPS run used the same 30 FPS fixture. It decoded 9,001 frames, presented 2,998, dropped 6,002, and reached a 299,980,000 microsecond audio clock with zero underruns. Its maximum controller update gap was 110 milliseconds. Renderer shutdown accounted for all 3,343 submissions as 3,342 uploads and one cleared pending frame, with no replacement or upload failure.
+
+These results satisfy the Phase 4 synchronization, frame-rate independence, seek and buffering-stop automation, and memory exit criteria. Phase 5 still needs the media catalog, user controls, controller navigation, display settings, and configuration reload. DXVK, the complete UI matrix, repetition tests, and the two-hour soak remain Phase 6 work.
 
 ## Build
 

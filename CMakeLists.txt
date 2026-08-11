@@ -8,6 +8,11 @@ option(PBVP_BUILD_PLUGIN "Build the Win32 xNVSE plugin" ON)
 option(PBVP_BUILD_TESTS "Build automated tests" ON)
 option(PBVP_ENABLE_MEDIA_SMOKE_TEST "Arm the private live MO2 media decoder diagnostic" OFF)
 option(PBVP_ENABLE_AUDIO_SMOKE_TEST "Arm the private live MO2 decoded-audio diagnostic" OFF)
+option(PBVP_ENABLE_PLAYBACK_SMOKE_TEST "Arm the private live integrated playback diagnostic" OFF)
+option(PBVP_ENABLE_PLAYBACK_LONG_TEST "Arm the private 30-minute integrated playback diagnostic" OFF)
+if(PBVP_ENABLE_PLAYBACK_SMOKE_TEST AND PBVP_ENABLE_PLAYBACK_LONG_TEST)
+    message(FATAL_ERROR "Only one private playback diagnostic may be armed at a time.")
+endif()
 set(PBVP_XNVSE_ROOT "${CMAKE_SOURCE_DIR}/external/NVSE-6.4.5" CACHE PATH "xNVSE 6.4.5 release source root")
 set(PBVP_FFMPEG_ROOT "${CMAKE_SOURCE_DIR}/external/ffmpeg-8.1.2-i686" CACHE PATH "Verified FFmpeg 8.1.2 x86 install root")
 
@@ -18,8 +23,11 @@ add_library(pbvp_core STATIC
     src/core/frame_cadence.cpp
     src/core/media_limits.cpp
     src/core/playback_clock.cpp
+    src/core/playback_state.cpp
     src/core/rect_math.cpp
-    src/core/texture_contract.cpp)
+    src/core/texture_contract.cpp
+    src/core/video_scaler.cpp
+    src/core/video_scheduler.cpp)
 target_include_directories(pbvp_core PUBLIC include)
 target_compile_features(pbvp_core PUBLIC cxx_std_20)
 target_compile_definitions(pbvp_core PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
@@ -57,13 +65,23 @@ if(PBVP_BUILD_PLUGIN)
     add_library(pbvp_media STATIC
         src/media/ffmpeg_runtime.cpp
         src/media/media_decoder.cpp
-        src/media/win32_avio.cpp)
+        src/media/win32_avio.cpp
+        src/media/win32_virtual_allocator.cpp)
     target_include_directories(pbvp_media PUBLIC include)
     target_include_directories(pbvp_media SYSTEM PUBLIC "${PBVP_FFMPEG_ROOT}/include")
     target_compile_features(pbvp_media PUBLIC cxx_std_20)
     target_compile_definitions(pbvp_media PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
     target_compile_options(pbvp_media PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
     set_target_properties(pbvp_media PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+    add_library(pbvp_playback STATIC
+        src/playback/playback_controller.cpp)
+    target_link_libraries(pbvp_playback PUBLIC pbvp_audio pbvp_core pbvp_media)
+    target_include_directories(pbvp_playback PUBLIC include)
+    target_compile_features(pbvp_playback PUBLIC cxx_std_20)
+    target_compile_definitions(pbvp_playback PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_compile_options(pbvp_playback PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus)
+    set_target_properties(pbvp_playback PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
     add_library(PipBoyVideoPlayer SHARED
         src/plugin/plugin_main.cpp
@@ -72,7 +90,7 @@ if(PBVP_BUILD_PLUGIN)
         src/diagnostics/logger.cpp
         src/plugin/version.rc
         src/plugin/exports.def)
-    target_link_libraries(PipBoyVideoPlayer PRIVATE pbvp_audio pbvp_core pbvp_media d3d9 psapi)
+    target_link_libraries(PipBoyVideoPlayer PRIVATE pbvp_audio pbvp_core pbvp_media pbvp_playback d3d9 psapi)
     target_include_directories(PipBoyVideoPlayer PRIVATE
         include
         "${PBVP_XNVSE_ROOT}"
@@ -88,6 +106,12 @@ if(PBVP_BUILD_PLUGIN)
     if(PBVP_ENABLE_AUDIO_SMOKE_TEST)
         target_sources(PipBoyVideoPlayer PRIVATE src/diagnostics/audio_smoke_test.cpp)
         target_compile_definitions(PipBoyVideoPlayer PRIVATE PBVP_ENABLE_AUDIO_SMOKE_TEST=1)
+    endif()
+    if(PBVP_ENABLE_PLAYBACK_SMOKE_TEST)
+        target_compile_definitions(PipBoyVideoPlayer PRIVATE PBVP_ENABLE_PLAYBACK_SMOKE_TEST=1)
+    endif()
+    if(PBVP_ENABLE_PLAYBACK_LONG_TEST)
+        target_compile_definitions(PipBoyVideoPlayer PRIVATE PBVP_ENABLE_PLAYBACK_LONG_TEST=1)
     endif()
     target_compile_options(PipBoyVideoPlayer PRIVATE
         /W4 /permissive- /utf-8 /Zc:__cplusplus /guard:cf
@@ -151,6 +175,17 @@ if(PBVP_BUILD_PLUGIN)
         add_test(
             NAME pbvp_media_audio_pipeline_test
             COMMAND pbvp_media_audio_pipeline_test
+                "${PBVP_FFMPEG_ROOT}/bin"
+                "${CMAKE_SOURCE_DIR}/tests/fixtures")
+
+        add_executable(pbvp_playback_controller_test tests/playback_controller_tests.cpp)
+        target_link_libraries(pbvp_playback_controller_test PRIVATE pbvp_playback)
+        target_compile_features(pbvp_playback_controller_test PRIVATE cxx_std_20)
+        target_compile_options(pbvp_playback_controller_test PRIVATE /W4 /WX /permissive- /utf-8 /Zc:__cplusplus /Zm200)
+        set_target_properties(pbvp_playback_controller_test PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        add_test(
+            NAME pbvp_playback_controller_test
+            COMMAND pbvp_playback_controller_test
                 "${PBVP_FFMPEG_ROOT}/bin"
                 "${CMAKE_SOURCE_DIR}/tests/fixtures")
 
@@ -260,6 +295,39 @@ if(PBVP_BUILD_TESTS)
             -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase3-audio-smoke-log.ps1)
 
     add_test(
+        NAME pbvp_phase4_playback_profile_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase4-playback-profile.ps1
+            -ProfileScript ${CMAKE_SOURCE_DIR}/scripts/create-phase4-playback-profile.ps1
+            -FixturePath ${CMAKE_SOURCE_DIR}/tests/fixtures/h264-aac-44100-stereo.mp4)
+
+    add_test(
+        NAME pbvp_phase4_playback_smoke_log_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase4-playback-smoke-log.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase4-playback-smoke-log.ps1)
+
+    add_test(
+        NAME pbvp_phase4_long_playback_log_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase4-long-playback-log.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase4-long-playback-log.ps1)
+
+    add_test(
+        NAME pbvp_phase4_low_fps_log_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase4-low-fps-log.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase4-low-fps-log.ps1)
+
+    add_test(
         NAME pbvp_data_contract_test
         COMMAND ${CMAKE_COMMAND}
             -DPBVP_SOURCE_DIR=${CMAKE_SOURCE_DIR}
@@ -272,8 +340,11 @@ if(PBVP_BUILD_TESTS)
         tests/frame_cadence_tests.cpp
         tests/media_limits_tests.cpp
         tests/playback_clock_tests.cpp
+        tests/playback_state_tests.cpp
         tests/rect_math_tests.cpp
         tests/texture_contract_tests.cpp
+        tests/video_scaler_tests.cpp
+        tests/video_scheduler_tests.cpp
         tests/test_main.cpp)
     target_link_libraries(pbvp_tests PRIVATE pbvp_core)
     target_compile_features(pbvp_tests PRIVATE cxx_std_20)

@@ -101,7 +101,7 @@ try {
         -ProfileName 'PBVP Phase 1 Extended' `
         -RtssProfilePath $rtssProfile `
         -Width 1280 -Height 720 `
-        -DisplayMode Windowed -FpsCap 30 -VSync Off `
+        -DisplayMode Windowed -FpsCap 10 -VSync Off `
         -Confirm:$false
 
     $prefs = Get-Content -LiteralPath (Join-Path $profile 'falloutprefs.ini') -Raw
@@ -112,7 +112,7 @@ try {
         $prefs -notmatch '(?m)^bFull Screen=0\r?$' -or
         $custom -notmatch '(?m)^bFull Screen=0\r?$' -or
         $custom -notmatch '(?m)^iPresentInterval=0\r?$' -or
-        $rtss -notmatch '(?m)^Limit=30\r?$') {
+        $rtss -notmatch '(?m)^Limit=10\r?$') {
         throw 'The first matrix case was not applied correctly.'
     }
 

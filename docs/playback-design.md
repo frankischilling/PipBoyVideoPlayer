@@ -107,7 +107,8 @@ Every limit belongs in one configuration structure and is logged at startup:
 | --- | ---: |
 | Maximum source width | 1920 |
 | Maximum source height | 1080 |
-| Maximum video queue | 3 frames |
+| Maximum queued video edge | 512 |
+| Maximum video queue | 12 frames and 32 MiB |
 | Maximum converted video bytes | 32 MiB |
 | Target queued audio | 200 ms |
 | Maximum queued audio | 500 ms |
@@ -116,3 +117,5 @@ Every limit belongs in one configuration structure and is logged at startup:
 | Maximum metadata string | 512 UTF-8 bytes |
 
 These values are starting points. Multiplication and alignment must use checked `size_t` arithmetic even though the process is 32-bit.
+
+The decoder validates the original source dimensions, then scales BGRA output to fit within the queued-video edge before rotation and queue insertion. It does not upscale smaller sources. Source and display metadata retain the original dimensions.

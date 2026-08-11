@@ -2,6 +2,23 @@
 
 ## 0.1.0 - Unreleased
 
+- Connected the decoder, XAudio2 sample clock, video scheduler, renderer mailbox, Pip-Boy status text, and game lifecycle into a bounded playback controller.
+- Added audio-led frame selection, late-frame dropping, startup buffering, pause, resume, forward and backward seeks, stop during buffering, silent-video QPC timing, and structured playback errors.
+- Added a one-frame renderer mailbox and checked BGRA scaling into the fixed 256x256 engine-owned texture without retaining a Direct3D reference across callbacks.
+- Added automated integrated tests for low game frame rates, 30-minute clock mapping, seek generations, Pip-Boy closure, game transitions, shutdown order, thread ownership, silent playback, and renderer mailbox pressure.
+- Verified the live Phase 4 path in FalloutNV with visible video and status text, 18 presented frames, two dropped startup frames, 96,967 played samples, a 2,020,125 microsecond final clock, zero underruns, and a 59.40 microsecond maximum upload.
+- Added a save-free Phase 4 MO2 profile, a generated playback fixture in a separate media mod, a strict playback log checker, and package rejection for an armed integrated diagnostic.
+- Added a pinned 30-minute 720p30 fixture generator, final audio-to-video error metrics, process and queue memory measurements, five-minute progress records, a strict long-playback checker, and package rejection for the separate armed long diagnostic.
+- Fixed the video staging byte counter after the first 720p live run exposed that it subtracted a moved-from frame size. Added named failure sites, a 1080p completion regression, and an optional five-second startup check against the real 30-minute fixture.
+- Added fixed decoder allocation-site codes and diagnostic 32-bit address-space measurements after the second live long-playback attempt failed before its first frame.
+- Bounded queued BGRA output to a 512-pixel edge while retaining the 1080p input cap. The updated 1080p queue uses 1,769,472 bytes for three frames, and the real long fixture passes the five-second native startup test.
+- Replaced the misleading `VIDEO FORMAT ERROR` message with separate video decode and video memory errors.
+- Moved video pixel payloads from the loaded game's C++ heap to checked `VirtualAlloc` regions after both source-sized and 589,824-byte heap allocations failed during live playback.
+- Added 512 repeated video payload allocation, move, and release checks with retained-memory limits.
+- Passed the short live allocator retest with about 56 seconds of uninterrupted video, 1,659 successful uploads, and no playback or allocation error.
+- Passed the uninterrupted live 30-minute synchronization test with 28.125 milliseconds of audio-to-video error, zero underruns, 41,811,968 bytes of peak private-memory growth, and 150.40 microseconds maximum texture upload time.
+- Aligned the long-log checker's final clock window with the documented 50-millisecond synchronization tolerance and added early, late, and excess-drift regressions.
+- Added a reversible 10 FPS case and strict five-minute log checker for live low-FPS frame dropping without cumulative audio-clock drift.
 - Added checked audio-sample and QueryPerformanceCounter clocks with pause, resume, seek-origin, 30-minute mapping, and overflow tests.
 - Added a bounded system XAudio2 2.9 stream with a fixed PCM pool, atomics-only callbacks, play, stop, pause, resume, mute, volume, end of stream, and default-device reconstruction.
 - Added tracked COM ownership on the audio thread after the first native mastering-voice test exposed the missing initialization step.
