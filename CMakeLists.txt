@@ -339,6 +339,14 @@ if(PBVP_BUILD_TESTS)
             -FixturePath ${CMAKE_SOURCE_DIR}/tests/fixtures/h264-title-metadata.mp4)
 
     add_test(
+        NAME pbvp_phase5_catalog_log_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase5-catalog-log.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase5-catalog-log.ps1)
+
+    add_test(
         NAME pbvp_data_contract_test
         COMMAND ${CMAKE_COMMAND}
             -DPBVP_SOURCE_DIR=${CMAKE_SOURCE_DIR}
