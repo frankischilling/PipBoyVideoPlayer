@@ -612,7 +612,7 @@ The data-contract test requires the runtime stream-summary record. The record co
 
 ## Phase 5 aspect scaling audit
 
-Code inspection found that Fit and Fill used only the square 256 by 256 engine texture, even though Gamebryo displays that texture in the 384 by 216 video rectangle. Portable tests now model both dimensions. They verify that a 16:9 source fills the backing texture for a 16:9 presentation, a 4:3 Fit source receives side bars, a 4:3 Fill source crops vertically, and invalid presentation geometry is rejected. A live Fit and Fill comparison remains required.
+Code inspection found that Fit and Fill used only the square 256 by 256 engine texture, even though Gamebryo displays that texture in the 384 by 216 video rectangle. Portable tests now model both dimensions. They verify that a 16:9 source fills the backing texture for a 16:9 presentation, a 4:3 Fit source receives side bars, a 4:3 Fill source crops vertically, and invalid presentation geometry is rejected. The live Fit and Fill comparison passed with the corrected scaling.
 
 The live checker requires one Fit open and one Fill open of the 160x120 fixture, with a successful idle reload between them. It also requires two matching stream summaries and clean shutdown. Warning, error, out-of-order, absolute-path, and metadata records are rejected. The log cannot prove the visual crop or bars, so both views still need user confirmation.
 
@@ -622,7 +622,9 @@ The local live-only fixture is a synthetic 160 by 120 H.264 High video with ster
 
 The portable reload policy accepts only the idle playback state. It rejects unavailable, opening, buffering, playing, paused, stopping, and error states. This protects the state gate but does not replace an in-game idle reload with changed presentation and resource settings.
 
-The first live comparison accepted the Fit view because the 4:3 fixture showed the expected side bars. The next open still used Fit, and the completed log contained no successful reload record. Inspection found an identifier mismatch: xNVSE registers the plugin as `Pip-Boy Video Player`, while the listener compared the dispatched name with `PipBoyVideoPlayer`. That run does not count as an idle reload or Fill result. The listener now compares against its registered name, and the corrected console command is `ReloadPluginConfig "Pip-Boy Video Player"`. A new live run remains required.
+The first live comparison accepted the Fit view because the 4:3 fixture showed the expected side bars. The next open still used Fit, and the completed log contained no successful reload record. Inspection found an identifier mismatch: xNVSE registers the plugin as `Pip-Boy Video Player`, while the listener compared the dispatched name with `PipBoyVideoPlayer`. That run does not count as an idle reload or Fill result. The listener now compares against its registered name, and the corrected console command is `ReloadPluginConfig "Pip-Boy Video Player"`.
+
+The corrected run opened the fixture once with Fit, reloaded Fill while playback was idle, and opened the same fixture again. The user saw the expected side bars in Fit and a centered top and bottom crop in Fill. Neither view overlapped the Pip-Boy frame or map buttons. The strict checker passed with one Fit start, one Fill start, two matching stream summaries, no warning or error, and clean shutdown. The preserved log has SHA-256 `BF070C72AF7CB9C15BC6352069FE4DE53CDB1DAE97766F3973AA1159EC52DC20`.
 
 ## UI matrix
 

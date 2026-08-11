@@ -21,6 +21,7 @@
 - Added bounded playback log names. Normal logging records the selected basename. Diagnostic logging can record a validated relative catalog name, while absolute paths and traversal still reduce to the basename. Metadata titles are not used for log names.
 - Added one numeric stream summary after a media file opens. It records dimensions, rotation, duration, and audio layout without logging an absolute path or embedded metadata text.
 - Added a strict live checker for one Fit open, an idle reload to Fill, a second open of the 160x120 fixture, matching stream summaries, privacy, ordering, and clean shutdown.
+- Fixed runtime configuration reload to match the registered xNVSE plugin name. The corrected live run displayed Fit side bars, reloaded Fill while idle, displayed the centered crop, and passed the strict log checker.
 - Added guarded setup for four Phase 5 UI test profiles. The script copies only the existing save-isolated profiles, refuses targets with save data, and changes the selected profile only while MO2 and Fallout are closed.
 - Added privacy-safe input-method transition records and a strict controller log checker. The checker requires controller playback followed by a return to keyboard or mouse input.
 - Added one checker for the four live Phase 5 UI profiles. Every profile needs a separate clean log with catalog playback, a decoded upload, worker shutdown, and valid renderer accounting.
