@@ -586,6 +586,12 @@ The strict checker reached the renderer summary and found 3,470 submitted frames
 
 The cleared-mailbox change passed the 15-test host matrix and both 24-test x86 matrices. Checker regressions accept complete upload with no clear and shutdown with one cleared pending frame. They reject upload loss, mailbox replacement, two cleared frames, and a submission without a terminal renderer outcome. An untouched live log from the new build must still pass the strict checker.
 
+The untouched live log from commit `ce91fa2` passed `check-phase4-low-fps-log.ps1`. At five minutes, the audio clock was 299,980,000 microseconds with zero underruns. The controller decoded 9,001 frames, presented 2,998, dropped 6,002, used 36,810,752 bytes of additional private memory, and recorded a 110 millisecond maximum update gap.
+
+Shutdown accounted for all 3,343 renderer submissions: 3,342 uploaded frames, no mailbox replacement, and one pending frame cleared. There was no upload failure. Upload time was 19.50 microseconds minimum, 35.85 microseconds average, and 200.40 microseconds maximum. Visible cadence was 10.00 FPS minimum, 10.01 FPS average, and 10.06 FPS maximum. The preserved accepted log has SHA-256 `FCFD2D7F2D9E75F029BC0934F62DCD0876EB5678B9169164B3DE481BDE8AEB1D`.
+
+This closes the five-minute 10 FPS frame-dropping gate. The earlier intermittent audio failure remains a risk for active-playback focus testing, repeated low-FPS runs, and the Phase 6 soak.
+
 ## UI matrix
 
 Test these layouts independently:

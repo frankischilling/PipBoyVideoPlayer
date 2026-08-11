@@ -816,6 +816,8 @@ Consequence: allow no mailbox replacements and at most one cleared frame in the 
 
 Implementation evidence: the cleared-mailbox change passed the 15-test host matrix and both 24-test x86 matrices. Checker regressions cover complete upload, one shutdown clear, upload loss, mailbox replacement, excess clears, and an unaccounted submission. The new build still needs an untouched live log.
 
+Live evidence: the untouched log from commit `ce91fa2` passed the strict checker. It recorded a 299,980,000 microsecond audio clock, zero underruns, 2,998 presented frames, 6,002 dropped frames, and a 110 millisecond maximum update gap. Shutdown classified all 3,343 submissions as 3,342 uploads and one clear. The preserved log has SHA-256 `FCFD2D7F2D9E75F029BC0934F62DCD0876EB5678B9169164B3DE481BDE8AEB1D`.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.

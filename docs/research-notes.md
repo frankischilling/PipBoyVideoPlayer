@@ -397,6 +397,10 @@ The strict checker then reached the shutdown renderer summary. It found 3,470 su
 
 The cleared-mailbox change passed the 15-test host matrix and both 24-test x86 matrices. The checker accepts both complete upload and one pending frame cleared during shutdown. It rejects upload loss, mailbox replacement, two cleared frames, and a submission without a terminal renderer outcome. Untouched live evidence from the new log format remains open.
 
+The untouched commit `ce91fa2` log passed the strict low-FPS checker. At five minutes, it recorded a 299,980,000 microsecond audio clock, zero underruns, 9,001 decoded frames, 2,998 presented frames, 6,002 dropped frames, 36,810,752 bytes of additional private memory, and a 110 millisecond maximum update gap. Renderer shutdown classified 3,342 uploads and one clear from 3,343 submissions. There was no replacement or upload failure. Upload time was 19.50 microseconds minimum, 35.85 microseconds average, and 200.40 microseconds maximum. Visible cadence was 10.00 to 10.06 FPS. The preserved log has SHA-256 `FCFD2D7F2D9E75F029BC0934F62DCD0876EB5678B9169164B3DE481BDE8AEB1D`.
+
+The accepted run closes the five-minute frame-dropping gate. The earlier intermittent audio failure remains open for active-playback focus testing, repeated runs, and the Phase 6 soak.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.
