@@ -215,5 +215,11 @@ if ($LASTEXITCODE -ne 0) { throw 'Runtime archive creation failed.' }
 Push-Location $symbols
 try { & $sevenZip a -tzip -mx=9 -mtc=off -mta=off $symbolsArchive '.\*' | Out-Null } finally { Pop-Location }
 if ($LASTEXITCODE -ne 0) { throw 'Symbols archive creation failed.' }
+& (Join-Path $PSScriptRoot 'audit-release-package.ps1') `
+    -RuntimeArchive $runtimeArchive `
+    -SymbolsArchive $symbolsArchive `
+    -Version $Version `
+    -RepositoryRoot $root `
+    -PrivatePathMarkers $localMarkers
 Write-Host $runtimeArchive
 Write-Host $symbolsArchive

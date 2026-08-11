@@ -500,3 +500,9 @@ The live Phase 2 test confirmed that custom Win32 I/O sees a file supplied only 
 - DXVK behavior at the selected frame boundary if support is later claimed;
 - codec patent review for binary distribution;
 - permission and naming checks before a public mod page is created.
+
+## Phase 6 package audit
+
+The first hardening change audits the written ZIP files instead of relying only on the staging tree. The runtime archive must contain the exact 28-file inventory derived from the repository documentation and pinned FFmpeg manifest. The symbols archive must contain only the matching cleaned PDB and README. The checker also requires safe unique entry names, consistent timestamps, bounded expansion, and no private absolute path.
+
+The negative fixtures reject an extra DLL, an MP4 file, a local user path, a missing README, and a traversal entry. Host Release passes 21 of 21 tests, Win32 Release passes 30 of 30 tests, and the integrated package command accepted both real archives.
