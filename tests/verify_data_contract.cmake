@@ -78,6 +78,30 @@ if(root_stack_offset EQUAL -1)
     message(FATAL_ERROR "UI prefab root must remain above page content and below native controls")
 endif()
 
+set(expected_open_button_anchor
+    "<hotrect name=\"PBVP_OpenButton\">\n        <id> 9100 </id>\n        <x>\n            <copy src=\"parent\" trait=\"width\" />\n            <sub src=\"me\" trait=\"width\" />\n            <sub> 12 </sub>\n        </x>\n        <y>\n            <copy src=\"parent\" trait=\"height\" />\n            <sub src=\"me\" trait=\"height\" />\n            <sub> 284 </sub>\n        </y>\n        <width> 112 </width>\n        <height> 34 </height>\n        <depth> 11 </depth>\n        <locus> 1 </locus>")
+string(FIND "${prefab_text}" "${expected_open_button_anchor}" open_button_anchor_offset)
+if(open_button_anchor_offset EQUAL -1)
+    message(FATAL_ERROR "UI open button must retain the isolated right-side test anchor")
+endif()
+
+foreach(row_index RANGE 0 7)
+    string(REGEX MATCH
+        "name=\"PBVP_Row${row_index}\">[^\r\n]*<locus> 1 </locus>"
+        catalog_row_locus
+        "${prefab_text}")
+    if(catalog_row_locus STREQUAL "")
+        message(FATAL_ERROR "Catalog row ${row_index} must own its child label position")
+    endif()
+endforeach()
+
+set(expected_catalog_back_locus
+    "<hotrect name=\"PBVP_BackButton\">\n            <id> 9101 </id><x> 10 </x><y> 194 </y><width> 100 </width><height> 20 </height><depth> 12 </depth>\n            <locus> 1 </locus>")
+string(FIND "${prefab_text}" "${expected_catalog_back_locus}" catalog_back_locus_offset)
+if(catalog_back_locus_offset EQUAL -1)
+    message(FATAL_ERROR "Catalog Back control must own its child label position")
+endif()
+
 set(expected_video_anchor
     "<rect name=\"PBVP_VideoRect\">\n        <x> 12 </x>\n        <y>\n            <copy src=\"parent\" trait=\"height\" />\n            <sub src=\"me\" trait=\"height\" />\n            <sub> 64 </sub>\n        </y>")
 string(FIND "${prefab_text}" "${expected_video_anchor}" video_anchor_offset)
@@ -202,6 +226,25 @@ endforeach()
 foreach(required_input_fragment IN ITEMS
         "AttachMapMenuInput"
         "AddressInsideMainImage"
+        "VerifyStewieMenuSearchKeyboardChain"
+        "ActionForClickedTile"
+        "ActionForCursorPosition"
+        "ReadEngineCursorPosition"
+        "offsetof(InterfaceManagerLayout, cursor_x) == 0x38"
+        "offsetof(InterfaceManagerLayout, cursor_y) == 0x40"
+        "kTileGetLocusAdjustedPosXAddress = 0x00A013D0u"
+        "kTileGetLocusAdjustedPosYAddress = 0x00A01440u"
+        "TileGetLocusAdjustedPosition"
+        "PollOpenButtonMouse"
+        "singleton_vtable"
+        "offsetof(NvseInputStateLayout, keys) == 4u"
+        "Filtered Videos entry polling active"
+        "Scoped MapMenu keyboard actions active"
+        "CommandForMenuCharacter"
+        "kMenuKeyBackspace"
+        "using MenuHandleKeyboardInput = bool(__thiscall*)(void*, std::uint32_t)"
+        "ReadInputState"
+        "UiRectContainsPoint"
         "g_videos_page_active"
         "kNVSEData_DIHookControl"
         "SetInputBindings"
@@ -214,11 +257,19 @@ foreach(required_input_fragment IN ITEMS
         string(FIND "${ui_bridge_text}" "${required_input_fragment}" input_fragment_offset)
     endif()
     if(input_fragment_offset EQUAL -1)
+        file(READ "${PBVP_SOURCE_DIR}/src/core/menu_keyboard.cpp" menu_keyboard_text)
+        string(FIND "${menu_keyboard_text}" "${required_input_fragment}" input_fragment_offset)
+    endif()
+    if(input_fragment_offset EQUAL -1)
         message(FATAL_ERROR "Scoped input bridge is missing ${required_input_fragment}")
     endif()
 endforeach()
 
 file(READ "${PBVP_SOURCE_DIR}/src/ui/ui_bridge.cpp" ui_bridge_text)
+string(FIND "${ui_bridge_text}" "keyboard probe" keyboard_probe_offset)
+if(NOT keyboard_probe_offset EQUAL -1)
+    message(FATAL_ERROR "Normal input code must not log menu characters or keyboard state")
+endif()
 string(FIND "${ui_bridge_text}" "GetAsyncKeyState" global_key_poll_offset)
 if(NOT global_key_poll_offset EQUAL -1)
     message(FATAL_ERROR "Videos controls must use xNVSE filtered input instead of global key polling")

@@ -67,4 +67,14 @@ void RunRectMathTests() {
     PBVP_CHECK(Near(output.top, 0.0f));
     PBVP_CHECK(Near(output.right, 0.0f));
     PBVP_CHECK(Near(output.bottom, 0.0f));
+
+    constexpr FloatRect button{438.0f, 535.0f, 550.0f, 569.0f};
+    PBVP_CHECK(UiRectContainsPoint(button, 438.0f, 535.0f));
+    PBVP_CHECK(UiRectContainsPoint(button, 549.999f, 568.999f));
+    PBVP_CHECK(!UiRectContainsPoint(button, 550.0f, 550.0f));
+    PBVP_CHECK(!UiRectContainsPoint(button, 500.0f, 569.0f));
+    PBVP_CHECK(!UiRectContainsPoint(button, 437.999f, 550.0f));
+    PBVP_CHECK(!UiRectContainsPoint(button, infinity, 550.0f));
+    PBVP_CHECK(!UiRectContainsPoint(
+        {500.0f, 535.0f, 438.0f, 569.0f}, 450.0f, 550.0f));
 }

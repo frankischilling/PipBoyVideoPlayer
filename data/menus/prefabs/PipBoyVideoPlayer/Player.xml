@@ -9,19 +9,25 @@
 
     <hotrect name="PBVP_OpenButton">
         <id> 9100 </id>
-        <x> 408 </x>
+        <x>
+            <copy src="parent" trait="width" />
+            <sub src="me" trait="width" />
+            <sub> 12 </sub>
+        </x>
         <y>
             <copy src="parent" trait="height" />
             <sub src="me" trait="height" />
-            <sub> 64 </sub>
+            <sub> 284 </sub>
         </y>
         <width> 112 </width>
         <height> 34 </height>
         <depth> 11 </depth>
+        <locus> 1 </locus>
         <visible> 1 </visible>
         <target> <copy src="me" trait="visible" /> </target>
 
         <image name="PBVP_OpenBackground">
+            <target> 0 </target>
             <visible> <copy src="parent()" trait="visible" /> </visible>
             <alpha> 220 </alpha>
             <depth> 11 </depth>
@@ -38,6 +44,7 @@
         </image>
 
         <text name="PBVP_OpenText">
+            <target> 0 </target>
             <visible> <copy src="parent()" trait="visible" /> </visible>
             <alpha> 255 </alpha>
             <depth> 12 </depth>
@@ -97,19 +104,20 @@
             <string> VIDEOS </string>
         </text>
 
-        <hotrect name="PBVP_Row0"><id> 9110 </id><x> 10 </x><y> 30 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText0"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
-        <hotrect name="PBVP_Row1"><id> 9111 </id><x> 10 </x><y> 50 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText1"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
-        <hotrect name="PBVP_Row2"><id> 9112 </id><x> 10 </x><y> 70 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText2"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
-        <hotrect name="PBVP_Row3"><id> 9113 </id><x> 10 </x><y> 90 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText3"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
-        <hotrect name="PBVP_Row4"><id> 9114 </id><x> 10 </x><y> 110 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText4"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
-        <hotrect name="PBVP_Row5"><id> 9115 </id><x> 10 </x><y> 130 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText5"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
-        <hotrect name="PBVP_Row6"><id> 9116 </id><x> 10 </x><y> 150 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText6"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
-        <hotrect name="PBVP_Row7"><id> 9117 </id><x> 10 </x><y> 170 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText7"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+        <hotrect name="PBVP_Row0"><id> 9110 </id><x> 10 </x><y> 30 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><locus> 1 </locus><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText0"><target> 0 </target><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+        <hotrect name="PBVP_Row1"><id> 9111 </id><x> 10 </x><y> 50 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><locus> 1 </locus><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText1"><target> 0 </target><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+        <hotrect name="PBVP_Row2"><id> 9112 </id><x> 10 </x><y> 70 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><locus> 1 </locus><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText2"><target> 0 </target><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+        <hotrect name="PBVP_Row3"><id> 9113 </id><x> 10 </x><y> 90 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><locus> 1 </locus><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText3"><target> 0 </target><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+        <hotrect name="PBVP_Row4"><id> 9114 </id><x> 10 </x><y> 110 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><locus> 1 </locus><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText4"><target> 0 </target><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+        <hotrect name="PBVP_Row5"><id> 9115 </id><x> 10 </x><y> 130 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><locus> 1 </locus><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText5"><target> 0 </target><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+        <hotrect name="PBVP_Row6"><id> 9116 </id><x> 10 </x><y> 150 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><locus> 1 </locus><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText6"><target> 0 </target><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+        <hotrect name="PBVP_Row7"><id> 9117 </id><x> 10 </x><y> 170 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><locus> 1 </locus><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText7"><target> 0 </target><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
 
         <hotrect name="PBVP_BackButton">
             <id> 9101 </id><x> 10 </x><y> 194 </y><width> 100 </width><height> 20 </height><depth> 12 </depth>
+            <locus> 1 </locus>
             <visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target>
-            <text name="PBVP_BackText"><x> 2 </x><y> 0 </y><zoom> 48 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> ESC BACK </string></text>
+            <text name="PBVP_BackText"><target> 0 </target><x> 2 </x><y> 0 </y><zoom> 48 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> ESC BACK </string></text>
         </hotrect>
         <text name="PBVP_CatalogPrompt"><x> 118 </x><y> 194 </y><zoom> 48 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> ENTER PLAY  UP/DOWN SELECT </string></text>
     </rect>

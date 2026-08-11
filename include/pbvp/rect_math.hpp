@@ -20,4 +20,9 @@ bool ConvertUiRectToPixels(
     const PixelExtent& backbuffer_extent,
     FloatRect& output) noexcept;
 
+bool UiRectContainsPoint(
+    const FloatRect& ui_rect,
+    float x,
+    float y) noexcept;
+
 } // namespace pbvp

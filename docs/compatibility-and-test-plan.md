@@ -592,6 +592,12 @@ Shutdown accounted for all 3,343 renderer submissions: 3,342 uploaded frames, no
 
 This closes the five-minute 10 FPS frame-dropping gate. The earlier intermittent audio failure remains a risk for active-playback focus testing, repeated low-FPS runs, and the Phase 6 soak.
 
+## Phase 5 keyboard and metadata check
+
+The accepted 32-bit MapMenu build passed the shipped keyboard controls in the active VNV profile. The user confirmed correct Up and Down catalog movement, Enter activation, Left and Right seeking, Space pause and resume, and Backspace and Escape closure. The metadata fixture changed to its embedded `PBVP Metadata Title` after open, as required by the lazy metadata design.
+
+The run opened several catalog entries and uploaded 77 decoded frames without an upload failure. Maximum measured upload time was 142.70 microseconds. Playback stopped between selections, audio and the decoder worker joined, and process shutdown completed normally. The preserved log has SHA-256 `A46CC2BCA61D26EA9B1034C8B94FBEB2E5C11E2A923482AD0722229335854A89`. Controller navigation and prompt switching remain open because this run used keyboard and mouse only.
+
 ## UI matrix
 
 Test these layouts independently:
