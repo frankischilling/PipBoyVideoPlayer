@@ -2,6 +2,8 @@
 
 ## 0.1.0 - Unreleased
 
+- Added a live process sampler for the Phase 6 soak. It records private bytes, working set, handles, threads, CPU time, elapsed time, raw samples, and a post-warm-up summary without entering the game process.
+- Limited the build helper to two jobs by default and disabled MSBuild node reuse for that invocation. The job count remains configurable.
 - Added a post-archive release audit with negative fixtures for unexpected DLLs, personal media, absolute local paths, missing files, and ZIP traversal entries. The package command runs the audit on the completed runtime and symbols archives.
 - Added a native hardening loop for 100 open and stop cycles plus 20 forward and 20 backward seeks. The accepted run retained 765,952 private bytes, kept handle and thread counts unchanged, and completed the seek loop without an audio underrun.
 - Added a clickable `VIDEOS` entry, an eight-row scrolling catalog, mouse and keyboard controls, and prompts that show the configured keyboard bindings. Closing the Pip-Boy stops playback, and the same file can be selected again after reopening it. The scoped MapMenu bridge accepts compatible per-instance table copies, preserves unrelated entries, recognizes the audited Stewie Tweaks 9.80 Menu Search keyboard chain, and refuses unknown input handlers. Controller input is not supported.

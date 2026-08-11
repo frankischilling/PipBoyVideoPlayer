@@ -512,3 +512,11 @@ The negative fixtures reject an extra DLL, an MP4 file, a local user path, a mis
 The Win32 playback test warms the decoder and audio path, records process counters, and then runs 100 additional open and stop cycles. The accepted run retained 765,952 private bytes. Handles remained at 184 and threads remained at 6. Every stopped snapshot was idle with no staged video frame, staged byte, audio lookahead chunk, or ready presentation frame.
 
 A fresh session then completed 20 forward and 20 backward seeks. The controller returned to playing after each request, reached generation 41, recorded exactly 40 seeks, and reported zero audio underruns. The native result covers repeated worker joins, audio flushes, generation changes, and bounded queue cleanup. It does not establish the in-game UI, render, or menu-lifecycle repetition result.
+
+## Phase 6 process sampling
+
+The live process sampler waits for a named process or an exact process ID and reads Windows process counters until that process exits. Each JSON sample contains elapsed time, private bytes, working set, handle count, thread count, and process CPU time. The summary reports the initial, final, minimum, maximum, and delta for each counter after the configured warm-up period. The sampler stays outside the game process and does not install a hook.
+
+The automated test starts a short hidden PowerShell child, samples it every 100 milliseconds, and checks the schema, process identity, lifetime, sample count, and every metric range. The accepted run collected 14 samples over 1,789 milliseconds. Host Release passes 22 of 22 tests and Win32 Release passes 31 of 31 tests with this check enabled.
+
+The first combined Win32 rebuild used unrestricted MSBuild parallelism and left 12 worker nodes after one task ran out of memory. A one-worker rebuild with node reuse disabled built the DLL and passed all 31 tests. The build helper now uses two jobs by default, accepts an explicit job count, and restores the caller's node-reuse environment after the build.

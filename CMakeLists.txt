@@ -385,6 +385,14 @@ if(PBVP_BUILD_TESTS)
             -RepositoryRoot ${CMAKE_SOURCE_DIR})
 
     add_test(
+        NAME pbvp_phase6_process_metrics_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase6-process-metrics.ps1
+            -SamplerPath ${CMAKE_SOURCE_DIR}/scripts/measure-phase6-process.ps1)
+
+    add_test(
         NAME pbvp_data_contract_test
         COMMAND ${CMAKE_COMMAND}
             -DPBVP_SOURCE_DIR=${CMAKE_SOURCE_DIR}

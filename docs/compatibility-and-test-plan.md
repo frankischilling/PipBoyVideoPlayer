@@ -696,6 +696,8 @@ The native Win32 playback test now performs five warm-up cycles, records process
 
 The same test opens a fresh session and completes 20 forward and 20 backward seeks. It returns to playing after every seek, reaches generation 41 with an exact seek count of 40, and reports zero XAudio2 underruns. This automates the worker, queue, generation, and audio flush boundaries. It does not replace the required in-game repetition or mixed soak.
 
+Run `scripts\measure-phase6-process.ps1` beside each live repetition or soak session. The sampler waits for FalloutNV, records one JSON sample every five seconds by default, and stops when that process exits. Its summary uses samples after a configurable warm-up period. The script reads standard Windows process counters and does not inject code or call into FalloutNV.
+
 ## Performance measurements
 
 Record at least:
@@ -711,6 +713,8 @@ Record at least:
 - cost of the chosen Direct3D state preservation method.
 
 Results need the CPU, GPU, operating system, display mode, graphics path, source media properties, game FPS cap, and VNV profile.
+
+The process sampler records elapsed time, private bytes, working set, handles, threads, and process CPU time. Keep its JSON output with the matching privacy-checked plugin log. Direct3D upload time, video drops, audio underruns, and synchronization error still come from the plugin's bounded shutdown metrics.
 
 ## Stability soak
 
