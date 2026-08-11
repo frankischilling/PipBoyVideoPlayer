@@ -279,7 +279,7 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
 #if defined(PBVP_ENABLE_PLAYBACK_DIAGNOSTIC)
             const ProcessAddressSpaceSnapshot address_space = MeasureProcessAddressSpace();
             PBVP_LOG_ERROR(
-                "Playback update failed: state=%s error=%s site=%s decoder=%s media_site=%s ffmpeg=%d audio=%s private=%llu working_set=%llu largest_free=%llu total_free=%llu",
+                "Playback update failed: state=%s error=%s site=%s decoder=%s media_site=%s ffmpeg=%d audio=%s updates=%llu media_us=%lld decoded=%llu presented=%llu dropped=%llu submitted_chunks=%llu submitted_samples=%llu audio_queued=%u audio_played=%llu underruns=%llu decoder_video_items=%zu decoder_audio_items=%zu private=%llu working_set=%llu largest_free=%llu total_free=%llu",
                 pbvp::PlaybackStateName(failed.playback.state),
                 pbvp::PlaybackErrorName(failed.playback.error),
                 pbvp::PlaybackFailureSiteName(failed.failure_site),
@@ -287,20 +287,44 @@ void UpdatePlayback(const pbvp::UiRectSnapshot& ui_snapshot) noexcept {
                 pbvp::MediaDecodeFailureSiteName(failed.decoder.failure.site),
                 failed.decoder.failure.ffmpeg_error,
                 pbvp::XAudioStreamStatusName(failed.audio.status),
+                static_cast<unsigned long long>(failed.metrics.update_calls),
+                static_cast<long long>(failed.metrics.last_media_time_us),
+                static_cast<unsigned long long>(failed.metrics.decoded_video_frames),
+                static_cast<unsigned long long>(failed.metrics.presented_video_frames),
+                static_cast<unsigned long long>(failed.metrics.dropped_video_frames),
+                static_cast<unsigned long long>(failed.metrics.submitted_audio_chunks),
+                static_cast<unsigned long long>(failed.metrics.submitted_audio_samples),
+                failed.audio.queued_buffers,
+                static_cast<unsigned long long>(failed.audio.samples_played),
+                static_cast<unsigned long long>(failed.audio.underruns),
+                failed.decoder_buffers.video_items,
+                failed.decoder_buffers.audio_items,
                 static_cast<unsigned long long>(address_space.private_bytes),
                 static_cast<unsigned long long>(address_space.working_set_bytes),
                 static_cast<unsigned long long>(address_space.largest_free_region_bytes),
                 static_cast<unsigned long long>(address_space.total_free_region_bytes));
 #else
             PBVP_LOG_ERROR(
-                "Playback update failed: state=%s error=%s site=%s decoder=%s media_site=%s ffmpeg=%d audio=%s",
+                "Playback update failed: state=%s error=%s site=%s decoder=%s media_site=%s ffmpeg=%d audio=%s updates=%llu media_us=%lld decoded=%llu presented=%llu dropped=%llu submitted_chunks=%llu submitted_samples=%llu audio_queued=%u audio_played=%llu underruns=%llu decoder_video_items=%zu decoder_audio_items=%zu",
                 pbvp::PlaybackStateName(failed.playback.state),
                 pbvp::PlaybackErrorName(failed.playback.error),
                 pbvp::PlaybackFailureSiteName(failed.failure_site),
                 pbvp::MediaDecodeStatusName(failed.decoder.failure.status),
                 pbvp::MediaDecodeFailureSiteName(failed.decoder.failure.site),
                 failed.decoder.failure.ffmpeg_error,
-                pbvp::XAudioStreamStatusName(failed.audio.status));
+                pbvp::XAudioStreamStatusName(failed.audio.status),
+                static_cast<unsigned long long>(failed.metrics.update_calls),
+                static_cast<long long>(failed.metrics.last_media_time_us),
+                static_cast<unsigned long long>(failed.metrics.decoded_video_frames),
+                static_cast<unsigned long long>(failed.metrics.presented_video_frames),
+                static_cast<unsigned long long>(failed.metrics.dropped_video_frames),
+                static_cast<unsigned long long>(failed.metrics.submitted_audio_chunks),
+                static_cast<unsigned long long>(failed.metrics.submitted_audio_samples),
+                failed.audio.queued_buffers,
+                static_cast<unsigned long long>(failed.audio.samples_played),
+                static_cast<unsigned long long>(failed.audio.underruns),
+                failed.decoder_buffers.video_items,
+                failed.decoder_buffers.audio_items);
 #endif
         }
         std::optional<pbvp::DecodedVideoFrame> frame =
