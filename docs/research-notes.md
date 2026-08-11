@@ -401,6 +401,12 @@ The untouched commit `ce91fa2` log passed the strict low-FPS checker. At five mi
 
 The accepted run closes the five-minute frame-dropping gate. The earlier intermittent audio failure remains open for active-playback focus testing, repeated runs, and the Phase 6 soak.
 
+### Phase 5 catalog API verification
+
+[Microsoft's `FindFirstFileExW` documentation](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfileexw) says directory results are not sorted and that `FIND_FIRST_EX_ON_DISK_ENTRIES_ONLY` excludes entries supplied by filesystem virtualization. PBVP therefore enumerates the direct media directory without that flag, rejects directory and reparse-point results itself, and sorts the bounded result afterward. The implementation first requests the large-fetch optimization and retries without it when a filesystem provider does not support the flag.
+
+[Microsoft documents `CompareStringEx`](https://learn.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-comparestringex) with `SORT_DIGITSASNUMBERS` on Windows 7 and later. PBVP combines that flag with case-insensitive comparison under the invariant locale, so `Episode 2` sorts before `Episode 10` without making order depend on the user's current locale. Equal display names use the relative filename and session identifier as bounded tie breakers. Microsoft notes that Unicode sort weights can change between Windows releases. Catalog order is session-only, so it is not stored in saves or used as a persistent file identity.
+
 ## Mod Organizer 2
 
 MO2's [USVFS repository](https://github.com/ModOrganizer2/usvfs) describes a process-local virtual filesystem implemented through Windows API hooks. It supports x86 applications, but it also notes that dependent DLL loading can occur before virtualization becomes active.

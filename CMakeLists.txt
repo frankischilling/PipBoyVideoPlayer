@@ -21,6 +21,7 @@ include(CTest)
 add_library(pbvp_core STATIC
     src/core/checked_math.cpp
     src/core/frame_cadence.cpp
+    src/core/media_catalog.cpp
     src/core/media_limits.cpp
     src/core/playback_clock.cpp
     src/core/playback_state.cpp
@@ -338,6 +339,7 @@ if(PBVP_BUILD_TESTS)
         tests/bounded_queue_tests.cpp
         tests/checked_math_tests.cpp
         tests/frame_cadence_tests.cpp
+        tests/media_catalog_tests.cpp
         tests/media_limits_tests.cpp
         tests/playback_clock_tests.cpp
         tests/playback_state_tests.cpp
