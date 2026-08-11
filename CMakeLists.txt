@@ -330,6 +330,15 @@ if(PBVP_BUILD_TESTS)
             -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase4-low-fps-log.ps1)
 
     add_test(
+        NAME pbvp_phase5_catalog_profile_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase5-catalog-profile.ps1
+            -ProfileScript ${CMAKE_SOURCE_DIR}/scripts/create-phase5-catalog-profile.ps1
+            -FixturePath ${CMAKE_SOURCE_DIR}/tests/fixtures/h264-title-metadata.mp4)
+
+    add_test(
         NAME pbvp_data_contract_test
         COMMAND ${CMAKE_COMMAND}
             -DPBVP_SOURCE_DIR=${CMAKE_SOURCE_DIR}

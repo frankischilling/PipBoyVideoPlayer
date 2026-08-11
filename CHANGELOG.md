@@ -7,6 +7,7 @@
 - Added bounded UTF-8 INI loading for playback, rendering, catalog, input, resource, and logging settings. Keyboard bindings use unique DirectInput scan codes, and the UI shows the active bindings. Invalid values keep safe defaults. Runtime reload is limited to the idle state and a rejected reload leaves playback unchanged.
 - Added bounded direct-child MP4 catalog discovery with MO2-compatible Win32 enumeration, Unicode paths, invariant natural sorting, stable session identifiers, display clipping, reparse-point rejection, and tests for 0, 1, 10, 100, and 500 entries.
 - Added bounded lazy MP4 title metadata. Catalog rows start with filenames, and a valid title replaces the selected row for the current session without opening every file during enumeration.
+- Added a save-free Phase 5 MO2 profile with ten generated catalog entries for scrolling, natural sorting, Unicode filenames, long names, metadata titles, and replay checks.
 - Connected the decoder, XAudio2 sample clock, video scheduler, renderer mailbox, Pip-Boy status text, and game lifecycle into a bounded playback controller.
 - Added audio-led frame selection, late-frame dropping, startup buffering, pause, resume, forward and backward seeks, stop during buffering, silent-video QPC timing, and structured playback errors.
 - Added a one-frame renderer mailbox and checked BGRA scaling into the fixed 256x256 engine-owned texture without retaining a Direct3D reference across callbacks.
