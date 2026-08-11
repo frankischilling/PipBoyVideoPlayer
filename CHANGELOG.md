@@ -2,7 +2,7 @@
 
 ## 0.1.0 - Unreleased
 
-- Added a live process sampler for the Phase 6 soak. It records private bytes, working set, handles, threads, CPU time, elapsed time, raw samples, and a post-warm-up summary without entering the game process.
+- Added a live process sampler and strict result checker for the Phase 6 soak. They record and verify private bytes, working set, handles, threads, CPU time, elapsed time, raw samples, and a post-warm-up summary without entering the game process.
 - Limited the build helper to two jobs by default and disabled MSBuild node reuse for that invocation. The job count remains configurable.
 - Added a post-archive release audit with negative fixtures for unexpected DLLs, personal media, absolute local paths, missing files, and ZIP traversal entries. The package command runs the audit on the completed runtime and symbols archives.
 - Added a native hardening loop for 100 open and stop cycles plus 20 forward and 20 backward seeks. The accepted run retained 765,952 private bytes, kept handle and thread counts unchanged, and completed the seek loop without an audio underrun.

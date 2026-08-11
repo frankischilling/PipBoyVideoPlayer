@@ -698,6 +698,8 @@ The same test opens a fresh session and completes 20 forward and 20 backward see
 
 Run `scripts\measure-phase6-process.ps1` beside each live repetition or soak session. The sampler waits for FalloutNV, records one JSON sample every five seconds by default, and stops when that process exits. Its summary uses samples after a configurable warm-up period. The script reads standard Windows process counters and does not inject code or call into FalloutNV.
 
+After the process exits, run `scripts\check-phase6-process-metrics.ps1` against the JSON file. The default gate requires at least two hours, a five-minute warm-up, 80 percent sampling coverage, less than 128 MiB of private-memory growth after warm-up, no more than 32 extra handles, and no more than eight extra threads. It rejects a changed summary by recalculating every range from the raw samples.
+
 ## Performance measurements
 
 Record at least:

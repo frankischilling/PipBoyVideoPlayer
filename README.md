@@ -10,7 +10,7 @@ Status: Phase 6 hardening and release validation
 
 The current build targets a Viva New Vegas installation managed by Mod Organizer 2. It loads only under FalloutNV 1.4.0.525 with xNVSE 6.4.5 or newer, registers lifecycle callbacks, and installs a UIO prefab. Once the Pip-Boy is open, it validates the live UIO image, engine texture objects, managed Direct3D texture, device, and callback thread before uploading decoded frames. Any unknown object type, texture profile, or thread arrangement disables the update instead of guessing. The plugin does not patch game functions or a Direct3D device vtable.
 
-The Host Release suite passes 22 of 22 tests. The Win32 Release suite passes 31 of 31 tests. Two overlay draw points were rejected because they rendered above the Pip-Boy UI. The accepted path updates an engine-owned managed texture and leaves drawing to the game. It uses no executable hook or Direct3D device vtable patch. The raised 384 by 216 panel passed all four isolated UI profiles at 1920 by 1080 during Phase 1. Keyboard and mouse input, ten Pip-Boy reopen cycles, and 50 measured focus-loss and return cycles passed in the tested native windowed configuration.
+The Host Release suite passes 23 of 23 tests. The Win32 Release suite passes 32 of 32 tests. Two overlay draw points were rejected because they rendered above the Pip-Boy UI. The accepted path updates an engine-owned managed texture and leaves drawing to the game. It uses no executable hook or Direct3D device vtable patch. The raised 384 by 216 panel passed all four isolated UI profiles at 1920 by 1080 during Phase 1. Keyboard and mouse input, ten Pip-Boy reopen cycles, and 50 measured focus-loss and return cycles passed in the tested native windowed configuration.
 
 A synthetic recreation test froze inside the game's native reset sequence, so the test, reset hook, and MinHook dependency were removed. A PBVP-disabled control later reproduced the native fullscreen NVIDIA driver crash, so repeated fullscreen Alt+Tab is not supported. The isolated test-profile save guard passes Base and full Extended exit checks without changing normal profiles. Native windowed rows passed at 1280x720 and 30 FPS, 1280x960 and 60 FPS, 2560x1440 and 90 FPS, and 3440x1440 and 120 FPS. The two larger windows were clipped by the 1920x1080 monitor, so those results cover the visible panel and logged backbuffer rather than the full window.
 
@@ -67,7 +67,12 @@ The native Phase 6 lifecycle test completes 100 open and stop cycles, followed b
   -OutputPath .\build-host\phase6-soak-process.json `
   -IntervalMilliseconds 5000 `
   -WarmupSeconds 300
+
+.\scripts\check-phase6-process-metrics.ps1 `
+  -MetricsPath .\build-host\phase6-soak-process.json
 ```
+
+The checker requires two hours of samples, a five-minute warm-up, at least 80 percent sample coverage, private-memory growth below 128 MiB, and bounded handle and thread growth. It also recalculates every summary from the raw samples before accepting the file.
 
 ## Intended user experience
 
