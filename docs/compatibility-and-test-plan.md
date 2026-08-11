@@ -633,6 +633,8 @@ Test these layouts independently:
 
 Test catalog sizes of zero, one, ten, one hundred, and five hundred files. Long titles must clip or scroll without moving the video rectangle. Empty and error states must leave the ordinary Data page usable.
 
+`prepare-phase5-ui-profiles.ps1` creates separate Base, Vanilla UI Plus, Vanilla UI Plus with Clean Vanilla HUD, and full Extended profiles from the accepted Phase 1 isolation profiles. It enables the development plugin, generated catalog, and save guard while disabling the other PBVP fixture mods. It refuses profiles that contain saves and does not select a profile while MO2 or Fallout is running.
+
 ## Media fixture set
 
 All fixtures must be created for testing or come from a redistribution-safe source. Keep the small deterministic fixtures in a separate test-data package if repository size becomes a problem.
