@@ -110,9 +110,9 @@ Codec patent rules vary by country and distribution method. Before a public bina
 
 The repository and release must not contain Bethesda game assets, Bink components, commercial video samples, or code copied from another mod without permission.
 
-## Continuous integration plan
+## Release verification
 
-Once code exists, CI should:
+The local release workflow:
 
 - configure and build x86 debug and release targets;
 - run unit tests for timestamp math, checked allocation math, catalog normalization, and state transitions;
@@ -120,6 +120,6 @@ Once code exists, CI should:
 - inspect the DLL architecture and imported libraries;
 - assemble the release tree from a clean checkout;
 - reject unexpected files, absolute paths, and personal media extensions;
-- publish checksums and a dependency inventory with release candidates.
+- records checksums and a dependency inventory with release candidates.
 
-CI configuration is intentionally absent during the documentation-only phase.
+GitHub CI is not configured for the private candidate. The accepted package was built in a separate clean clone with the pinned local toolchain, then audited again after its two archives were copied to the main project directory.

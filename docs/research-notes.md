@@ -547,4 +547,8 @@ The project owner waived the two-hour mixed soak for private candidate 0.1.0-rc.
 
 The first clean clone verified commit `b2762faae5ca083a28bd745838bceefaa198da99` and downloaded both pinned source archives. xNVSE extracted correctly. GNU tar rejected the drive-qualified FFmpeg archive path because it interpreted the colon as remote-host syntax. This stopped the build before any dependency compiled.
 
-The extraction command now uses GNU tar's `--force-local` option. The manifest test requires that option so a later script change cannot restore the ambiguous drive-colon behavior. The failed clone is not release evidence. A new clone must complete the full dependency build, plugin build, tests, package audit, and archive hash check.
+The extraction command now uses GNU tar's `--force-local` option. The manifest test requires that option so a later script change cannot restore the ambiguous drive-colon behavior. The failed clone is not release evidence.
+
+A new clone then downloaded and verified both sources, rebuilt the five i686 FFmpeg DLLs, compiled the portable and Win32 targets, passed all 27 portable and 36 Win32 Release tests, cleaned the public PDB, and created both archives. The runtime archive passed its exact 33-file audit. The symbols archive contained only the matching cleaned PDB and README. The isolated install, removal, reinstallation, and save-sentinel check also passed.
+
+The packaged plugin and the live-tested plugin have identical `.text`, `.data`, `.fptable`, `.rsrc`, and `.reloc` section hashes. Their `.rdata` sections differ because the clean linker invocation wrote a new timestamp and PDB identifier. Both CodeView records name only `PipBoyVideoPlayer.pdb`, and the package audit found no checkout path. The identical code and data sections let the earlier live playback result apply to the clean binary while the new public symbols remain paired with that clean build.

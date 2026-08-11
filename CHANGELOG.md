@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 - Unreleased
+## 0.1.0-rc.1 - 2026-08-11
 
 - Fixed clean-checkout FFmpeg extraction by forcing GNU tar to treat the Windows drive-colon archive path as local.
 - Added deterministic Phase 6 fault fixtures for an empty file, random bytes, truncation, unsupported video, unsupported audio, and encrypted media, with an automated installer and inventory check.
