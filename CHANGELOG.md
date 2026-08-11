@@ -20,6 +20,7 @@
 - Added path and display-name round-trip checks for Japanese and combining-character catalog filenames.
 - Added bounded playback log names. Normal logging records the selected basename. Diagnostic logging can record a validated relative catalog name, while absolute paths and traversal still reduce to the basename. Metadata titles are not used for log names.
 - Added one numeric stream summary after a media file opens. It records dimensions, rotation, duration, and audio layout without logging an absolute path or embedded metadata text.
+- Added a strict live checker for one Fit open, an idle reload to Fill, a second open of the 160x120 fixture, matching stream summaries, privacy, ordering, and clean shutdown.
 - Corrected the menu cursor source to use `InterfaceManager::cursorX` and `cursorY` instead of the cursor tile's visual traits.
 - Corrected PBVP button hit testing to use the game's locus-adjusted tile position routines instead of adding parent coordinates.
 - Connected the decoder, XAudio2 sample clock, video scheduler, renderer mailbox, Pip-Boy status text, and game lifecycle into a bounded playback controller.

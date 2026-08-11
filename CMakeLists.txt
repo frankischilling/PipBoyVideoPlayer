@@ -353,6 +353,14 @@ if(PBVP_BUILD_TESTS)
             -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase5-catalog-log.ps1)
 
     add_test(
+        NAME pbvp_phase5_aspect_reload_log_test
+        COMMAND ${PBVP_POWERSHELL_EXECUTABLE}
+            -NoProfile
+            -ExecutionPolicy Bypass
+            -File ${CMAKE_SOURCE_DIR}/tests/test-phase5-aspect-reload-log.ps1
+            -CheckerPath ${CMAKE_SOURCE_DIR}/scripts/check-phase5-aspect-reload-log.ps1)
+
+    add_test(
         NAME pbvp_data_contract_test
         COMMAND ${CMAKE_COMMAND}
             -DPBVP_SOURCE_DIR=${CMAKE_SOURCE_DIR}
