@@ -72,6 +72,10 @@ The native bridge resolves the named image and follows the reviewed engine textu
 
 Playback state and errors use the existing `PBVP_LayerProbe` text tile. On the game thread, the bridge verifies that the named tile has a string trait owned by that tile, then calls the `Tile::SetStringValue` entry point documented by the pinned xNVSE 6.4.5 source for runtime 1.4.0.525. The bridge writes only when the tile identity, playback state, or error changes. Workers and callbacks never touch the tile.
 
+The Videos page copies the live MapMenu object's 15 virtual function pointers into static plugin storage. It changes only `HandleClick` and `HandleKeyboardInput` in that private copy, then assigns the copy to the current MapMenu instance. Before attachment, the bridge checks the menu ID and requires the original table and every function pointer to reside in `FalloutNV.exe`. It does not patch executable code or write to the shared game table. If another plugin has replaced the table, PBVP hides its UI and leaves the menu alone.
+
+Keyboard and mouse edges come from xNVSE's filtered DirectInput state through Data Interface version 3. Controller edges come from XInput loaded from the Windows system directory. PBVP polls these sources only while the Videos page is open. During that time, the private handlers consume ordinary MapMenu clicks and keyboard calls. When the page is inactive, they pass every ordinary event to the original functions.
+
 The bridge must prove three things before decoder work begins:
 
 1. Tile coordinates can be converted to the correct backbuffer rectangle at 4:3, 16:9, 16:10, and ultrawide resolutions.
@@ -109,7 +113,7 @@ xNVSE 6.4.5's `kMessage_OnFramePresent` notification is the upload boundary for 
 
 The Phase 1 diagnostic also uses QueryPerformanceCounter at this boundary to measure visible-frame cadence. It emits no more than eight three-second samples per process and resets a partial sample when the Pip-Boy hides or the device is unavailable. This metric verifies the configured game cap. It is not a playback clock and will not replace the audio-led media clock in later phases.
 
-PBVP installs no executable detour and does not modify a Direct3D device vtable. MinHook is not a dependency. The xNVSE frame-present notification is the only render callback boundary, so another plugin cannot occupy a PBVP hook target. Unknown runtime versions are still rejected by `NVSEPlugin_Query`, and every engine object and texture profile is validated before use.
+PBVP installs no executable detour and does not modify a Direct3D device vtable. MinHook is not a dependency. The xNVSE frame-present notification is the only render callback boundary, so another plugin cannot occupy a PBVP render hook target. The scoped MapMenu input bridge separately rejects a menu object whose virtual table has already been replaced. Unknown runtime versions are still rejected by `NVSEPlugin_Query`, and every engine object and texture profile is validated before use.
 
 The active VNV Extended test has validated the live texture chain, matching callback thread IDs, managed texture pool, and intended layer order. Portable tests reject unsupported texture sizes, formats, and memory pools. The selected boundary still needs a natural display-transition test, the remaining native Direct3D matrix, and a separate DXVK result before any DXVK support claim.
 

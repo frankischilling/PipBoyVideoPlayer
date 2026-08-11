@@ -818,6 +818,18 @@ Implementation evidence: the cleared-mailbox change passed the 15-test host matr
 
 Live evidence: the untouched log from commit `ce91fa2` passed the strict checker. It recorded a 299,980,000 microsecond audio clock, zero underruns, 2,998 presented frames, 6,002 dropped frames, and a 110 millisecond maximum update gap. Shutdown classified all 3,343 submissions as 3,342 uploads and one clear. The preserved log has SHA-256 `FCFD2D7F2D9E75F029BC0934F62DCD0876EB5678B9169164B3DE481BDE8AEB1D`.
 
+### Scope input handling to the live MapMenu instance
+
+Date: August 10, 2026
+
+Decision: use a private copy of the live MapMenu instance's virtual function pointers for Videos page input. PBVP validates the menu ID, the original table, and every original function pointer before replacing `HandleClick` and `HandleKeyboardInput` in its copy. Keyboard and mouse edges come from xNVSE's filtered input object. Controller edges come from XInput. The replacement handlers consume MapMenu events only while the Videos page is open.
+
+Reason: xNVSE 6.4.5 does not return its older `NVSEIOInterface` from `QueryInterface`. Data Interface version 3 intentionally exposes the filtered `DIHookControl` singleton, and the maintained source documents the input-state layout. The MapMenu object already receives scoped click and keyboard events, so it provides a narrow consumption boundary.
+
+Rejected alternatives: do not install a global keyboard hook, patch a DirectInput call, write to the shared MapMenu virtual table, add an ESP for input, or guess an internal xNVSE function address.
+
+Consequence: PBVP does not patch executable code or write to the game's shared virtual table. If another plugin has already replaced the MapMenu table, PBVP hides its layer and leaves the menu untouched. The complete mouse, keyboard, and controller paths still need live compatibility tests.
+
 ### No save persistence
 
 Decision: store no media or playback state in game saves or xNVSE co-saves for the first release.

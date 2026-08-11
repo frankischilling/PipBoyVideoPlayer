@@ -34,6 +34,17 @@ struct ResourceSettings final {
     std::uint64_t maximum_media_file_bytes{kMaximumConfiguredMediaBytes};
 };
 
+struct InputSettings final {
+    std::uint32_t select_or_play{0x1Cu};
+    std::uint32_t pause_resume{0x39u};
+    std::uint32_t back_or_stop{0x01u};
+    std::uint32_t seek_backward{0xCBu};
+    std::uint32_t seek_forward{0xCDu};
+    std::uint32_t previous_item{0xC8u};
+    std::uint32_t next_item{0xD0u};
+    std::uint32_t toggle_color{0x14u};
+};
+
 struct PlayerSettings final {
     bool enabled{true};
     AspectMode aspect_mode{AspectMode::fit};
@@ -44,6 +55,7 @@ struct PlayerSettings final {
     std::uint32_t seek_seconds{10u};
     MediaCatalogConfig catalog{};
     ResourceSettings resources{};
+    InputSettings input{};
 };
 
 enum class ConfigurationStatus : std::uint32_t {
@@ -73,6 +85,7 @@ struct ConfigurationResult final {
 [[nodiscard]] const char* AspectModeName(AspectMode mode) noexcept;
 [[nodiscard]] const char* TintModeName(TintMode mode) noexcept;
 [[nodiscard]] const char* LoggingDetailName(LoggingDetail detail) noexcept;
+[[nodiscard]] bool InputSettingsValid(const InputSettings& settings) noexcept;
 [[nodiscard]] ConfigurationResult LoadConfiguration(
     const std::wstring& configuration_path) noexcept;
 

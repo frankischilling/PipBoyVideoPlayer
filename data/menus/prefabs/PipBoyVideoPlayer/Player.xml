@@ -7,6 +7,113 @@
     <visible> 1 </visible>
     <target> 0 </target>
 
+    <hotrect name="PBVP_OpenButton">
+        <id> 9100 </id>
+        <x> 408 </x>
+        <y>
+            <copy src="parent" trait="height" />
+            <sub src="me" trait="height" />
+            <sub> 64 </sub>
+        </y>
+        <width> 112 </width>
+        <height> 34 </height>
+        <depth> 11 </depth>
+        <visible> 1 </visible>
+        <target> <copy src="me" trait="visible" /> </target>
+
+        <image name="PBVP_OpenBackground">
+            <visible> <copy src="parent()" trait="visible" /> </visible>
+            <alpha> 220 </alpha>
+            <depth> 11 </depth>
+            <x> 0 </x>
+            <y> 0 </y>
+            <width> <copy src="parent()" trait="width" /> </width>
+            <height> <copy src="parent()" trait="height" /> </height>
+            <zoom> &scale; </zoom>
+            <systemcolor> 0 </systemcolor>
+            <red> 0 </red>
+            <green> 0 </green>
+            <blue> 0 </blue>
+            <filename> Interface\Shared\Background\solid_black.dds </filename>
+        </image>
+
+        <text name="PBVP_OpenText">
+            <visible> <copy src="parent()" trait="visible" /> </visible>
+            <alpha> 255 </alpha>
+            <depth> 12 </depth>
+            <x> 10 </x>
+            <y> 2 </y>
+            <zoom> 60 </zoom>
+            <systemcolor> 1 </systemcolor>
+            <brightness> 255 </brightness>
+            <font> 3 </font>
+            <justify> &left; </justify>
+            <string> VIDEOS </string>
+        </text>
+    </hotrect>
+
+    <rect name="PBVP_CatalogPanel">
+        <x> 12 </x>
+        <y>
+            <copy src="parent" trait="height" />
+            <sub src="me" trait="height" />
+            <sub> 64 </sub>
+        </y>
+        <width> 384 </width>
+        <height> 216 </height>
+        <depth> 10 </depth>
+        <locus> 1 </locus>
+        <visible> 0 </visible>
+        <target> <copy src="me" trait="visible" /> </target>
+        <wheelable> 1 </wheelable>
+
+        <image name="PBVP_CatalogBackground">
+            <visible> <copy src="parent()" trait="visible" /> </visible>
+            <alpha> 245 </alpha>
+            <depth> 10 </depth>
+            <x> 0 </x>
+            <y> 0 </y>
+            <width> <copy src="parent()" trait="width" /> </width>
+            <height> <copy src="parent()" trait="height" /> </height>
+            <zoom> &scale; </zoom>
+            <systemcolor> 0 </systemcolor>
+            <red> 0 </red>
+            <green> 0 </green>
+            <blue> 0 </blue>
+            <filename> Interface\Shared\Background\solid_black.dds </filename>
+        </image>
+
+        <text name="PBVP_CatalogTitle">
+            <visible> <copy src="parent()" trait="visible" /> </visible>
+            <alpha> 255 </alpha>
+            <depth> 12 </depth>
+            <x> 10 </x>
+            <y> 2 </y>
+            <zoom> 62 </zoom>
+            <systemcolor> 1 </systemcolor>
+            <brightness> 255 </brightness>
+            <font> 3 </font>
+            <justify> &left; </justify>
+            <string> VIDEOS </string>
+        </text>
+
+        <hotrect name="PBVP_Row0"><id> 9110 </id><x> 10 </x><y> 30 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText0"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+        <hotrect name="PBVP_Row1"><id> 9111 </id><x> 10 </x><y> 50 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText1"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+        <hotrect name="PBVP_Row2"><id> 9112 </id><x> 10 </x><y> 70 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText2"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+        <hotrect name="PBVP_Row3"><id> 9113 </id><x> 10 </x><y> 90 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText3"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+        <hotrect name="PBVP_Row4"><id> 9114 </id><x> 10 </x><y> 110 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText4"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+        <hotrect name="PBVP_Row5"><id> 9115 </id><x> 10 </x><y> 130 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText5"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+        <hotrect name="PBVP_Row6"><id> 9116 </id><x> 10 </x><y> 150 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText6"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+        <hotrect name="PBVP_Row7"><id> 9117 </id><x> 10 </x><y> 170 </y><width> 364 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target><text name="PBVP_RowText7"><x> 2 </x><y> 0 </y><zoom> 52 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> </string></text></hotrect>
+
+        <hotrect name="PBVP_BackButton">
+            <id> 9101 </id><x> 10 </x><y> 194 </y><width> 100 </width><height> 20 </height><depth> 12 </depth>
+            <visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target>
+            <text name="PBVP_BackText"><x> 2 </x><y> 0 </y><zoom> 48 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> ESC BACK </string></text>
+        </hotrect>
+        <text name="PBVP_CatalogPrompt"><x> 118 </x><y> 194 </y><zoom> 48 </zoom><systemcolor> 1 </systemcolor><brightness> 255 </brightness><font> 3 </font><string> ENTER PLAY  UP/DOWN SELECT </string></text>
+    </rect>
+
     <rect name="PBVP_VideoRect">
         <x> 12 </x>
         <y>
@@ -18,11 +125,11 @@
         <height> 216 </height>
         <depth> 10 </depth>
         <locus> 1 </locus>
-        <visible> <copy src="parent()" trait="visible" /> </visible>
+        <visible> 0 </visible>
         <target> 0 </target>
 
         <image name="PBVP_VideoSurface">
-            <visible> 1 </visible>
+            <visible> <copy src="parent()" trait="visible" /> </visible>
             <alpha> 255 </alpha>
             <depth> 10 </depth>
             <x> 0 </x>
@@ -39,7 +146,7 @@
         </image>
 
         <image name="PBVP_LayerProbeBackground">
-            <visible> 1 </visible>
+            <visible> <copy src="parent()" trait="visible" /> </visible>
             <alpha> 220 </alpha>
             <depth> 11 </depth>
             <x> 12 </x>
@@ -48,7 +155,7 @@
                 <sub src="me" trait="height" />
                 <sub> 12 </sub>
             </y>
-            <width> 250 </width>
+            <width> 360 </width>
             <height> 38 </height>
             <zoom> &scale; </zoom>
             <systemcolor> 0 </systemcolor>
@@ -58,18 +165,54 @@
             <filename> Interface\Shared\Background\solid_black.dds </filename>
         </image>
 
-        <text name="PBVP_LayerProbe">
-            <visible> 1 </visible>
+        <image name="PBVP_DetailsBackground">
+            <visible> <copy src="parent()" trait="visible" /> </visible>
+            <alpha> 210 </alpha>
+            <depth> 11 </depth>
+            <x> 12 </x>
+            <y> 8 </y>
+            <width> 360 </width>
+            <height> 26 </height>
+            <zoom> &scale; </zoom>
+            <systemcolor> 0 </systemcolor>
+            <red> 0 </red>
+            <green> 0 </green>
+            <blue> 0 </blue>
+            <filename> Interface\Shared\Background\solid_black.dds </filename>
+        </image>
+
+        <text name="PBVP_PlaybackDetails">
+            <visible> <copy src="parent()" trait="visible" /> </visible>
             <alpha> 255 </alpha>
             <depth> 12 </depth>
-            <x> <copy src="sibling(PBVP_LayerProbeBackground)" trait="x" /> <add> 10 </add> </x>
-            <y> <copy src="sibling(PBVP_LayerProbeBackground)" trait="y" /> <add> 3 </add> </y>
-            <zoom> 60 </zoom>
+            <x> 20 </x>
+            <y> 8 </y>
+            <zoom> 42 </zoom>
             <systemcolor> 1 </systemcolor>
             <brightness> 255 </brightness>
             <font> 3 </font>
             <justify> &left; </justify>
-            <string> PBVP UI LAYER </string>
+            <string> VIDEO  00:00 / 00:00 </string>
         </text>
+
+        <text name="PBVP_LayerProbe">
+            <visible> <copy src="parent()" trait="visible" /> </visible>
+            <alpha> 255 </alpha>
+            <depth> 12 </depth>
+            <x> <copy src="sibling(PBVP_LayerProbeBackground)" trait="x" /> <add> 10 </add> </x>
+            <y> <copy src="sibling(PBVP_LayerProbeBackground)" trait="y" /> <add> 1 </add> </y>
+            <zoom> 38 </zoom>
+            <systemcolor> 1 </systemcolor>
+            <brightness> 255 </brightness>
+            <font> 3 </font>
+            <justify> &left; </justify>
+            <string> PLAYING </string>
+        </text>
+
+        <hotrect name="PBVP_PauseButton"><id> 9120 </id><x> 12 </x><y> 194 </y><width> 60 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target></hotrect>
+        <hotrect name="PBVP_StopButton"><id> 9121 </id><x> 76 </x><y> 194 </y><width> 54 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target></hotrect>
+        <hotrect name="PBVP_SeekBackButton"><id> 9122 </id><x> 134 </x><y> 194 </y><width> 54 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target></hotrect>
+        <hotrect name="PBVP_SeekForwardButton"><id> 9123 </id><x> 192 </x><y> 194 </y><width> 54 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target></hotrect>
+        <hotrect name="PBVP_PresentationButton"><id> 9124 </id><x> 250 </x><y> 194 </y><width> 122 </width><height> 20 </height><depth> 12 </depth><visible> <copy src="parent()" trait="visible" /> </visible><target> <copy src="me" trait="visible" /> </target></hotrect>
     </rect>
 </rect>

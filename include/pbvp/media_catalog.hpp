@@ -41,6 +41,30 @@ struct MediaCatalogResult final {
     bool truncated{};
 };
 
+class MediaCatalogSelection final {
+public:
+    explicit MediaCatalogSelection(std::size_t visible_rows) noexcept;
+
+    void Reset(std::size_t entry_count) noexcept;
+    [[nodiscard]] bool Previous() noexcept;
+    [[nodiscard]] bool Next() noexcept;
+    [[nodiscard]] bool SelectVisibleRow(std::size_t row) noexcept;
+
+    [[nodiscard]] std::size_t EntryCount() const noexcept;
+    [[nodiscard]] std::size_t SelectedIndex() const noexcept;
+    [[nodiscard]] std::size_t FirstVisibleIndex() const noexcept;
+    [[nodiscard]] std::size_t VisibleCount() const noexcept;
+    [[nodiscard]] std::size_t SelectedVisibleRow() const noexcept;
+
+private:
+    void KeepVisible() noexcept;
+
+    std::size_t visible_rows_{};
+    std::size_t entry_count_{};
+    std::size_t selected_index_{};
+    std::size_t first_visible_index_{};
+};
+
 [[nodiscard]] const char* MediaCatalogStatusName(MediaCatalogStatus status) noexcept;
 [[nodiscard]] bool NaturalCatalogLess(
     const MediaCatalogEntry& left,

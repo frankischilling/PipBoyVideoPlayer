@@ -238,4 +238,82 @@ MediaCatalogResult ScanMediaCatalog(
     }
 }
 
+MediaCatalogSelection::MediaCatalogSelection(
+    const std::size_t visible_rows) noexcept
+    : visible_rows_(visible_rows) {
+}
+
+void MediaCatalogSelection::Reset(const std::size_t entry_count) noexcept {
+    entry_count_ = entry_count;
+    selected_index_ = 0u;
+    first_visible_index_ = 0u;
+}
+
+bool MediaCatalogSelection::Previous() noexcept {
+    if (selected_index_ == 0u || entry_count_ == 0u || visible_rows_ == 0u) {
+        return false;
+    }
+    --selected_index_;
+    KeepVisible();
+    return true;
+}
+
+bool MediaCatalogSelection::Next() noexcept {
+    if (visible_rows_ == 0u || selected_index_ + 1u >= entry_count_) {
+        return false;
+    }
+    ++selected_index_;
+    KeepVisible();
+    return true;
+}
+
+bool MediaCatalogSelection::SelectVisibleRow(const std::size_t row) noexcept {
+    if (visible_rows_ == 0u || row >= visible_rows_ ||
+        first_visible_index_ + row >= entry_count_) {
+        return false;
+    }
+    selected_index_ = first_visible_index_ + row;
+    KeepVisible();
+    return true;
+}
+
+std::size_t MediaCatalogSelection::EntryCount() const noexcept {
+    return entry_count_;
+}
+
+std::size_t MediaCatalogSelection::SelectedIndex() const noexcept {
+    return selected_index_;
+}
+
+std::size_t MediaCatalogSelection::FirstVisibleIndex() const noexcept {
+    return first_visible_index_;
+}
+
+std::size_t MediaCatalogSelection::VisibleCount() const noexcept {
+    if (visible_rows_ == 0u || first_visible_index_ >= entry_count_) {
+        return 0u;
+    }
+    return (std::min)(visible_rows_, entry_count_ - first_visible_index_);
+}
+
+std::size_t MediaCatalogSelection::SelectedVisibleRow() const noexcept {
+    return selected_index_ >= first_visible_index_
+        ? selected_index_ - first_visible_index_
+        : 0u;
+}
+
+void MediaCatalogSelection::KeepVisible() noexcept {
+    if (entry_count_ == 0u || visible_rows_ == 0u) {
+        selected_index_ = 0u;
+        first_visible_index_ = 0u;
+        return;
+    }
+    selected_index_ = (std::min)(selected_index_, entry_count_ - 1u);
+    if (selected_index_ < first_visible_index_) {
+        first_visible_index_ = selected_index_;
+    } else if (selected_index_ >= first_visible_index_ + visible_rows_) {
+        first_visible_index_ = selected_index_ - visible_rows_ + 1u;
+    }
+}
+
 } // namespace pbvp

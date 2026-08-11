@@ -5,11 +5,14 @@
 #include "nvse/GameTiles.h"
 
 #include <Windows.h>
+#include <Xinput.h>
 
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <cstddef>
 #include <cstring>
+#include <string>
 
 namespace pbvp {
 namespace {
@@ -34,6 +37,25 @@ constexpr std::uint32_t kValueSystemColor = ::Tile::kTileValue_systemcolor;
 constexpr std::size_t kMaxTileValues = 4096;
 constexpr std::size_t kMaxTilesVisited = 512;
 constexpr std::size_t kMaxParentDepth = 64;
+constexpr std::size_t kMenuVirtualFunctionCount = 15u;
+constexpr std::size_t kMenuHandleClickSlot = 3u;
+constexpr std::size_t kMenuHandleKeyboardInputSlot = 12u;
+constexpr std::uint32_t kOpenButtonId = 9100u;
+constexpr std::uint32_t kBackButtonId = 9101u;
+constexpr std::uint32_t kFirstCatalogRowId = 9110u;
+constexpr std::uint32_t kLastCatalogRowId = 9117u;
+constexpr std::uint32_t kPauseButtonId = 9120u;
+constexpr std::uint32_t kStopButtonId = 9121u;
+constexpr std::uint32_t kSeekBackButtonId = 9122u;
+constexpr std::uint32_t kSeekForwardButtonId = 9123u;
+constexpr std::uint32_t kPresentationButtonId = 9124u;
+constexpr std::size_t kNvseKeyboardKeys = 256u;
+constexpr std::size_t kNvseMouseButtonOffset = 256u;
+constexpr std::size_t kNvseMouseWheelOffset = kNvseMouseButtonOffset + 8u;
+constexpr std::size_t kNvseInputCount = kNvseMouseWheelOffset + 2u;
+constexpr std::size_t kMouseRight = kNvseMouseButtonOffset + 1u;
+constexpr std::size_t kMouseWheelUp = kNvseMouseWheelOffset;
+constexpr std::size_t kMouseWheelDown = kNvseMouseWheelOffset + 1u;
 
 enum class ResolveStatus : std::uint32_t {
     kMapHidden = 1u,
@@ -98,6 +120,32 @@ struct TileImage {
     std::uint8_t unknown_44[4];
 };
 
+struct TileMenuLayout {
+    Tile tile;
+    std::uint32_t unknown_38;
+    void* menu;
+};
+
+struct MenuLayout {
+    void** vtable;
+    std::uint8_t unknown_04[0x1Cu];
+    std::uint32_t id;
+};
+
+struct NvseKeyInfoLayout {
+    std::uint8_t raw_state;
+    std::uint8_t game_state;
+    std::uint8_t inserted_state;
+    std::uint8_t held;
+    std::uint8_t tapped;
+    std::uint8_t user_disabled;
+    std::uint8_t script_disabled;
+};
+
+struct NvseInputStateLayout {
+    std::array<NvseKeyInfoLayout, kNvseInputCount> keys;
+};
+
 struct TileShaderPropertyLayout {
     std::uint8_t unknown_00[0x60];
     void* source_texture;
@@ -119,12 +167,296 @@ static_assert(offsetof(Tile, values) == 0x14);
 static_assert(offsetof(Tile, name) == 0x20);
 static_assert(offsetof(Tile, parent) == 0x28);
 static_assert(sizeof(TileImage) == 0x48);
+static_assert(sizeof(TileMenuLayout) == 0x40);
+static_assert(offsetof(TileMenuLayout, menu) == 0x3C);
+static_assert(offsetof(MenuLayout, id) == 0x20);
+static_assert(sizeof(NvseKeyInfoLayout) == 7u);
 static_assert(offsetof(TileImage, direct_texture) == 0x3C);
 static_assert(offsetof(TileImage, shader_property) == 0x40);
 static_assert(offsetof(TileShaderPropertyLayout, source_texture) == 0x60);
 static_assert(offsetof(TileShaderPropertyLayout, alpha_texture) == 0x64);
 static_assert(offsetof(NiTextureLayout, renderer_data) == 0x24);
 static_assert(offsetof(NiDx9TextureDataLayout, d3d_base_texture) == 0x64);
+
+TileValue* FindValue(Tile* tile, std::uint32_t id) noexcept;
+Tile* FindDescendant(Tile* root, const char* name) noexcept;
+
+using MenuHandleClick = void(__thiscall*)(void*, std::uint32_t, Tile*);
+using MenuHandleKeyboardInput = bool(__thiscall*)(void*, char);
+using XInputGetStateFunction = DWORD(WINAPI*)(DWORD, XINPUT_STATE*);
+
+std::array<void*, kMenuVirtualFunctionCount> g_map_menu_vtable{};
+MenuHandleClick g_original_handle_click{};
+MenuHandleKeyboardInput g_original_handle_keyboard{};
+MenuLayout* g_hooked_map_menu{};
+void** g_original_map_menu_vtable{};
+std::atomic<std::uint32_t> g_pending_input_actions{0u};
+std::atomic<bool> g_videos_page_active{false};
+std::atomic<UiInputMethod> g_input_method{UiInputMethod::keyboard_mouse};
+std::array<bool, kNvseInputCount> g_key_down{};
+std::atomic<std::uintptr_t> g_nvse_input_state{};
+InputSettings g_input_settings{};
+HMODULE g_xinput_module{};
+XInputGetStateFunction g_xinput_get_state{};
+WORD g_previous_controller_buttons{};
+bool g_controller_connected{};
+POINT g_previous_cursor_position{};
+bool g_cursor_position_known{};
+bool g_input_hook_logged{};
+bool g_input_hook_failure_logged{};
+std::array<char, 192u> g_playback_prompt{};
+std::array<char, 96u> g_catalog_prompt{};
+std::array<char, 32u> g_catalog_back_prompt{};
+
+void QueueAction(const UiInputAction action, const UiInputMethod method) noexcept {
+    g_input_method.store(method, std::memory_order_release);
+    g_pending_input_actions.fetch_or(
+        static_cast<std::uint32_t>(action), std::memory_order_acq_rel);
+}
+
+UiInputAction ActionForButtonId(const std::uint32_t button_id) noexcept {
+    switch (button_id) {
+        case kOpenButtonId: return UiInputAction::open_page;
+        case kBackButtonId: return UiInputAction::close_page;
+        case kPauseButtonId: return UiInputAction::pause_resume;
+        case kStopButtonId: return UiInputAction::stop;
+        case kSeekBackButtonId: return UiInputAction::seek_backward;
+        case kSeekForwardButtonId: return UiInputAction::seek_forward;
+        case kPresentationButtonId: return UiInputAction::toggle_presentation;
+        default:
+            if (button_id >= kFirstCatalogRowId && button_id <= kLastCatalogRowId) {
+                return static_cast<UiInputAction>(
+                    static_cast<std::uint32_t>(UiInputAction::activate) |
+                    ((button_id - kFirstCatalogRowId + 1u) << 16u));
+            }
+            return UiInputAction::none;
+    }
+}
+
+void __fastcall MapMenuHandleClickHook(
+    void* menu,
+    void*,
+    const std::uint32_t button_id,
+    Tile* clicked_button) noexcept {
+    const UiInputAction action = ActionForButtonId(button_id);
+    if (action != UiInputAction::none &&
+        (button_id == kOpenButtonId ||
+         g_videos_page_active.load(std::memory_order_acquire))) {
+        QueueAction(action, UiInputMethod::keyboard_mouse);
+        return;
+    }
+    if (g_videos_page_active.load(std::memory_order_acquire)) {
+        return;
+    }
+    if (g_original_handle_click != nullptr) {
+        g_original_handle_click(menu, button_id, clicked_button);
+    }
+}
+
+bool __fastcall MapMenuHandleKeyboardHook(
+    void* menu,
+    void*,
+    const char input_character) noexcept {
+    if (g_videos_page_active.load(std::memory_order_acquire)) {
+        return true;
+    }
+    return g_original_handle_keyboard != nullptr
+        ? g_original_handle_keyboard(menu, input_character)
+        : false;
+}
+
+bool AddressInsideMainImage(const void* address) noexcept {
+    if (address == nullptr) {
+        return false;
+    }
+    const auto base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
+    if (base == 0u) {
+        return false;
+    }
+    __try {
+        const auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
+        if (dos->e_magic != IMAGE_DOS_SIGNATURE || dos->e_lfanew <= 0) {
+            return false;
+        }
+        const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS32*>(
+            base + static_cast<std::uintptr_t>(dos->e_lfanew));
+        if (nt->Signature != IMAGE_NT_SIGNATURE ||
+            nt->OptionalHeader.SizeOfImage == 0u) {
+            return false;
+        }
+        const std::uintptr_t value = reinterpret_cast<std::uintptr_t>(address);
+        return value >= base && value < base + nt->OptionalHeader.SizeOfImage;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+Tile* CurrentMapMenuRoot() noexcept {
+    auto*** menu_array_pointer = reinterpret_cast<Tile***>(kTileMenuArrayPointer);
+    if (menu_array_pointer == nullptr || *menu_array_pointer == nullptr) {
+        return nullptr;
+    }
+    return (*menu_array_pointer)[kMapMenuType - kMenuTypeMin];
+}
+
+bool AttachMapMenuInput(Tile* menu_root) noexcept {
+    if (menu_root == nullptr) {
+        return false;
+    }
+    __try {
+        auto* tile_menu = reinterpret_cast<TileMenuLayout*>(menu_root);
+        auto* menu = static_cast<MenuLayout*>(tile_menu->menu);
+        if (menu == nullptr || menu->id != kMapMenuType) {
+            return false;
+        }
+        if (g_hooked_map_menu == menu && menu->vtable == g_map_menu_vtable.data()) {
+            return true;
+        }
+        if (!AddressInsideMainImage(menu->vtable)) {
+            return false;
+        }
+        for (std::size_t index = 0u; index < g_map_menu_vtable.size(); ++index) {
+            if (!AddressInsideMainImage(menu->vtable[index])) {
+                return false;
+            }
+            g_map_menu_vtable[index] = menu->vtable[index];
+        }
+        g_original_map_menu_vtable = menu->vtable;
+        g_original_handle_click = reinterpret_cast<MenuHandleClick>(
+            g_map_menu_vtable[kMenuHandleClickSlot]);
+        g_original_handle_keyboard = reinterpret_cast<MenuHandleKeyboardInput>(
+            g_map_menu_vtable[kMenuHandleKeyboardInputSlot]);
+        g_map_menu_vtable[kMenuHandleClickSlot] =
+            reinterpret_cast<void*>(&MapMenuHandleClickHook);
+        g_map_menu_vtable[kMenuHandleKeyboardInputSlot] =
+            reinterpret_cast<void*>(&MapMenuHandleKeyboardHook);
+        menu->vtable = g_map_menu_vtable.data();
+        g_hooked_map_menu = menu;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool GameInputPressedEdge(const std::size_t key) noexcept {
+    if (key >= g_key_down.size()) {
+        return false;
+    }
+    const std::uintptr_t address = g_nvse_input_state.load(std::memory_order_acquire);
+    if (address == 0u) {
+        return false;
+    }
+    __try {
+        const auto* input = reinterpret_cast<const NvseInputStateLayout*>(address);
+        const std::uint8_t value = input->keys[key].game_state;
+        if (value > 1u) {
+            return false;
+        }
+        const bool down = value != 0u;
+        const bool pressed = down && !g_key_down[key];
+        g_key_down[key] = down;
+        return pressed;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        g_nvse_input_state.store(0u, std::memory_order_release);
+        return false;
+    }
+}
+
+void PollKeyboardAndMouse() noexcept {
+    struct KeyAction final {
+        std::size_t key;
+        UiInputAction action;
+    };
+    const std::array<KeyAction, 11u> keys{{
+        {g_input_settings.previous_item, UiInputAction::previous_item},
+        {g_input_settings.next_item, UiInputAction::next_item},
+        {g_input_settings.select_or_play, UiInputAction::activate},
+        {g_input_settings.pause_resume, UiInputAction::pause_resume},
+        {g_input_settings.back_or_stop, UiInputAction::close_page},
+        {g_input_settings.seek_backward, UiInputAction::seek_backward},
+        {g_input_settings.seek_forward, UiInputAction::seek_forward},
+        {g_input_settings.toggle_color, UiInputAction::toggle_presentation},
+        {kMouseRight, UiInputAction::close_page},
+        {kMouseWheelUp, UiInputAction::previous_item},
+        {kMouseWheelDown, UiInputAction::next_item},
+    }};
+    for (const KeyAction& key : keys) {
+        if (GameInputPressedEdge(key.key)) {
+            QueueAction(key.action, UiInputMethod::keyboard_mouse);
+        }
+    }
+    POINT cursor{};
+    if (GetCursorPos(&cursor) != FALSE) {
+        if (g_cursor_position_known &&
+            (cursor.x != g_previous_cursor_position.x ||
+             cursor.y != g_previous_cursor_position.y)) {
+            g_input_method.store(
+                UiInputMethod::keyboard_mouse, std::memory_order_release);
+        }
+        g_previous_cursor_position = cursor;
+        g_cursor_position_known = true;
+    }
+}
+
+void LoadXInput() noexcept {
+    if (g_xinput_module != nullptr || g_xinput_get_state != nullptr) {
+        return;
+    }
+    constexpr std::array<const wchar_t*, 2u> names{{
+        L"xinput1_4.dll", L"xinput9_1_0.dll"}};
+    for (const wchar_t* name : names) {
+        HMODULE module = LoadLibraryExW(name, nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+        if (module == nullptr) {
+            continue;
+        }
+        auto function = reinterpret_cast<XInputGetStateFunction>(
+            GetProcAddress(module, "XInputGetState"));
+        if (function != nullptr) {
+            g_xinput_module = module;
+            g_xinput_get_state = function;
+            return;
+        }
+        FreeLibrary(module);
+    }
+}
+
+void PollController() noexcept {
+    LoadXInput();
+    if (g_xinput_get_state == nullptr) {
+        g_controller_connected = false;
+        g_cursor_position_known = false;
+        return;
+    }
+    XINPUT_STATE state{};
+    if (g_xinput_get_state(0u, &state) != ERROR_SUCCESS) {
+        g_controller_connected = false;
+        g_previous_controller_buttons = 0u;
+        return;
+    }
+    g_controller_connected = true;
+    const WORD pressed = static_cast<WORD>(
+        state.Gamepad.wButtons & ~g_previous_controller_buttons);
+    g_previous_controller_buttons = state.Gamepad.wButtons;
+    struct ButtonAction final {
+        WORD button;
+        UiInputAction action;
+    };
+    constexpr std::array<ButtonAction, 8u> buttons{{
+        {XINPUT_GAMEPAD_DPAD_UP, UiInputAction::previous_item},
+        {XINPUT_GAMEPAD_DPAD_DOWN, UiInputAction::next_item},
+        {XINPUT_GAMEPAD_A, UiInputAction::activate},
+        {XINPUT_GAMEPAD_X, UiInputAction::pause_resume},
+        {XINPUT_GAMEPAD_B, UiInputAction::close_page},
+        {XINPUT_GAMEPAD_LEFT_SHOULDER, UiInputAction::seek_backward},
+        {XINPUT_GAMEPAD_RIGHT_SHOULDER, UiInputAction::seek_forward},
+        {XINPUT_GAMEPAD_Y, UiInputAction::toggle_presentation},
+    }};
+    for (const ButtonAction& button : buttons) {
+        if ((pressed & button.button) != 0u) {
+            QueueAction(button.action, UiInputMethod::controller);
+        }
+    }
+}
 
 TileValue* FindValue(Tile* tile, const std::uint32_t id) noexcept {
     if (tile == nullptr || tile->values == nullptr || tile->value_count > kMaxTileValues) {
@@ -187,15 +519,103 @@ Tile* FindDescendant(Tile* root, const char* name) noexcept {
     return nullptr;
 }
 
-const char* PlaybackStatusText(const PlaybackStateSnapshot& playback) noexcept {
+struct KeyLabel final {
+    std::array<char, 16u> text{};
+};
+
+KeyLabel KeyLabelForScanCode(const std::uint32_t scan_code) noexcept {
+    KeyLabel label{};
+    LONG key_name_parameter = static_cast<LONG>((scan_code & 0x7Fu) << 16u);
+    if ((scan_code & 0x80u) != 0u) {
+        key_name_parameter |= 1l << 24u;
+    }
+    const int characters = GetKeyNameTextA(
+        key_name_parameter, label.text.data(),
+        static_cast<int>(label.text.size()));
+    if (characters <= 0) {
+        _snprintf_s(
+            label.text.data(), label.text.size(), _TRUNCATE,
+            "KEY %u", scan_code);
+    }
+    for (char& character : label.text) {
+        if (character >= 'a' && character <= 'z') {
+            character = static_cast<char>(character - ('a' - 'A'));
+        }
+    }
+    return label;
+}
+
+const char* CatalogPromptText(const UiInputMethod input_method) noexcept {
+    if (input_method == UiInputMethod::controller) {
+        return "A PLAY  D-PAD SELECT";
+    }
+    const KeyLabel activate = KeyLabelForScanCode(g_input_settings.select_or_play);
+    const KeyLabel previous = KeyLabelForScanCode(g_input_settings.previous_item);
+    const KeyLabel next = KeyLabelForScanCode(g_input_settings.next_item);
+    _snprintf_s(
+        g_catalog_prompt.data(), g_catalog_prompt.size(), _TRUNCATE,
+        "%s PLAY  %s/%s SELECT",
+        activate.text.data(), previous.text.data(), next.text.data());
+    return g_catalog_prompt.data();
+}
+
+const char* CatalogBackPromptText(const UiInputMethod input_method) noexcept {
+    if (input_method == UiInputMethod::controller) {
+        return "B BACK";
+    }
+    const KeyLabel back = KeyLabelForScanCode(g_input_settings.back_or_stop);
+    _snprintf_s(
+        g_catalog_back_prompt.data(), g_catalog_back_prompt.size(), _TRUNCATE,
+        "%s BACK", back.text.data());
+    return g_catalog_back_prompt.data();
+}
+
+const char* PlaybackStatusText(
+    const PlaybackStateSnapshot& playback,
+    const UiInputMethod input_method) noexcept {
+    const bool controller = input_method == UiInputMethod::controller;
+    const KeyLabel pause = KeyLabelForScanCode(g_input_settings.pause_resume);
+    const KeyLabel back = KeyLabelForScanCode(g_input_settings.back_or_stop);
+    const KeyLabel seek_backward = KeyLabelForScanCode(g_input_settings.seek_backward);
+    const KeyLabel seek_forward = KeyLabelForScanCode(g_input_settings.seek_forward);
+    const KeyLabel toggle = KeyLabelForScanCode(g_input_settings.toggle_color);
     switch (playback.state) {
         case PlaybackState::unavailable: return "PLAYER UNAVAILABLE";
         case PlaybackState::idle: return "VIDEOS";
         case PlaybackState::opening: return "OPENING VIDEO";
         case PlaybackState::buffering:
-            return playback.pause_after_buffering ? "BUFFERING PAUSED" : "BUFFERING";
-        case PlaybackState::playing: return "PLAYING";
-        case PlaybackState::paused: return "PAUSED";
+            if (playback.pause_after_buffering) {
+                _snprintf_s(
+                    g_playback_prompt.data(), g_playback_prompt.size(), _TRUNCATE,
+                    "BUFFERING PAUSED  %s RESUME  %s STOP",
+                    controller ? "X" : pause.text.data(),
+                    controller ? "B" : back.text.data());
+                return g_playback_prompt.data();
+            }
+            _snprintf_s(
+                g_playback_prompt.data(), g_playback_prompt.size(), _TRUNCATE,
+                "BUFFERING  %s STOP", controller ? "B" : back.text.data());
+            return g_playback_prompt.data();
+        case PlaybackState::playing:
+            _snprintf_s(
+                g_playback_prompt.data(), g_playback_prompt.size(), _TRUNCATE,
+                "PLAYING  %s PAUSE  %s STOP  %s/%s SEEK  %s COLOR",
+                controller ? "X" : pause.text.data(),
+                controller ? "B" : back.text.data(),
+                controller ? "LB" : seek_backward.text.data(),
+                controller ? "RB" : seek_forward.text.data(),
+                controller ? "Y" : toggle.text.data());
+            return g_playback_prompt.data();
+        case PlaybackState::paused:
+            _snprintf_s(
+                g_playback_prompt.data(), g_playback_prompt.size(), _TRUNCATE,
+                "PAUSED  %s RESUME  %s STOP  %s/%s SEEK  %s COLOR",
+                controller ? "X" : pause.text.data(),
+                controller ? "B" : back.text.data(),
+                controller ? "LB" : seek_backward.text.data(),
+                controller ? "RB" : seek_forward.text.data(),
+                controller ? "Y" : toggle.text.data());
+            return g_playback_prompt.data();
         case PlaybackState::stopping: return "STOPPING";
         case PlaybackState::error:
             switch (playback.error) {
@@ -308,16 +728,18 @@ ResolveStatus ReadResolvedRect(UiRectSnapshot& output) noexcept {
             }
             current = current->parent;
         }
-        if (current != menu_root || !visible_chain) {
+        if (current != menu_root) {
             return ResolveStatus::kParentChainInvalid;
         }
 
         output.rect = {x, y, x + width->number, y + height->number};
         output.ui_extent = {canvas_width->number, canvas_height->number};
-        output.visible = std::isfinite(x) && std::isfinite(y) &&
-                         width->number > 0.0f && height->number > 0.0f &&
-                         canvas_width->number > 0.0f && canvas_height->number > 0.0f;
-        return output.visible ? ResolveStatus::kResolved : ResolveStatus::kGeometryInvalid;
+        const bool valid_geometry = std::isfinite(x) && std::isfinite(y) &&
+                                    width->number > 0.0f && height->number > 0.0f &&
+                                    canvas_width->number > 0.0f &&
+                                    canvas_height->number > 0.0f;
+        output.visible = valid_geometry && visible_chain;
+        return valid_geometry ? ResolveStatus::kResolved : ResolveStatus::kGeometryInvalid;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         return ResolveStatus::kAccessViolation;
     }
@@ -394,6 +816,200 @@ void UiBridge::UpdateOnGameThread() noexcept {
         }
     }
     Publish(snapshot);
+}
+
+void UiBridge::SetGameInputState(const std::uintptr_t input_state) noexcept {
+    g_nvse_input_state.store(input_state, std::memory_order_release);
+    g_key_down.fill(false);
+}
+
+bool UiBridge::SetInputBindings(const InputSettings& settings) noexcept {
+    if (!InputSettingsValid(settings)) {
+        return false;
+    }
+    g_input_settings = settings;
+    g_key_down.fill(false);
+    last_status_state_ = PlaybackState::unavailable;
+    return true;
+}
+
+bool SetTileFloat(Tile* tile, const std::uint32_t id, const float number) noexcept {
+    if (tile == nullptr) {
+        return false;
+    }
+    TileValue* value = FindValue(tile, id);
+    if (value == nullptr || value->parent != tile) {
+        return false;
+    }
+    if (value->number == number) {
+        return true;
+    }
+    using SetFloatValue = void(__thiscall*)(void*, std::uint32_t, float, bool);
+    const auto set_float = reinterpret_cast<SetFloatValue>(kTileSetFloatValueAddress);
+    set_float(tile, id, number, true);
+    return true;
+}
+
+bool SetTileString(Tile* tile, const char* text) noexcept {
+    if (tile == nullptr || text == nullptr) {
+        return false;
+    }
+    TileValue* value = FindValue(tile, kValueString);
+    if (value == nullptr || value->parent != tile) {
+        return false;
+    }
+    if (value->string != nullptr && std::strcmp(value->string, text) == 0) {
+        return true;
+    }
+    using SetStringValue = void(__thiscall*)(void*, std::uint32_t, const char*, bool);
+    const auto set_string = reinterpret_cast<SetStringValue>(kTileSetStringValueAddress);
+    set_string(tile, kValueString, text, true);
+    return true;
+}
+
+std::string WideToUiString(const std::wstring& text) {
+    if (text.empty()) {
+        return {};
+    }
+    BOOL used_default = FALSE;
+    const int required = WideCharToMultiByte(
+        1252u, WC_NO_BEST_FIT_CHARS, text.data(), static_cast<int>(text.size()),
+        nullptr, 0, "?", &used_default);
+    if (required <= 0 || required > 1024) {
+        return "?";
+    }
+    std::string converted(static_cast<std::size_t>(required), '\0');
+    used_default = FALSE;
+    if (WideCharToMultiByte(
+            1252u, WC_NO_BEST_FIT_CHARS, text.data(), static_cast<int>(text.size()),
+            converted.data(), required, "?", &used_default) != required) {
+        return "?";
+    }
+    return converted;
+}
+
+bool SetCatalogStringsGuarded(
+    const std::array<const char*, kUiCatalogVisibleRows>& rows,
+    const char* prompt_text,
+    const char* back_text) noexcept {
+    __try {
+        Tile* menu_root = CurrentMapMenuRoot();
+        if (menu_root == nullptr) {
+            return false;
+        }
+        bool accepted = true;
+        for (std::size_t index = 0u; index < rows.size(); ++index) {
+            char tile_name[32]{};
+            const int name_length = _snprintf_s(
+                tile_name, sizeof(tile_name), _TRUNCATE,
+                "PBVP_RowText%zu", index);
+            if (name_length <= 0) {
+                return false;
+            }
+            Tile* row_text = FindDescendant(menu_root, tile_name);
+            accepted = SetTileString(row_text, rows[index]) && accepted;
+        }
+        Tile* prompt = FindDescendant(menu_root, "PBVP_CatalogPrompt");
+        Tile* back = FindDescendant(menu_root, "PBVP_BackText");
+        return SetTileString(prompt, prompt_text) &&
+               SetTileString(back, back_text) && accepted;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool SetNamedStringGuarded(const char* tile_name, const char* text) noexcept {
+    __try {
+        Tile* menu_root = CurrentMapMenuRoot();
+        Tile* tile = FindDescendant(menu_root, tile_name);
+        return SetTileString(tile, text);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+std::wstring ClipUiLabel(const std::wstring& text, const std::size_t limit) {
+    if (text.size() <= limit) {
+        return text;
+    }
+    if (limit <= 3u) {
+        return text.substr(0u, limit);
+    }
+    std::wstring clipped = text.substr(0u, limit - 3u);
+    clipped.append(L"...");
+    return clipped;
+}
+
+std::string FormatPlaybackDetails(
+    const std::wstring& title,
+    const std::int64_t current_time_us,
+    const std::int64_t duration_us) {
+    const auto seconds = [](const std::int64_t microseconds) noexcept {
+        return microseconds > 0 ? microseconds / 1'000'000ll : 0ll;
+    };
+    const std::int64_t current = seconds(current_time_us);
+    const std::int64_t duration = seconds(duration_us);
+    const std::wstring clipped = ClipUiLabel(title.empty() ? L"VIDEO" : title, 42u);
+    std::string converted = WideToUiString(clipped);
+    char time[48]{};
+    _snprintf_s(
+        time, sizeof(time), _TRUNCATE,
+        "  %02lld:%02lld / %02lld:%02lld",
+        current / 60ll, current % 60ll,
+        duration / 60ll, duration % 60ll);
+    converted.append(time);
+    return converted;
+}
+
+void UiBridge::UpdateInputOnGameThread(const bool videos_page_active) noexcept {
+    const std::uint32_t expected_thread = game_thread_id_.load(std::memory_order_acquire);
+    if (expected_thread == 0u || GetCurrentThreadId() != expected_thread) {
+        g_videos_page_active.store(false, std::memory_order_release);
+        menu_input_available_ = false;
+        map_menu_visible_ = false;
+        return;
+    }
+    g_videos_page_active.store(videos_page_active, std::memory_order_release);
+    Tile* menu_root = nullptr;
+    __try {
+        const auto* visible = reinterpret_cast<const std::uint8_t*>(kMenuVisibilityArray);
+        if (visible[kMapMenuType] != 0u) {
+            menu_root = CurrentMapMenuRoot();
+        }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        menu_root = nullptr;
+    }
+    menu_input_available_ = AttachMapMenuInput(menu_root);
+    map_menu_visible_ = menu_root != nullptr;
+    if (menu_input_available_) {
+        if (!g_input_hook_logged) {
+            PBVP_LOG_INFO("Scoped MapMenu input bridge attached after vtable validation");
+            g_input_hook_logged = true;
+        }
+    } else if (menu_root != nullptr && !g_input_hook_failure_logged) {
+        PBVP_LOG_WARN(
+            "Scoped MapMenu input bridge refused an unknown or occupied menu vtable");
+        g_input_hook_failure_logged = true;
+    }
+
+    if (videos_page_active && menu_input_available_) {
+        PollKeyboardAndMouse();
+        PollController();
+    } else {
+        g_key_down.fill(false);
+        g_previous_controller_buttons = 0u;
+        g_controller_connected = false;
+    }
+}
+
+UiInputSnapshot UiBridge::TakeInputSnapshot() noexcept {
+    UiInputSnapshot snapshot{};
+    snapshot.actions = g_pending_input_actions.exchange(0u, std::memory_order_acq_rel);
+    snapshot.method = g_input_method.load(std::memory_order_acquire);
+    snapshot.map_menu_visible = map_menu_visible_;
+    snapshot.menu_hook_available = menu_input_available_;
+    snapshot.controller_connected = g_controller_connected;
+    return snapshot;
 }
 
 bool UiBridge::SetLayerEnabled(const bool enabled) noexcept {
@@ -476,8 +1092,71 @@ bool UiBridge::SetPipBoyTintEnabled(const bool enabled) noexcept {
     }
 }
 
+bool UiBridge::SetVideosMode(const UiVideosMode mode) noexcept {
+    const std::uint32_t expected_thread = game_thread_id_.load(std::memory_order_acquire);
+    if (expected_thread == 0u || GetCurrentThreadId() != expected_thread) {
+        return false;
+    }
+    __try {
+        Tile* menu_root = CurrentMapMenuRoot();
+        if (menu_root == nullptr) {
+            return false;
+        }
+        Tile* open_button = FindDescendant(menu_root, "PBVP_OpenButton");
+        Tile* catalog_panel = FindDescendant(menu_root, "PBVP_CatalogPanel");
+        Tile* video_rect = FindDescendant(menu_root, "PBVP_VideoRect");
+        if (open_button == nullptr || catalog_panel == nullptr || video_rect == nullptr) {
+            return false;
+        }
+        return SetTileFloat(
+                   open_button, kValueVisible,
+                   mode == UiVideosMode::data_page ? 1.0f : 0.0f) &&
+               SetTileFloat(
+                   catalog_panel, kValueVisible,
+                   mode == UiVideosMode::catalog ? 1.0f : 0.0f) &&
+               SetTileFloat(
+                   video_rect, kValueVisible,
+                   mode == UiVideosMode::playback ? 1.0f : 0.0f);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
+bool UiBridge::SetCatalogRows(
+    const std::array<std::wstring, kUiCatalogVisibleRows>& rows,
+    const std::size_t row_count,
+    const std::size_t selected_row,
+    const UiInputMethod input_method) noexcept {
+    const std::uint32_t expected_thread = game_thread_id_.load(std::memory_order_acquire);
+    if (expected_thread == 0u || GetCurrentThreadId() != expected_thread ||
+        row_count > rows.size() || (row_count > 0u && selected_row >= row_count)) {
+        return false;
+    }
+    try {
+        std::array<std::string, kUiCatalogVisibleRows> converted_rows{};
+        std::array<const char*, kUiCatalogVisibleRows> row_pointers{};
+        for (std::size_t index = 0u; index < rows.size(); ++index) {
+            std::wstring displayed;
+            if (index < row_count) {
+                displayed.reserve(rows[index].size() + 2u);
+                displayed.append(index == selected_row ? L"> " : L"  ");
+                displayed.append(ClipUiLabel(rows[index], 48u));
+            }
+            converted_rows[index] = WideToUiString(displayed);
+            row_pointers[index] = converted_rows[index].c_str();
+        }
+        return SetCatalogStringsGuarded(
+            row_pointers,
+            CatalogPromptText(input_method),
+            CatalogBackPromptText(input_method));
+    } catch (...) {
+        return false;
+    }
+}
+
 bool UiBridge::SetPlaybackStatus(
-    const PlaybackStateSnapshot& playback) noexcept {
+    const PlaybackStateSnapshot& playback,
+    const UiInputMethod input_method) noexcept {
     const std::uint32_t expected_thread = game_thread_id_.load(std::memory_order_acquire);
     if (expected_thread == 0u || GetCurrentThreadId() != expected_thread) {
         return false;
@@ -503,7 +1182,8 @@ bool UiBridge::SetPlaybackStatus(
         const std::uintptr_t status_address = reinterpret_cast<std::uintptr_t>(status_tile);
         if (last_status_tile_ == status_address &&
             last_status_state_ == playback.state &&
-            last_status_error_ == playback.error) {
+            last_status_error_ == playback.error &&
+            last_status_input_method_ == input_method) {
             return true;
         }
 
@@ -511,13 +1191,34 @@ bool UiBridge::SetPlaybackStatus(
             void*, std::uint32_t, const char*, bool);
         const auto set_string = reinterpret_cast<SetStringValue>(
             kTileSetStringValueAddress);
-        set_string(status_tile, kValueString, PlaybackStatusText(playback), true);
+        set_string(
+            status_tile, kValueString,
+            PlaybackStatusText(playback, input_method), true);
         last_status_tile_ = status_address;
         last_status_state_ = playback.state;
         last_status_error_ = playback.error;
+        last_status_input_method_ = input_method;
         return true;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         last_status_tile_ = 0u;
+        return false;
+    }
+}
+
+bool UiBridge::SetPlaybackDetails(
+    const std::wstring& title,
+    const std::int64_t current_time_us,
+    const std::int64_t duration_us) noexcept {
+    const std::uint32_t expected_thread = game_thread_id_.load(std::memory_order_acquire);
+    if (expected_thread == 0u || GetCurrentThreadId() != expected_thread ||
+        current_time_us < 0 || duration_us < 0) {
+        return false;
+    }
+    try {
+        const std::string details =
+            FormatPlaybackDetails(title, current_time_us, duration_us);
+        return SetNamedStringGuarded("PBVP_PlaybackDetails", details.c_str());
+    } catch (...) {
         return false;
     }
 }
@@ -656,8 +1357,17 @@ void UiBridge::Clear() noexcept {
     last_surface_tile_ = 0u;
     last_layer_enabled_ = true;
     last_pipboy_tint_enabled_ = true;
+    menu_input_available_ = false;
+    map_menu_visible_ = false;
+    g_videos_page_active.store(false, std::memory_order_release);
+    g_pending_input_actions.store(0u, std::memory_order_release);
+    g_previous_controller_buttons = 0u;
+    g_controller_connected = false;
+    g_cursor_position_known = false;
+    g_key_down.fill(false);
     last_status_state_ = PlaybackState::unavailable;
     last_status_error_ = PlaybackError::none;
+    last_status_input_method_ = UiInputMethod::keyboard_mouse;
 }
 
 void UiBridge::Publish(const UiRectSnapshot& snapshot) noexcept {

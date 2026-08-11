@@ -2,6 +2,7 @@
 
 #include <Windows.h>
 
+#include <array>
 #include <charconv>
 #include <cmath>
 #include <cwctype>
@@ -117,7 +118,8 @@ bool ApplySetting(
     const std::wstring& section,
     const std::wstring& key,
     const std::wstring_view value,
-    ConfigurationResult& result) {
+    ConfigurationResult& result,
+    bool& input_value_invalid) {
     if (section == L"general" && key == L"enabled") {
         bool parsed{};
         const bool valid = ParseBool(value, parsed);
@@ -183,6 +185,37 @@ bool ApplySetting(
         }
         RecordInvalid(result, valid);
         return true;
+    }
+    if (section == L"input") {
+        std::uint32_t* destination = nullptr;
+        if (key == L"selectorplay") {
+            destination = &result.settings.input.select_or_play;
+        } else if (key == L"pauseresume") {
+            destination = &result.settings.input.pause_resume;
+        } else if (key == L"backorstop") {
+            destination = &result.settings.input.back_or_stop;
+        } else if (key == L"seekbackward") {
+            destination = &result.settings.input.seek_backward;
+        } else if (key == L"seekforward") {
+            destination = &result.settings.input.seek_forward;
+        } else if (key == L"previousitem") {
+            destination = &result.settings.input.previous_item;
+        } else if (key == L"nextitem") {
+            destination = &result.settings.input.next_item;
+        } else if (key == L"togglecolor") {
+            destination = &result.settings.input.toggle_color;
+        }
+        if (destination != nullptr) {
+            std::uint32_t parsed{};
+            const bool valid = ParseInteger(value, 1u, 255u, parsed);
+            if (valid) {
+                *destination = parsed;
+            } else {
+                input_value_invalid = true;
+            }
+            RecordInvalid(result, valid);
+            return true;
+        }
     }
     if (section == L"catalog" && key == L"maximumdisplaycharacters") {
         std::size_t parsed{};
@@ -276,6 +309,7 @@ bool DecodeUtf8(const std::vector<unsigned char>& bytes, std::wstring& output) {
 
 void ParseDocument(const std::wstring& document, ConfigurationResult& result) {
     std::wstring section;
+    bool input_value_invalid = false;
     std::size_t offset = 0u;
     while (offset <= document.size()) {
         const std::size_t newline = document.find(L'\n', offset);
@@ -300,7 +334,9 @@ void ParseDocument(const std::wstring& document, ConfigurationResult& result) {
                     const std::wstring_view value = Trim(line.substr(equals + 1u));
                     if (key.empty()) {
                         ++result.malformed_lines;
-                    } else if (!ApplySetting(section, key, value, result)) {
+                    } else if (!ApplySetting(
+                                   section, key, value, result,
+                                   input_value_invalid)) {
                         ++result.unknown_settings;
                     }
                 }
@@ -310,6 +346,14 @@ void ParseDocument(const std::wstring& document, ConfigurationResult& result) {
             break;
         }
         offset = newline + 1u;
+    }
+
+    const bool input_set_invalid = !InputSettingsValid(result.settings.input);
+    if (input_value_invalid || input_set_invalid) {
+        result.settings.input = InputSettings{};
+        if (input_set_invalid) {
+            RecordInvalid(result, false);
+        }
     }
 }
 
@@ -342,6 +386,30 @@ const char* TintModeName(const TintMode mode) noexcept {
 
 const char* LoggingDetailName(const LoggingDetail detail) noexcept {
     return detail == LoggingDetail::diagnostic ? "diagnostic" : "normal";
+}
+
+bool InputSettingsValid(const InputSettings& settings) noexcept {
+    const std::array<std::uint32_t, 8u> bindings{{
+        settings.select_or_play,
+        settings.pause_resume,
+        settings.back_or_stop,
+        settings.seek_backward,
+        settings.seek_forward,
+        settings.previous_item,
+        settings.next_item,
+        settings.toggle_color,
+    }};
+    for (std::size_t left = 0u; left < bindings.size(); ++left) {
+        if (bindings[left] == 0u || bindings[left] > 255u) {
+            return false;
+        }
+        for (std::size_t right = left + 1u; right < bindings.size(); ++right) {
+            if (bindings[left] == bindings[right]) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 ConfigurationResult LoadConfiguration(

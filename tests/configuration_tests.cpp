@@ -65,6 +65,8 @@ void CheckDefaultsAndValidSettings() {
     PBVP_CHECK(result.settings.tint_mode == pbvp::TintMode::pipboy);
     PBVP_CHECK(result.settings.volume == 1.0f);
     PBVP_CHECK(result.settings.catalog.maximum_entries == 500u);
+    PBVP_CHECK(result.settings.input.select_or_play == 28u);
+    PBVP_CHECK(result.settings.input.toggle_color == 20u);
     PBVP_CHECK(result.unknown_settings == 0u);
     PBVP_CHECK(result.invalid_settings == 0u);
     PBVP_CHECK(result.malformed_lines == 0u);
@@ -74,6 +76,9 @@ void CheckDefaultsAndValidSettings() {
         "[Rendering]\r\nAspectMode=Fill\r\nTintMode=FullColor\r\n"
         "[Playback]\r\nVolume=0.25\r\nMuted=yes\r\nSeekSeconds=30\r\n"
         "[Catalog]\r\nMaximumEntries=100\r\nMaximumDisplayCharacters=256\r\n"
+        "[Input]\r\nSelectOrPlay=30\r\nPauseResume=31\r\nBackOrStop=32\r\n"
+        "SeekBackward=33\r\nSeekForward=34\r\nPreviousItem=35\r\n"
+        "NextItem=36\r\nToggleColor=37\r\n"
         "[Resources]\r\nMaximumSourceWidth=1280\r\nMaximumSourceHeight=720\r\n"
         "MaximumQueuedVideoEdge=384\r\nMaximumMediaFileMiB=4096\r\n"
         "[Logging]\r\nDetail=Diagnostic\r\n";
@@ -88,6 +93,15 @@ void CheckDefaultsAndValidSettings() {
     PBVP_CHECK(result.settings.seek_seconds == 30u);
     PBVP_CHECK(result.settings.catalog.maximum_entries == 100u);
     PBVP_CHECK(result.settings.catalog.maximum_display_characters == 256u);
+    PBVP_CHECK(result.settings.input.select_or_play == 30u);
+    PBVP_CHECK(result.settings.input.pause_resume == 31u);
+    PBVP_CHECK(result.settings.input.back_or_stop == 32u);
+    PBVP_CHECK(result.settings.input.seek_backward == 33u);
+    PBVP_CHECK(result.settings.input.seek_forward == 34u);
+    PBVP_CHECK(result.settings.input.previous_item == 35u);
+    PBVP_CHECK(result.settings.input.next_item == 36u);
+    PBVP_CHECK(result.settings.input.toggle_color == 37u);
+    PBVP_CHECK(pbvp::InputSettingsValid(result.settings.input));
     PBVP_CHECK(result.settings.resources.maximum_source_width == 1280u);
     PBVP_CHECK(result.settings.resources.maximum_source_height == 720u);
     PBVP_CHECK(result.settings.resources.maximum_queued_video_edge == 384u);
@@ -107,6 +121,7 @@ void CheckFallbacksAndCounters() {
         "[Rendering]\nAspectMode=Stretch\nTintMode=Amber\n"
         "[Playback]\nVolume=nan\nMuted=2\nSeekSeconds=0\n"
         "[Catalog]\nMaximumEntries=501\nMaximumDisplayCharacters=15\n"
+        "[Input]\nSelectOrPlay=0\nPauseResume=256\nNextItem=200\n"
         "[Resources]\nMaximumSourceWidth=3840\nMaximumSourceHeight=2160\n"
         "MaximumQueuedVideoEdge=1024\nMaximumMediaFileMiB=32769\n"
         "[Logging]\nDetail=Verbose\n"
@@ -121,11 +136,29 @@ void CheckFallbacksAndCounters() {
     PBVP_CHECK(!result.settings.muted);
     PBVP_CHECK(result.settings.seek_seconds == 10u);
     PBVP_CHECK(result.settings.catalog.maximum_entries == 500u);
+    PBVP_CHECK(result.settings.input.select_or_play == 28u);
+    PBVP_CHECK(result.settings.input.pause_resume == 57u);
+    PBVP_CHECK(result.settings.input.next_item == 208u);
     PBVP_CHECK(result.settings.resources.maximum_source_width == 1920u);
     PBVP_CHECK(result.settings.resources.maximum_source_height == 1080u);
     PBVP_CHECK(result.unknown_settings == 1u);
-    PBVP_CHECK(result.invalid_settings == 13u);
+    PBVP_CHECK(result.invalid_settings == 16u);
     PBVP_CHECK(result.malformed_lines == 2u);
+
+    const std::string partial_input =
+        "[Input]\nSelectOrPlay=30\nPauseResume=0\nBackOrStop=32\n";
+    PBVP_CHECK(file.Write(partial_input));
+    const pbvp::ConfigurationResult partial = pbvp::LoadConfiguration(file.Path());
+    PBVP_CHECK(partial.status == pbvp::ConfigurationStatus::ok);
+    PBVP_CHECK(partial.invalid_settings == 1u);
+    PBVP_CHECK(partial.settings.input.select_or_play == 28u);
+    PBVP_CHECK(partial.settings.input.pause_resume == 57u);
+    PBVP_CHECK(partial.settings.input.back_or_stop == 1u);
+    PBVP_CHECK(pbvp::InputSettingsValid(partial.settings.input));
+
+    pbvp::InputSettings duplicate{};
+    duplicate.toggle_color = duplicate.select_or_play;
+    PBVP_CHECK(!pbvp::InputSettingsValid(duplicate));
 }
 
 void CheckFileFailures() {

@@ -19,10 +19,18 @@ file(READ "${prefab}" prefab_text)
 string(REPLACE "\r\n" "\n" prefab_text "${prefab_text}")
 foreach(required_name IN ITEMS
         PBVP_Root
+        PBVP_OpenButton
+        PBVP_CatalogPanel
         PBVP_VideoRect
         PBVP_VideoSurface
         PBVP_LayerProbeBackground
-        PBVP_LayerProbe)
+        PBVP_LayerProbe
+        PBVP_BackButton
+        PBVP_PauseButton
+        PBVP_StopButton
+        PBVP_SeekBackButton
+        PBVP_SeekForwardButton
+        PBVP_PresentationButton)
     string(FIND "${prefab_text}" "name=\"${required_name}\"" match_offset)
     if(match_offset EQUAL -1)
         message(FATAL_ERROR "UI prefab is missing ${required_name}")
@@ -39,6 +47,14 @@ foreach(required_setting IN ITEMS
         "TintMode=PipBoy"
         "MaximumEntries=500"
         "MaximumDisplayCharacters=128"
+        "SelectOrPlay=28"
+        "PauseResume=57"
+        "BackOrStop=1"
+        "SeekBackward=203"
+        "SeekForward=205"
+        "PreviousItem=200"
+        "NextItem=208"
+        "ToggleColor=20"
         "MaximumSourceWidth=1920"
         "MaximumSourceHeight=1080"
         "MaximumQueuedVideoEdge=512"
@@ -78,7 +94,7 @@ endif()
 
 function(require_drawable_depth drawable_name drawable_depth)
     string(REGEX MATCH
-        "name=\"${drawable_name}\">[\r\n\t ]*<visible> 1 </visible>[\r\n\t ]*<alpha> [0-9]+ </alpha>[\r\n\t ]*<depth> ${drawable_depth} </depth>"
+        "name=\"${drawable_name}\">[\r\n\t ]*<visible>[^\r\n]*</visible>[\r\n\t ]*<alpha> [0-9]+ </alpha>[\r\n\t ]*<depth> ${drawable_depth} </depth>"
         drawable_depth_match
         "${prefab_text}")
     if(drawable_depth_match STREQUAL "")
@@ -174,7 +190,47 @@ if(managed_pool_offset EQUAL -1 OR texture_contract_offset EQUAL -1)
     message(FATAL_ERROR "Renderer does not enforce the managed engine texture contract")
 endif()
 
-string(FIND "${prefab_text}" "PBVP UI LAYER" layer_probe_offset)
+foreach(required_button_id IN ITEMS
+        9100 9101 9110 9111 9112 9113 9114 9115 9116 9117
+        9120 9121 9122 9123 9124)
+    string(FIND "${prefab_text}" "<id> ${required_button_id} </id>" button_id_offset)
+    if(button_id_offset EQUAL -1)
+        message(FATAL_ERROR "UI prefab is missing button ID ${required_button_id}")
+    endif()
+endforeach()
+
+foreach(required_input_fragment IN ITEMS
+        "AttachMapMenuInput"
+        "AddressInsideMainImage"
+        "g_videos_page_active"
+        "kNVSEData_DIHookControl"
+        "SetInputBindings"
+        "GetKeyNameTextA"
+        "CatalogBackPromptText"
+        "LOAD_LIBRARY_SEARCH_SYSTEM32")
+    string(FIND "${plugin_text}${renderer_text}" "${required_input_fragment}" input_fragment_offset)
+    if(input_fragment_offset EQUAL -1)
+        file(READ "${PBVP_SOURCE_DIR}/src/ui/ui_bridge.cpp" ui_bridge_text)
+        string(FIND "${ui_bridge_text}" "${required_input_fragment}" input_fragment_offset)
+    endif()
+    if(input_fragment_offset EQUAL -1)
+        message(FATAL_ERROR "Scoped input bridge is missing ${required_input_fragment}")
+    endif()
+endforeach()
+
+file(READ "${PBVP_SOURCE_DIR}/src/ui/ui_bridge.cpp" ui_bridge_text)
+string(FIND "${ui_bridge_text}" "GetAsyncKeyState" global_key_poll_offset)
+if(NOT global_key_poll_offset EQUAL -1)
+    message(FATAL_ERROR "Videos controls must use xNVSE filtered input instead of global key polling")
+endif()
+
+string(FIND "${plugin_text}" "case NVSEMessagingInterface::kMessage_ReloadConfig:" reload_case_offset)
+string(FIND "${plugin_text}" "g_videos_page_state = VideosPageState::data_page;\n            break;" reload_state_leak_offset)
+if(reload_case_offset EQUAL -1 OR NOT reload_state_leak_offset EQUAL -1)
+    message(FATAL_ERROR "Rejected configuration reloads must not change the Videos page state")
+endif()
+
+string(FIND "${prefab_text}" "<string> PLAYING </string>" layer_probe_offset)
 if(layer_probe_offset EQUAL -1)
-    message(FATAL_ERROR "UI prefab is missing the visible layer-probe text")
+    message(FATAL_ERROR "UI prefab is missing the playback status text")
 endif()

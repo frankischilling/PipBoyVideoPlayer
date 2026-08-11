@@ -178,4 +178,42 @@ void RunMediaCatalogTests() {
     CheckCatalogSizes();
     CheckNamesAndNaturalOrder();
     CheckDisplayAndInputLimits();
+
+    {
+        pbvp::MediaCatalogSelection selection(8u);
+        selection.Reset(10u);
+        PBVP_CHECK(selection.EntryCount() == 10u);
+        PBVP_CHECK(selection.SelectedIndex() == 0u);
+        PBVP_CHECK(selection.FirstVisibleIndex() == 0u);
+        PBVP_CHECK(selection.VisibleCount() == 8u);
+        PBVP_CHECK(!selection.Previous());
+        for (std::size_t index = 0u; index < 8u; ++index) {
+            PBVP_CHECK(selection.Next());
+        }
+        PBVP_CHECK(selection.SelectedIndex() == 8u);
+        PBVP_CHECK(selection.FirstVisibleIndex() == 1u);
+        PBVP_CHECK(selection.SelectedVisibleRow() == 7u);
+        PBVP_CHECK(selection.SelectVisibleRow(0u));
+        PBVP_CHECK(selection.SelectedIndex() == 1u);
+        PBVP_CHECK(!selection.SelectVisibleRow(8u));
+        while (selection.Next()) {
+        }
+        PBVP_CHECK(selection.SelectedIndex() == 9u);
+        PBVP_CHECK(selection.FirstVisibleIndex() == 2u);
+        PBVP_CHECK(selection.VisibleCount() == 8u);
+        PBVP_CHECK(!selection.Next());
+
+        selection.Reset(0u);
+        PBVP_CHECK(selection.VisibleCount() == 0u);
+        PBVP_CHECK(!selection.Next());
+        PBVP_CHECK(!selection.SelectVisibleRow(0u));
+    }
+
+    {
+        pbvp::MediaCatalogSelection disabled(0u);
+        disabled.Reset(5u);
+        PBVP_CHECK(disabled.VisibleCount() == 0u);
+        PBVP_CHECK(!disabled.Next());
+        PBVP_CHECK(!disabled.Previous());
+    }
 }

@@ -61,6 +61,12 @@ Default actions:
 
 The binding layer must use game control state or verified menu input events, not a global low-level keyboard hook. Input is consumed only while the Videos page has focus. Holding a seek button does not produce an unbounded command stream; it repeats at a controlled interval.
 
+The implementation reads keyboard and mouse edges from xNVSE's filtered game-input state and controller edges from XInput. A private virtual-table copy on the live MapMenu instance consumes clicks and keyboard calls while Videos owns focus. Before attaching it, PBVP validates the MapMenu ID and requires the original table and every original function pointer to reside in `FalloutNV.exe`. If that check fails, the Videos layer stays hidden and ordinary Pip-Boy input continues unchanged.
+
+Keyboard settings under `[Input]` are DirectInput scan codes, not Windows virtual-key numbers. Codes must be between 1 and 255, and the eight actions must use different codes. An out-of-range or duplicate value resets all keyboard actions to their shipped defaults so a partial configuration cannot bind one key to two actions.
+
+Catalog and playback prompts use the active keyboard bindings. Pressing a controller button switches them to controller labels. Pressing a keyboard key, clicking, scrolling, or moving the mouse switches them back.
+
 Controller prompts must come from the active input method. Mouse movement should switch to mouse prompts, and a controller action should switch back.
 
 ## Focus and menu behavior
@@ -111,11 +117,11 @@ The planned configuration file is:
 
 It contains presentation mode, aspect mode, volume, resource limits, logging detail, and input bindings. Defaults ship in the mod. User changes written through the virtual filesystem will normally land in MO2's Overwrite unless a dedicated settings mod captures them.
 
-The shipped INI lists every supported setting. `Volume` accepts 0.0 through 1.0, and `SeekSeconds` accepts 1 through 60. `AspectMode` accepts `Fit` or `Fill`. `TintMode` accepts `PipBoy` or `FullColor`. `Detail` accepts `Normal` or `Diagnostic`.
+The shipped INI lists every supported setting. `Volume` accepts 0.0 through 1.0, and `SeekSeconds` accepts 1 through 60. `AspectMode` accepts `Fit` or `Fill`. `TintMode` accepts `PipBoy` or `FullColor`. `Detail` accepts `Normal` or `Diagnostic`. The `[Input]` values follow the DirectInput scan-code rules in the Controls section.
 
 Resource values may lower the compiled limits, but they cannot raise the supported 1920 by 1080 source limit, 512-pixel queued-video edge, 32 GiB file limit, or 500-entry catalog limit. Invalid values keep their compiled defaults. Unknown keys and malformed lines are ignored and summarized once in the log without printing the configuration path.
 
-`ReloadPluginConfig PipBoyVideoPlayer` applies a changed INI only while playback is idle. A reload request during opening, buffering, playback, pause, or an error is rejected without changing the active settings.
+`ReloadPluginConfig PipBoyVideoPlayer` applies a changed INI only while playback is idle. A successful reload returns to the ordinary Data page, where `VIDEOS` can be opened again with a fresh catalog scan. A reload request during opening, buffering, playback, pause, or an error leaves the settings, Videos page, and playback state unchanged.
 
 An MCM page is optional for a later release. The first version may keep settings in the INI and expose only common presentation toggles in the player.
 

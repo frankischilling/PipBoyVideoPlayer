@@ -2,8 +2,9 @@
 
 ## 0.1.0 - Unreleased
 
+- Added a clickable `VIDEOS` entry, an eight-row scrolling catalog, mouse and keyboard controls, controller polling, and input-method prompts. Closing the Pip-Boy stops playback, and the same file can be selected again after reopening it. The scoped MapMenu bridge rejects replaced virtual tables and leaves the ordinary menu untouched when validation fails.
 - Added aspect fit and fill rendering. Fit centers the full frame with black bars. Fill uses a centered crop. Pip-Boy tint converts the frame to luminance and lets the UI apply the player's active Pip-Boy color. Full-color mode keeps the converted BGRA colors.
-- Added bounded UTF-8 INI loading for playback, rendering, catalog, resource, and logging settings. Invalid values keep safe defaults, and runtime reload is limited to the idle state.
+- Added bounded UTF-8 INI loading for playback, rendering, catalog, input, resource, and logging settings. Keyboard bindings use unique DirectInput scan codes, and the UI shows the active bindings. Invalid values keep safe defaults. Runtime reload is limited to the idle state and a rejected reload leaves playback unchanged.
 - Added bounded direct-child MP4 catalog discovery with MO2-compatible Win32 enumeration, Unicode paths, invariant natural sorting, stable session identifiers, display clipping, reparse-point rejection, and tests for 0, 1, 10, 100, and 500 entries.
 - Connected the decoder, XAudio2 sample clock, video scheduler, renderer mailbox, Pip-Boy status text, and game lifecycle into a bounded playback controller.
 - Added audio-led frame selection, late-frame dropping, startup buffering, pause, resume, forward and backward seeks, stop during buffering, silent-video QPC timing, and structured playback errors.
