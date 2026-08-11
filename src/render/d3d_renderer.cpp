@@ -85,6 +85,15 @@ bool D3dRenderer::SubmitVideoFrame(DecodedVideoFrame frame) noexcept {
     }
 }
 
+void D3dRenderer::ConfigurePresentation(
+    const AspectMode aspect_mode,
+    const TintMode tint_mode) noexcept {
+    aspect_mode_.store(
+        static_cast<std::uint32_t>(aspect_mode), std::memory_order_release);
+    tint_mode_.store(
+        static_cast<std::uint32_t>(tint_mode), std::memory_order_release);
+}
+
 void D3dRenderer::ClearVideoFrame() noexcept {
     try {
         std::scoped_lock lock(mailbox_mutex_);
@@ -330,9 +339,20 @@ std::optional<DecodedVideoFrame> D3dRenderer::TakePendingFrame() noexcept {
 }
 
 bool D3dRenderer::PrepareVideoPixels(const DecodedVideoFrame& frame) noexcept {
-    const VideoScaleResult scaled = ScaleBgraToFit(
+    const VideoScaleMode scale_mode =
+        aspect_mode_.load(std::memory_order_acquire) ==
+                static_cast<std::uint32_t>(AspectMode::fill)
+            ? VideoScaleMode::fill
+            : VideoScaleMode::fit;
+    const VideoColorMode color_mode =
+        tint_mode_.load(std::memory_order_acquire) ==
+                static_cast<std::uint32_t>(TintMode::full_color)
+            ? VideoColorMode::full_color
+            : VideoColorMode::pipboy_luminance;
+    const VideoScaleResult scaled = ScaleBgra(
         frame.bgra, frame.width, frame.height, frame.stride,
-        presentation_pixels_, kTextureWidth, kTextureHeight, kTextureWidth * 4u);
+        presentation_pixels_, kTextureWidth, kTextureHeight, kTextureWidth * 4u,
+        scale_mode, color_mode);
     if (scaled.status != VideoScaleStatus::ok) {
         return false;
     }

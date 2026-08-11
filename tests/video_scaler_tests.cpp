@@ -75,6 +75,39 @@ void RunVideoScalerTests() {
     }
 
     {
+        std::vector<std::uint8_t> wide(16u * 9u * 4u, 0u);
+        for (std::uint32_t x = 0u; x < 16u; ++x) {
+            for (std::uint32_t y = 0u; y < 9u; ++y) {
+                const std::size_t offset = static_cast<std::size_t>(y * 16u + x) * 4u;
+                wide[offset] = static_cast<std::uint8_t>(x);
+                wide[offset + 3u] = 255u;
+            }
+        }
+        std::vector<std::uint8_t> square(9u * 9u * 4u, 0xCCu);
+        const auto result = pbvp::ScaleBgra(
+            wide, 16u, 9u, 64u, square, 9u, 9u, 36u,
+            pbvp::VideoScaleMode::fill, pbvp::VideoColorMode::full_color);
+        PBVP_CHECK(result.status == pbvp::VideoScaleStatus::ok);
+        PBVP_CHECK(result.content_x == 0u);
+        PBVP_CHECK(result.content_y == 0u);
+        PBVP_CHECK(result.content_width == 9u);
+        PBVP_CHECK(result.content_height == 9u);
+        PBVP_CHECK(Pixel(square, 36u, 0u, 4u) == 0xFF000003u);
+        PBVP_CHECK(Pixel(square, 36u, 8u, 4u) == 0xFF00000Bu);
+    }
+
+    {
+        const std::vector<std::uint8_t> source{10u, 20u, 30u, 7u};
+        std::vector<std::uint8_t> destination(4u, 0u);
+        const auto result = pbvp::ScaleBgra(
+            source, 1u, 1u, 4u, destination, 1u, 1u, 4u,
+            pbvp::VideoScaleMode::fit,
+            pbvp::VideoColorMode::pipboy_luminance);
+        PBVP_CHECK(result.status == pbvp::VideoScaleStatus::ok);
+        PBVP_CHECK(Pixel(destination, 4u, 0u, 0u) == 0xFF161616u);
+    }
+
+    {
         std::vector<std::uint8_t> bytes(64u, 0u);
         PBVP_CHECK(pbvp::ScaleBgraToFit(
             bytes, 0u, 1u, 4u, bytes, 1u, 1u, 4u).status ==

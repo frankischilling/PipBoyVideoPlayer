@@ -51,6 +51,7 @@ public:
 
     void UpdateOnGameThread() noexcept;
     [[nodiscard]] bool SetLayerEnabled(bool enabled) noexcept;
+    [[nodiscard]] bool SetPipBoyTintEnabled(bool enabled) noexcept;
     [[nodiscard]] bool SetPlaybackStatus(
         const PlaybackStateSnapshot& playback) noexcept;
     UiRectSnapshot ReadForRenderThread() const noexcept;
@@ -76,7 +77,9 @@ private:
     std::uint32_t last_failure_{};
     std::uintptr_t last_status_tile_{};
     std::uintptr_t last_root_tile_{};
+    std::uintptr_t last_surface_tile_{};
     bool last_layer_enabled_{true};
+    bool last_pipboy_tint_enabled_{true};
     PlaybackState last_status_state_{PlaybackState::unavailable};
     PlaybackError last_status_error_{PlaybackError::none};
     bool found_logged_{};

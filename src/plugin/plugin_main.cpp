@@ -248,6 +248,8 @@ void ReloadConfiguration() noexcept {
         return;
     }
     g_settings = loaded.settings;
+    pbvp::D3dRenderer::Instance().ConfigurePresentation(
+        g_settings.aspect_mode, g_settings.tint_mode);
     LogConfigurationResult(loaded);
     pbvp::D3dRenderer::Instance().ClearVideoFrame();
     PBVP_LOG_INFO("Configuration reloaded while playback was idle");
@@ -810,6 +812,8 @@ void HandleMessage(NVSEMessagingInterface::Message* message) {
                 pbvp::UiBridge::Instance().UpdateOnGameThread();
                 static_cast<void>(
                     pbvp::UiBridge::Instance().SetLayerEnabled(g_settings.enabled));
+                static_cast<void>(pbvp::UiBridge::Instance().SetPipBoyTintEnabled(
+                    g_settings.tint_mode == pbvp::TintMode::pipboy));
                 pbvp::UiRectSnapshot ui_snapshot =
                     pbvp::UiBridge::Instance().ReadForRenderThread();
                 if (!g_settings.enabled) {
@@ -918,6 +922,8 @@ extern "C" bool NVSEPlugin_Load(NVSEInterface* nvse) {
     if (configuration.status == pbvp::ConfigurationStatus::ok) {
         g_settings = configuration.settings;
     }
+    pbvp::D3dRenderer::Instance().ConfigurePresentation(
+        g_settings.aspect_mode, g_settings.tint_mode);
     LogConfigurationResult(configuration);
 #if defined(PBVP_ENABLE_MEDIA_SMOKE_TEST)
     g_media_smoke_root = g_media_root;

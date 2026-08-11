@@ -30,6 +30,7 @@ constexpr std::uint32_t kValueVisible = ::Tile::kTileValue_visible;
 constexpr std::uint32_t kValueHeight = ::Tile::kTileValue_height;
 constexpr std::uint32_t kValueWidth = ::Tile::kTileValue_width;
 constexpr std::uint32_t kValueString = ::Tile::kTileValue_string;
+constexpr std::uint32_t kValueSystemColor = ::Tile::kTileValue_systemcolor;
 constexpr std::size_t kMaxTileValues = 4096;
 constexpr std::size_t kMaxTilesVisited = 512;
 constexpr std::size_t kMaxParentDepth = 64;
@@ -434,6 +435,47 @@ bool UiBridge::SetLayerEnabled(const bool enabled) noexcept {
     }
 }
 
+bool UiBridge::SetPipBoyTintEnabled(const bool enabled) noexcept {
+    const std::uint32_t expected_thread = game_thread_id_.load(std::memory_order_acquire);
+    if (expected_thread == 0u || GetCurrentThreadId() != expected_thread) {
+        return false;
+    }
+    __try {
+        auto*** menu_array_pointer = reinterpret_cast<Tile***>(kTileMenuArrayPointer);
+        if (menu_array_pointer == nullptr || *menu_array_pointer == nullptr) {
+            return false;
+        }
+        Tile* menu_root = (*menu_array_pointer)[kMapMenuType - kMenuTypeMin];
+        if (menu_root == nullptr) {
+            return false;
+        }
+        Tile* surface = FindDescendant(menu_root, "PBVP_VideoSurface");
+        if (surface == nullptr ||
+            reinterpret_cast<std::uintptr_t>(surface->vtable) != kTileImageVtable) {
+            return false;
+        }
+        TileValue* system_color = FindValue(surface, kValueSystemColor);
+        if (system_color == nullptr || system_color->parent != surface) {
+            return false;
+        }
+        const std::uintptr_t surface_address = reinterpret_cast<std::uintptr_t>(surface);
+        if (last_surface_tile_ == surface_address &&
+            last_pipboy_tint_enabled_ == enabled &&
+            (system_color->number > 0.0f) == enabled) {
+            return true;
+        }
+        using SetFloatValue = void(__thiscall*)(void*, std::uint32_t, float, bool);
+        const auto set_float = reinterpret_cast<SetFloatValue>(kTileSetFloatValueAddress);
+        set_float(surface, kValueSystemColor, enabled ? 1.0f : 0.0f, true);
+        last_surface_tile_ = surface_address;
+        last_pipboy_tint_enabled_ = enabled;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        last_surface_tile_ = 0u;
+        return false;
+    }
+}
+
 bool UiBridge::SetPlaybackStatus(
     const PlaybackStateSnapshot& playback) noexcept {
     const std::uint32_t expected_thread = game_thread_id_.load(std::memory_order_acquire);
@@ -611,7 +653,9 @@ void UiBridge::Clear() noexcept {
     last_failure_ = 0u;
     last_status_tile_ = 0u;
     last_root_tile_ = 0u;
+    last_surface_tile_ = 0u;
     last_layer_enabled_ = true;
+    last_pipboy_tint_enabled_ = true;
     last_status_state_ = PlaybackState::unavailable;
     last_status_error_ = PlaybackError::none;
 }

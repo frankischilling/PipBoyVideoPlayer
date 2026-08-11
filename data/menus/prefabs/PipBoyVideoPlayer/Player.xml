@@ -31,6 +31,7 @@
             <height> <copy src="parent()" trait="height" /> </height>
             <zoom> &scale; </zoom>
             <systemcolor> 0 </systemcolor>
+            <brightness> 255 </brightness>
             <red> 255 </red>
             <green> 255 </green>
             <blue> 255 </blue>

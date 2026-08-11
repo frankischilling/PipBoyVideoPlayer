@@ -1,5 +1,6 @@
 #pragma once
 
+#include "pbvp/configuration.hpp"
 #include "pbvp/frame_cadence.hpp"
 #include "pbvp/media_decoder.hpp"
 
@@ -40,6 +41,7 @@ public:
     static D3dRenderer& Instance() noexcept;
 
     [[nodiscard]] bool SubmitVideoFrame(DecodedVideoFrame frame) noexcept;
+    void ConfigurePresentation(AspectMode aspect_mode, TintMode tint_mode) noexcept;
     void ClearVideoFrame() noexcept;
     void OnFrame(const UiRectSnapshot& ui_rect) noexcept;
     void RequestShutdown() noexcept;
@@ -69,6 +71,10 @@ private:
     std::optional<DecodedVideoFrame> pending_frame_{};
     std::array<std::uint8_t, kPresentationBytes> presentation_pixels_{};
     std::atomic<bool> clear_requested_{false};
+    std::atomic<std::uint32_t> aspect_mode_{
+        static_cast<std::uint32_t>(AspectMode::fit)};
+    std::atomic<std::uint32_t> tint_mode_{
+        static_cast<std::uint32_t>(TintMode::pipboy)};
     IDirect3DDevice9* device_{};
     std::uintptr_t last_surface_{};
     std::uint64_t frame_callback_count_{};

@@ -50,6 +50,11 @@ foreach(required_setting IN ITEMS
     endif()
 endforeach()
 
+string(FIND "${prefab_text}" "<brightness> 255 </brightness>" brightness_position)
+if(brightness_position EQUAL -1)
+    message(FATAL_ERROR "Video surface does not expose full brightness for system color")
+endif()
+
 set(expected_root_stack
     "<height> <copy src=\"parent()\" trait=\"height\" /> </height>\n    <depth> 10 </depth>\n    <visible> 1 </visible>\n    <target> 0 </target>")
 string(FIND "${prefab_text}" "${expected_root_stack}" root_stack_offset)
@@ -151,6 +156,18 @@ if(hook_free_log_offset EQUAL -1)
 endif()
 
 file(READ "${PBVP_SOURCE_DIR}/src/render/d3d_renderer.cpp" renderer_text)
+foreach(required_presentation_fragment IN ITEMS
+        "ConfigurePresentation"
+        "SetPipBoyTintEnabled")
+    string(FIND "${plugin_text}${renderer_text}" "${required_presentation_fragment}" fragment_position)
+    if(fragment_position EQUAL -1)
+        message(FATAL_ERROR "Presentation setting is not connected: ${required_presentation_fragment}")
+    endif()
+endforeach()
+string(FIND "${renderer_text}" "ScaleBgra(" scaler_position)
+if(scaler_position EQUAL -1)
+    message(FATAL_ERROR "Renderer does not use the configurable BGRA scaler")
+endif()
 string(FIND "${renderer_text}" "description.Pool == D3DPOOL_MANAGED" managed_pool_offset)
 string(FIND "${renderer_text}" "AcceptEngineVideoTexture" texture_contract_offset)
 if(managed_pool_offset EQUAL -1 OR texture_contract_offset EQUAL -1)
